@@ -11,6 +11,22 @@ than industry-specific applications.
 - Auth.js credentials authentication
 - Zod input validation
 
+## Quick start with Docker Compose
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+docker compose ps                    # web-antrian-mysql (healthy), web-antrian-app
+curl -fsS http://127.0.0.1:3000
+docker compose logs -f --tail=50 app
+docker compose down                  # do NOT pass -v: it deletes the MySQL data volume
+```
+
+Compose fills `DATABASE_URL`, `AUTH_SECRET`, and `AUTH_TRUST_HOST`, then runs
+`prisma migrate deploy` + seed + build + start automatically. Host ports:
+application `3000:3000`, MySQL `3307:3306`. The compose credentials and secret
+are for local development only.
+
 ## Local setup
 
 Requirements: Node.js 20+, MySQL 8+, and npm.
@@ -62,13 +78,20 @@ development only. Replace it and rotate `AUTH_SECRET` before deploying.
 ## Verification
 
 ```powershell
-npm run typecheck
+npx prisma generate
 npm run lint
+npm run typecheck
 npm test
 npm run build
 ```
+
+All five steps must exit 0 before committing; CI in `.github/workflows/ci.yml`
+runs the same sequence on Node 20. There is no Playwright/E2E dependency in this
+repository — UI verification is done manually in the browser.
 
 The application requires a configured MySQL instance for authenticated pages,
 seed data, and API/database integration flows. Unit tests for domain logic do not
 require a database. WhatsApp delivery, full branch administration,
 advertisement, and analytics reports are not implemented yet.
+
+Working rules for AI agents and contributors are in `AGENTS.md`.

@@ -34,10 +34,10 @@ npm test                # 12 unit test (node --test)
 npm run build           # Next.js production build
 ```
 
-Keempat langkah (lint, typecheck, test 12/12 lulus, build) sudah diverifikasi hijau di container `node:20-alpine`.
+Kelima langkah (generate, lint, typecheck, test 12/12 lulus, build) sudah diverifikasi exit 0 di host ini (Node 22); CI menjalankannya di Ubuntu + Node 20.
 Tidak ada dependency Playwright/E2E di repo ini; verifikasi UI dilakukan manual di browser (lihat bagian 7).
 
-CI: `.github/workflows/ci.yml` (lint → typecheck → unit test → build).
+CI: `.github/workflows/ci.yml` (generate prisma → lint → typecheck → unit test → build).
 
 ## 4. Database & migrasi
 
@@ -79,6 +79,11 @@ Contoh: `feat: halaman status antrean realtime`, `fix: validasi token kadaluarsa
 - Container app menunggu MySQL healthy; jangan panik kalau request pertama gagal ~10 detik pertama.
 
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code.
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
 <!-- END:nextjs-agent-rules -->
