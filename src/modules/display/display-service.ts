@@ -4,12 +4,31 @@ import { AppError } from "@/modules/shared/errors";
 import { requireFeature } from "@/modules/feature/feature-gate";
 import { clientAddress, enforceRateLimit } from "@/modules/shared/rate-limit";
 import { hashAccessToken } from "@/modules/queue/application/public-queue";
+import { dateForTimezone } from "@/modules/queue/domain/service-date";
 import { BusinessContext, requireRole } from "@/modules/tenancy/context";
+
+/**
+ * A display scoped to counters must only reference counters inside its own
+ * branch, otherwise a TV in one lobby would announce another lobby's tickets.
+ */
+async function assertCountersInBranch(branchId: string, counterIds: string[]) {
+  const unique = [...new Set(counterIds)];
+  if (!unique.length) return unique;
+  const counters = await prisma.counter.findMany({
+    where: { id: { in: unique }, branchId },
+    select: { id: true },
+  });
+  if (counters.length !== unique.length) {
+    throw new AppError("Loket yang dipilih tidak valid untuk cabang ini.", 400, "INVALID_COUNTER");
+  }
+  return unique;
+}
 
 export async function createDisplay(
   context: BusinessContext,
   branchId: string,
   name: string,
+  counterIds: string[] = [],
 ) {
   requireRole(context, ["SUPER_ADMIN"]);
   const branch = await prisma.branch.findFirst({
@@ -23,6 +42,7 @@ export async function createDisplay(
   });
   if (!branch) throw new AppError("Cabang tidak ditemukan.", 404, "BRANCH_NOT_FOUND");
   await requireFeature(context.businessId, "TV_DISPLAY");
+  const scopedCounterIds = await assertCountersInBranch(branchId, counterIds);
 
   const token = randomBytes(32).toString("base64url");
   const display = await prisma.$transaction(async (tx) => {
@@ -32,6 +52,9 @@ export async function createDisplay(
         branchId,
         name,
         tokenHash: hashAccessToken(token),
+        counters: {
+          create: scopedCounterIds.map((counterId) => ({ counterId })),
+        },
       },
       select: { id: true, branchId: true, name: true, createdAt: true },
     });
@@ -51,12 +74,164 @@ export async function createDisplay(
   return { display, token };
 }
 
+export async function renameDisplay(
+  context: BusinessContext,
+  displayId: string,
+  name: string,
+) {
+  requireRole(context, ["SUPER_ADMIN"]);
+  const display = await findScopedDisplay(context, displayId);
+  const updated = await prisma.display.update({
+    where: { id: display.id },
+    data: { name },
+    select: { id: true, branchId: true, name: true, active: true },
+  });
+  await prisma.auditLog.create({
+    data: {
+      businessId: context.businessId,
+      actorUserId: context.userId,
+      branchId: display.branchId,
+      action: "DISPLAY_RENAMED",
+      targetType: "Display",
+      targetId: display.id,
+    },
+  });
+  return updated;
+}
+
+/**
+ * Displays hold a hashed access token. Rotating replaces the hash, which
+ * instantly revokes every screen still using the old URL.
+ */
+export async function rotateDisplayToken(context: BusinessContext, displayId: string) {
+  requireRole(context, ["SUPER_ADMIN"]);
+  const display = await findScopedDisplay(context, displayId);
+  await requireFeature(context.businessId, "TV_DISPLAY");
+  const token = randomBytes(32).toString("base64url");
+  await prisma.$transaction(async (tx) => {
+    await tx.display.update({
+      where: { id: display.id },
+      data: { tokenHash: hashAccessToken(token) },
+    });
+    await tx.auditLog.create({
+      data: {
+        businessId: context.businessId,
+        actorUserId: context.userId,
+        branchId: display.branchId,
+        action: "DISPLAY_TOKEN_ROTATED",
+        targetType: "Display",
+        targetId: display.id,
+      },
+    });
+  });
+  return { displayId: display.id, token };
+}
+
+/**
+ * A display is only a pairing token, so deleting it leaves no orphan history.
+ * We still prefer deactivation when the caller asks for it, because an
+ * accidentally removed screen means a physical trip to the lobby.
+ */
+export async function deleteDisplay(context: BusinessContext, displayId: string) {
+  requireRole(context, ["SUPER_ADMIN"]);
+  const display = await findScopedDisplay(context, displayId);
+  await prisma.$transaction(async (tx) => {
+    await tx.display.delete({ where: { id: display.id } });
+    await tx.auditLog.create({
+      data: {
+        businessId: context.businessId,
+        actorUserId: context.userId,
+        branchId: display.branchId,
+        action: "DISPLAY_DELETED",
+        targetType: "Display",
+        targetId: display.id,
+      },
+    });
+  });
+  return { id: display.id };
+}
+
+export async function setDisplayActive(
+  context: BusinessContext,
+  displayId: string,
+  active: boolean,
+) {
+  requireRole(context, ["SUPER_ADMIN"]);
+  const display = await findScopedDisplay(context, displayId);
+  const updated = await prisma.display.update({
+    where: { id: display.id },
+    data: { active },
+    select: { id: true, branchId: true, name: true, active: true },
+  });
+  await prisma.auditLog.create({
+    data: {
+      businessId: context.businessId,
+      actorUserId: context.userId,
+      branchId: display.branchId,
+      action: active ? "DISPLAY_ACTIVATED" : "DISPLAY_DEACTIVATED",
+      targetType: "Display",
+      targetId: display.id,
+    },
+  });
+  return updated;
+}
+
+/**
+ * Choosing the counters a screen covers. An empty list is meaningful: it turns
+ * the screen back into a lobby display that shows every counter.
+ */
+export async function setDisplayCounters(
+  context: BusinessContext,
+  displayId: string,
+  counterIds: string[],
+) {
+  requireRole(context, ["SUPER_ADMIN"]);
+  const display = await findScopedDisplay(context, displayId);
+  const unique = await assertCountersInBranch(display.branchId, counterIds);
+  await prisma.$transaction(async (tx) => {
+    await tx.displayCounter.deleteMany({ where: { displayId: display.id } });
+    if (unique.length) {
+      await tx.displayCounter.createMany({
+        data: unique.map((counterId) => ({ displayId: display.id, counterId })),
+      });
+    }
+    await tx.auditLog.create({
+      data: {
+        businessId: context.businessId,
+        actorUserId: context.userId,
+        branchId: display.branchId,
+        action: "DISPLAY_SCOPE_UPDATED",
+        targetType: "Display",
+        targetId: display.id,
+        metadata: { counterIds: unique },
+      },
+    });
+  });
+  return { id: display.id, counterIds: unique };
+}
+
+async function findScopedDisplay(context: BusinessContext, displayId: string) {
+  const display = await prisma.display.findFirst({
+    where: {
+      id: displayId,
+      businessId: context.businessId,
+      ...(context.branchIds ? { branchId: { in: context.branchIds } } : {}),
+    },
+    select: { id: true, branchId: true, name: true },
+  });
+  if (!display) {
+    throw new AppError("Display tidak ditemukan.", 404, "DISPLAY_NOT_FOUND");
+  }
+  return display;
+}
+
 export async function resolveDisplayToken(token: string) {
   const display = await prisma.display.findUnique({
     where: { tokenHash: hashAccessToken(token) },
     include: {
-      business: { select: { id: true, name: true, active: true } },
-      branch: { select: { id: true, name: true, active: true } },
+      business: { select: { id: true, name: true, active: true, timezone: true } },
+      branch: { select: { id: true, name: true, active: true, timezone: true } },
+      counters: { select: { counterId: true } },
     },
   });
   if (
@@ -78,11 +253,20 @@ export async function getDisplaySnapshot(token: string, request: Request) {
     120,
     60,
   );
+  const timezone = display.branch.timezone ?? display.business.timezone;
+  // No scoped counters means the screen is a lobby screen showing everything.
+  const counterIds = display.counters.map((row) => row.counterId);
+  const counterScope = counterIds.length
+    ? { counterId: { in: counterIds } }
+    : {};
   const queues = await prisma.queue.findMany({
     where: {
       businessId: display.businessId,
       branchId: display.branchId,
+      // Without this, a queue left uncompleted yesterday stays on the TV forever.
+      serviceDate: dateForTimezone(timezone),
       status: { in: ["CALLED", "SERVING"] },
+      ...counterScope,
     },
     include: {
       service: { select: { name: true } },
@@ -90,6 +274,25 @@ export async function getDisplaySnapshot(token: string, request: Request) {
     },
     orderBy: [{ calledAt: "desc" }, { issuedAt: "desc" }],
     take: 8,
+  });
+
+  // A lobby screen is more useful when it also answers "how long until my
+  // number?" — so the waiting list is part of the snapshot, not a second call.
+  const waiting = await prisma.queue.findMany({
+    where: {
+      businessId: display.businessId,
+      branchId: display.branchId,
+      serviceDate: dateForTimezone(timezone),
+      status: "WAITING",
+      // Waiting tickets have no counter yet, so scope them by the services the
+      // display's counters actually serve instead.
+      ...(counterIds.length
+        ? { service: { counterServices: { some: { counterId: { in: counterIds } } } } }
+        : {}),
+    },
+    include: { service: { select: { name: true } } },
+    orderBy: [{ issuedAt: "asc" }, { id: "asc" }],
+    take: 12,
   });
   const features = await prisma.featureConfiguration.findMany({
     where: {
@@ -99,13 +302,33 @@ export async function getDisplaySnapshot(token: string, request: Request) {
     select: { featureKey: true, enabled: true },
   });
   return {
-    display: { name: display.name, branch: display.branch.name, business: display.business.name },
+    display: {
+      name: display.name,
+      branch: display.branch.name,
+      business: display.business.name,
+      // Lets the TV tell the audience whether it covers the whole lobby or a
+      // single counter, instead of silently looking incomplete.
+      scope: (counterIds.length ? "counter" : "branch") as "counter" | "branch",
+
+      counterCount: counterIds.length || undefined,
+    },
     queues: queues.map((queue) => ({
       ticketNumber: queue.ticketNumber,
       status: queue.status,
       service: queue.service.name,
       counter: queue.counter?.name ?? "—",
       counterCode: queue.counter?.code ?? "",
+    })),
+    waiting: waiting.map((queue) => ({
+      ticketNumber: queue.ticketNumber,
+      service: queue.service.name,
+      issuedAt: queue.issuedAt.toISOString(),
+      // Position in the line for this service, so the TV can show "3 lagi".
+      ahead: waiting.filter(
+        (other) =>
+          other.serviceId === queue.serviceId &&
+          other.issuedAt.getTime() < queue.issuedAt.getTime(),
+      ).length,
     })),
     voiceEnabled: features.find((feature) => feature.featureKey === "VOICE_CALL")?.enabled ?? false,
     advertisementEnabled: features.find((feature) => feature.featureKey === "ADVERTISEMENT")?.enabled ?? false,

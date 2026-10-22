@@ -95,10 +95,31 @@ a {
 
 .dashboard-mobile-nav {
   scrollbar-width: none;
+  /* Fade the right edge so it is obvious there are more links to the side. */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
 }
 
 .dashboard-mobile-nav::-webkit-scrollbar {
   display: none;
+}
+
+.dashboard-sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #d7e0dc transparent;
+}
+
+.dashboard-sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dashboard-sidebar-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: #d7e0dc;
+}
+
+.dashboard-sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background: #c3d0cb;
 }
 
 .dark {

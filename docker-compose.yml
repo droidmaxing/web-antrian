@@ -26,9 +26,15 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: mysql://queue_user:queue_pass@mysql:3306/queue_management
-      AUTH_SECRET: antrian-secret-32-chars-long!!
+      DATABASE_URL: mysql://queue_user:${MYSQL_PASSWORD:-queue_pass}@mysql:3306/${MYSQL_DATABASE:-queue_management}
+      AUTH_SECRET: ${AUTH_SECRET:-local-dev-only-secret-change-before-deploy}
       AUTH_TRUST_HOST: "true"
+      # Base URL must come from the environment. Leaving these empty makes the
+      # app derive the origin from forwarded request headers, so a deployment
+      # never inherits a localhost origin by accident.
+      APP_URL: ${APP_URL:-}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-}
+      APP_PROTOCOL: ${APP_PROTOCOL:-http}
     depends_on:
       mysql:
         condition: service_healthy

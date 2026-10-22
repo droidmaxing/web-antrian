@@ -28,8 +28,8 @@ test("validation errors include safe, field-specific guidance", async () => {
       code: "INVALID_INPUT",
       message: "Periksa data.",
       fields: {
-        customerName: "Periksa kembali Nama lengkap.",
-        customerEmail: "Periksa kembali Email.",
+        customerName: "Periksa kembali Nama lengkap — nilainya belum sesuai.",
+        customerEmail: "Periksa kembali Email — nilainya belum sesuai.",
       },
     },
   });

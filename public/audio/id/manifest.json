@@ -1,0 +1,293 @@
+{
+  "voice": "id-ID-GadisNeural",
+  "clips": {
+    "digit-0": {
+      "file": "digit-0.mp3",
+      "text": "nol"
+    },
+    "digit-1": {
+      "file": "digit-1.mp3",
+      "text": "satu"
+    },
+    "digit-2": {
+      "file": "digit-2.mp3",
+      "text": "dua"
+    },
+    "digit-3": {
+      "file": "digit-3.mp3",
+      "text": "tiga"
+    },
+    "digit-4": {
+      "file": "digit-4.mp3",
+      "text": "empat"
+    },
+    "digit-5": {
+      "file": "digit-5.mp3",
+      "text": "lima"
+    },
+    "digit-6": {
+      "file": "digit-6.mp3",
+      "text": "enam"
+    },
+    "digit-7": {
+      "file": "digit-7.mp3",
+      "text": "tujuh"
+    },
+    "digit-8": {
+      "file": "digit-8.mp3",
+      "text": "delapan"
+    },
+    "digit-9": {
+      "file": "digit-9.mp3",
+      "text": "sembilan"
+    },
+    "letter-a": {
+      "file": "letter-a.mp3",
+      "text": "A"
+    },
+    "letter-b": {
+      "file": "letter-b.mp3",
+      "text": "B"
+    },
+    "letter-c": {
+      "file": "letter-c.mp3",
+      "text": "C"
+    },
+    "letter-d": {
+      "file": "letter-d.mp3",
+      "text": "D"
+    },
+    "letter-e": {
+      "file": "letter-e.mp3",
+      "text": "E"
+    },
+    "letter-f": {
+      "file": "letter-f.mp3",
+      "text": "F"
+    },
+    "letter-g": {
+      "file": "letter-g.mp3",
+      "text": "G"
+    },
+    "letter-h": {
+      "file": "letter-h.mp3",
+      "text": "H"
+    },
+    "letter-i": {
+      "file": "letter-i.mp3",
+      "text": "I"
+    },
+    "letter-j": {
+      "file": "letter-j.mp3",
+      "text": "J"
+    },
+    "letter-k": {
+      "file": "letter-k.mp3",
+      "text": "K"
+    },
+    "letter-l": {
+      "file": "letter-l.mp3",
+      "text": "L"
+    },
+    "letter-m": {
+      "file": "letter-m.mp3",
+      "text": "M"
+    },
+    "letter-n": {
+      "file": "letter-n.mp3",
+      "text": "N"
+    },
+    "letter-o": {
+      "file": "letter-o.mp3",
+      "text": "O"
+    },
+    "letter-p": {
+      "file": "letter-p.mp3",
+      "text": "P"
+    },
+    "letter-q": {
+      "file": "letter-q.mp3",
+      "text": "Q"
+    },
+    "letter-r": {
+      "file": "letter-r.mp3",
+      "text": "R"
+    },
+    "letter-s": {
+      "file": "letter-s.mp3",
+      "text": "S"
+    },
+    "letter-t": {
+      "file": "letter-t.mp3",
+      "text": "T"
+    },
+    "letter-u": {
+      "file": "letter-u.mp3",
+      "text": "U"
+    },
+    "letter-v": {
+      "file": "letter-v.mp3",
+      "text": "V"
+    },
+    "letter-w": {
+      "file": "letter-w.mp3",
+      "text": "W"
+    },
+    "letter-x": {
+      "file": "letter-x.mp3",
+      "text": "X"
+    },
+    "letter-y": {
+      "file": "letter-y.mp3",
+      "text": "Y"
+    },
+    "letter-z": {
+      "file": "letter-z.mp3",
+      "text": "Z"
+    },
+    "nomor-antrean": {
+      "file": "nomor-antrean.mp3",
+      "text": "nomor antrean"
+    },
+    "silakan-menuju": {
+      "file": "silakan-menuju.mp3",
+      "text": "silakan menuju"
+    },
+    "loket": {
+      "file": "loket.mp3",
+      "text": "loket"
+    },
+    "counter": {
+      "file": "counter.mp3",
+      "text": "counter"
+    },
+    "ruang": {
+      "file": "ruang.mp3",
+      "text": "ruang"
+    },
+    "poli": {
+      "file": "poli.mp3",
+      "text": "poli"
+    },
+    "poliklinik": {
+      "file": "poliklinik.mp3",
+      "text": "poliklinik"
+    },
+    "kasir": {
+      "file": "kasir.mp3",
+      "text": "kasir"
+    },
+    "pembayaran": {
+      "file": "pembayaran.mp3",
+      "text": "pembayaran"
+    },
+    "pendaftaran": {
+      "file": "pendaftaran.mp3",
+      "text": "pendaftaran"
+    },
+    "farmasi": {
+      "file": "farmasi.mp3",
+      "text": "farmasi"
+    },
+    "laboratorium": {
+      "file": "laboratorium.mp3",
+      "text": "laboratorium"
+    },
+    "radiologi": {
+      "file": "radiologi.mp3",
+      "text": "radiologi"
+    },
+    "igd": {
+      "file": "igd.mp3",
+      "text": "I G D"
+    },
+    "umum": {
+      "file": "umum.mp3",
+      "text": "umum"
+    },
+    "gigi": {
+      "file": "gigi.mp3",
+      "text": "gigi"
+    },
+    "anak": {
+      "file": "anak.mp3",
+      "text": "anak"
+    },
+    "kandungan": {
+      "file": "kandungan.mp3",
+      "text": "kandungan"
+    },
+    "bedah": {
+      "file": "bedah.mp3",
+      "text": "bedah"
+    },
+    "mata": {
+      "file": "mata.mp3",
+      "text": "mata"
+    },
+    "tht": {
+      "file": "tht.mp3",
+      "text": "T H T"
+    },
+    "satu": {
+      "file": "satu.mp3",
+      "text": "satu"
+    },
+    "dua": {
+      "file": "dua.mp3",
+      "text": "dua"
+    },
+    "tiga": {
+      "file": "tiga.mp3",
+      "text": "tiga"
+    },
+    "empat": {
+      "file": "empat.mp3",
+      "text": "empat"
+    },
+    "lima": {
+      "file": "lima.mp3",
+      "text": "lima"
+    },
+    "enam": {
+      "file": "enam.mp3",
+      "text": "enam"
+    },
+    "tujuh": {
+      "file": "tujuh.mp3",
+      "text": "tujuh"
+    },
+    "delapan": {
+      "file": "delapan.mp3",
+      "text": "delapan"
+    },
+    "sembilan": {
+      "file": "sembilan.mp3",
+      "text": "sembilan"
+    },
+    "sepuluh": {
+      "file": "sepuluh.mp3",
+      "text": "sepuluh"
+    },
+    "sebelas": {
+      "file": "sebelas.mp3",
+      "text": "sebelas"
+    },
+    "belas": {
+      "file": "belas.mp3",
+      "text": "belas"
+    },
+    "puluh": {
+      "file": "puluh.mp3",
+      "text": "puluh"
+    },
+    "ratus": {
+      "file": "ratus.mp3",
+      "text": "ratus"
+    },
+    "jeda": {
+      "file": "jeda.mp3",
+      "text": "."
+    }
+  }
+}

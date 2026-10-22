@@ -59,37 +59,37 @@ enum NotificationStatus {
 }
 
 model Business {
-  id             String                 @id @default(cuid())
-  name           String
-  slug           String                 @unique
-  businessType   String                 @default("GENERAL")
-  timezone       String                 @default("Asia/Jakarta")
-  active         Boolean                @default(true)
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  branches       Branch[]
-  services       Service[]
-  memberships    BusinessMembership[]
-  features       FeatureConfiguration[]
-  customers      Customer[]
-  queues         Queue[]
-  bookings       Booking[]
-  notifications  Notification[]
-  displays       Display[]
-  accessTokens   AccessToken[]
-  auditLogs      AuditLog[]
+  id            String                 @id @default(cuid())
+  name          String
+  slug          String                 @unique
+  businessType  String                 @default("GENERAL")
+  timezone      String                 @default("Asia/Jakarta")
+  active        Boolean                @default(true)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  branches      Branch[]
+  services      Service[]
+  memberships   BusinessMembership[]
+  features      FeatureConfiguration[]
+  customers     Customer[]
+  queues        Queue[]
+  bookings      Booking[]
+  notifications Notification[]
+  displays      Display[]
+  accessTokens  AccessToken[]
+  auditLogs     AuditLog[]
 }
 
 model Branch {
-  id             String                 @id @default(cuid())
+  id             String                  @id @default(cuid())
   businessId     String
   name           String
   slug           String
   timezone       String?
-  active         Boolean                @default(true)
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  business       Business               @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  active         Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  business       Business                @relation(fields: [businessId], references: [id], onDelete: Restrict)
   counters       Counter[]
   queues         Queue[]
   bookings       Booking[]
@@ -106,20 +106,20 @@ model Branch {
 }
 
 model User {
-  id              String                 @id @default(cuid())
-  name            String?
-  email           String?                @unique
-  emailVerified   DateTime?
-  image           String?
-  passwordHash    String?
-  active          Boolean                @default(true)
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
-  accounts        Account[]
-  sessions        Session[]
-  memberships     BusinessMembership[]
-  queueHistory    QueueHistory[]
-  auditLogs       AuditLog[]
+  id            String               @id @default(cuid())
+  name          String?
+  email         String?              @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  active        Boolean              @default(true)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  memberships   BusinessMembership[]
+  queueHistory  QueueHistory[]
+  auditLogs     AuditLog[]
 }
 
 model Account {
@@ -158,14 +158,15 @@ model VerificationToken {
 }
 
 model BusinessMembership {
-  id         String                  @id @default(cuid())
-  userId     String
-  businessId String
-  role       MembershipRole
-  createdAt  DateTime                @default(now())
-  user       User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  business   Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  branchScopes MembershipBranchScope[]
+  id            String                  @id @default(cuid())
+  userId        String
+  businessId    String
+  role          MembershipRole
+  createdAt     DateTime                @default(now())
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business      Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branchScopes  MembershipBranchScope[]
+  counterScopes CounterMember[]
 
   @@unique([userId, businessId])
   @@index([businessId, role])
@@ -182,44 +183,71 @@ model MembershipBranchScope {
 }
 
 model Service {
-  id               String          @id @default(cuid())
-  businessId       String
-  name             String
-  code             String
-  description      String?         @db.VarChar(500)
-  averageMinutes   Int             @default(10)
-  active           Boolean         @default(true)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  business         Business        @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  counterServices  CounterService[]
-  queues           Queue[]
-  bookings         Booking[]
-  bookingSlots     BookingSlot[]
-  accessTokens     AccessToken[]
-  sequences        QueueSequence[]
+  id              String           @id @default(cuid())
+  businessId      String
+  name            String
+  code            String
+  description     String?          @db.VarChar(500)
+  averageMinutes  Int              @default(10)
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  business        Business         @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  counterServices CounterService[]
+  queues          Queue[]
+  bookings        Booking[]
+  bookingSlots    BookingSlot[]
+  accessTokens    AccessToken[]
+  sequences       QueueSequence[]
 
   @@unique([businessId, code])
   @@index([businessId, active])
 }
 
 model Counter {
-  id             String          @id @default(cuid())
+  id             String           @id @default(cuid())
   branchId       String
   name           String
   code           String
-  active         Boolean         @default(true)
-  activeQueueId  String?         @unique
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  active         Boolean          @default(true)
+  activeQueueId  String?          @unique
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  branch         Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
   services       CounterService[]
-  activeQueue    Queue?          @relation("ActiveQueue", fields: [activeQueueId], references: [id], onDelete: SetNull)
-  assignedQueues Queue[]         @relation("AssignedCounter")
+  members        CounterMember[]
+  displayedOn    DisplayCounter[]
+  activeQueue    Queue?           @relation("ActiveQueue", fields: [activeQueueId], references: [id], onDelete: SetNull)
+  assignedQueues Queue[]          @relation("AssignedCounter")
   history        QueueHistory[]
 
   @@unique([branchId, code])
   @@index([branchId, active])
+}
+
+/// Which operator is allowed to work a given counter. A user with no row here
+/// is unrestricted, so existing accounts keep working after this migration.
+model CounterMember {
+  counterId    String
+  membershipId String
+  createdAt    DateTime           @default(now())
+  counter      Counter            @relation(fields: [counterId], references: [id], onDelete: Cascade)
+  membership   BusinessMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@id([counterId, membershipId])
+  @@index([membershipId])
+}
+
+/// Which counters a TV display shows. No rows means every counter in the
+/// branch, which is what a lobby screen normally wants.
+model DisplayCounter {
+  displayId String
+  counterId String
+  display   Display @relation(fields: [displayId], references: [id], onDelete: Cascade)
+  counter   Counter @relation(fields: [counterId], references: [id], onDelete: Cascade)
+
+  @@id([displayId, counterId])
+  @@index([counterId])
 }
 
 model CounterService {
@@ -233,16 +261,16 @@ model CounterService {
 }
 
 model Customer {
-  id          String         @id @default(cuid())
-  businessId  String
-  name        String
-  phone       String?
-  email       String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  business    Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  queues      Queue[]
-  bookings    Booking[]
+  id            String         @id @default(cuid())
+  businessId    String
+  name          String
+  phone         String?
+  email         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  queues        Queue[]
+  bookings      Booking[]
   notifications Notification[]
 
   @@index([businessId, phone])
@@ -250,30 +278,30 @@ model Customer {
 }
 
 model Queue {
-  id             String       @id @default(cuid())
-  businessId     String
-  branchId       String
-  serviceId      String
-  customerId     String?
-  bookingId      String?      @unique
-  counterId      String?
-  serviceDate    DateTime     @db.Date
-  sequenceNumber Int
-  ticketNumber   String
-  status         QueueStatus  @default(WAITING)
-  issuedAt       DateTime     @default(now())
-  calledAt       DateTime?
-  startedAt      DateTime?
-  completedAt    DateTime?
-  version        Int          @default(0)
-  business       Business     @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  branch         Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  service        Service      @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  customer       Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  booking        Booking?     @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  counter        Counter?     @relation("AssignedCounter", fields: [counterId], references: [id], onDelete: SetNull)
-  activeAt       Counter?     @relation("ActiveQueue")
-  history        QueueHistory[]
+  id                String         @id @default(cuid())
+  businessId        String
+  branchId          String
+  serviceId         String
+  customerId        String?
+  bookingId         String?        @unique
+  counterId         String?
+  serviceDate       DateTime       @db.Date
+  sequenceNumber    Int
+  ticketNumber      String
+  status            QueueStatus    @default(WAITING)
+  issuedAt          DateTime       @default(now())
+  calledAt          DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  version           Int            @default(0)
+  business          Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  branch            Branch         @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  service           Service        @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  customer          Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  booking           Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  counter           Counter?       @relation("AssignedCounter", fields: [counterId], references: [id], onDelete: SetNull)
+  activeAt          Counter?       @relation("ActiveQueue")
+  history           QueueHistory[]
   statusAccessToken AccessToken?
 
   @@unique([branchId, serviceId, serviceDate, sequenceNumber])
@@ -288,14 +316,14 @@ model QueueSequence {
   serviceId   String
   serviceDate DateTime @db.Date
   lastNumber  Int      @default(0)
-  branch      Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
   service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@unique([branchId, serviceId, serviceDate])
 }
 
 model QueueHistory {
-  id          String      @id @default(cuid())
+  id          String       @id @default(cuid())
   queueId     String
   actorUserId String?
   counterId   String?
@@ -303,31 +331,31 @@ model QueueHistory {
   toStatus    QueueStatus
   action      String
   metadata    Json?
-  createdAt   DateTime    @default(now())
-  queue       Queue       @relation(fields: [queueId], references: [id], onDelete: Restrict)
-  actor       User?       @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
-  counter     Counter?    @relation(fields: [counterId], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+  queue       Queue        @relation(fields: [queueId], references: [id], onDelete: Restrict)
+  actor       User?        @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  counter     Counter?     @relation(fields: [counterId], references: [id], onDelete: SetNull)
 
   @@index([queueId, createdAt])
   @@index([actorUserId, createdAt])
 }
 
 model Booking {
-  id          String        @id @default(cuid())
-  businessId  String
-  branchId    String
-  serviceId   String
-  customerId  String
-  scheduledAt DateTime
-  status      BookingStatus @default(PENDING)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  business    Business     @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  service     Service      @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  queue       Queue?
-  slot        BookingSlot?
+  id                String        @id @default(cuid())
+  businessId        String
+  branchId          String
+  serviceId         String
+  customerId        String
+  scheduledAt       DateTime
+  status            BookingStatus @default(PENDING)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  business          Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  branch            Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  service           Service       @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  customer          Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  queue             Queue?
+  slot              BookingSlot?
   statusAccessToken AccessToken?
 
   @@index([branchId, scheduledAt, status])
@@ -369,16 +397,17 @@ model Notification {
 }
 
 model Display {
-  id         String   @id @default(cuid())
+  id         String           @id @default(cuid())
   businessId String
   branchId   String
   name       String
-  tokenHash  String   @unique
-  active     Boolean  @default(true)
+  tokenHash  String           @unique
+  active     Boolean          @default(true)
   config     Json?
-  createdAt  DateTime @default(now())
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  branch     Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  createdAt  DateTime         @default(now())
+  business   Business         @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  branch     Branch           @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  counters   DisplayCounter[]
 
   @@index([branchId, active])
 }
@@ -417,39 +446,39 @@ model FeatureConfiguration {
 }
 
 model OperatingHours {
-  id        String  @id @default(cuid())
-  branchId  String
-  weekday   Int
-  opensAt   String
-  closesAt  String
-  closed    Boolean @default(false)
-  branch    Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  id       String  @id @default(cuid())
+  branchId String
+  weekday  Int
+  opensAt  String
+  closesAt String
+  closed   Boolean @default(false)
+  branch   Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@unique([branchId, weekday])
 }
 
 model QueueConfiguration {
-  id               String  @id @default(cuid())
-  branchId         String  @unique
-  ticketPrefix     String  @default("Q")
-  resetDaily       Boolean @default(true)
-  estimateBuffer   Int     @default(0)
-  branch           Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  id             String  @id @default(cuid())
+  branchId       String  @unique
+  ticketPrefix   String  @default("Q")
+  resetDaily     Boolean @default(true)
+  estimateBuffer Int     @default(0)
+  branch         Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
 }
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  businessId String
+  id          String   @id @default(cuid())
+  businessId  String
   actorUserId String?
-  branchId   String?
-  action     String
-  targetType String
-  targetId   String?
-  requestId  String?
-  metadata   Json?
-  createdAt  DateTime @default(now())
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  actor      User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  branchId    String?
+  action      String
+  targetType  String
+  targetId    String?
+  requestId   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([businessId, createdAt])
   @@index([actorUserId, createdAt])

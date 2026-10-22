@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { errorResponse, readJsonRequest } from "@/modules/shared/errors";
 import { validationAppError } from "@/modules/shared/validation-error";
+import { clientAddress, enforceRateLimit } from "@/modules/shared/rate-limit";
 import {
   getQrConfiguration,
   issuePublicQueue,
@@ -35,6 +36,9 @@ export async function POST(request: Request, { params }: RouteContext) {
         customerPhone: "Nomor WhatsApp",
       });
     }
+    // A QR poster is public, so anyone can burn ticket numbers; cap issuance
+    // per IP address before touching the database.
+    await enforceRateLimit(`qr-issue:${token}:${clientAddress(request)}`, 20, 60);
     const result = await issuePublicQueue(token, request, parsed.data);
     return Response.json(
       {

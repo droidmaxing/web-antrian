@@ -231,18 +231,37 @@ async function main() {
   });
 
   if (queueCount === 0) {
-    const customers = await Promise.all(
-      ["Nadia Putri", "Bima Saputra", "Siti Rahma", "Rizky Ananda", "Dewi Lestari"].map(
-        (name, index) =>
-          prisma.customer.create({
-            data: {
-              businessId: business.id,
-              name,
-              phone: `+62812345678${index}`,
-            },
-          }),
-      ),
-    );
+    // Customers are matched by phone so re-seeding on a new day reuses the same
+    // people instead of inserting a fresh copy every run.
+    const customers = [];
+    // Demo contacts. Real digits matter: normalizePhone() must be able to
+    // canonicalise them, otherwise duplicate detection can never fire.
+    const phones = [
+      "081200000001",
+      "081200000002",
+      "081200000003",
+      "081200000004",
+      "081200000005",
+    ];
+    for (const [index, name] of [
+      "Nadia Putri",
+      "Bima Saputra",
+      "Siti Rahma",
+      "Rizky Ananda",
+      "Dewi Lestari",
+    ].entries()) {
+      const phone = phones[index];
+      const existing = await prisma.customer.findFirst({
+        where: { businessId: business.id, phone },
+        select: { id: true },
+      });
+      customers.push(
+        existing ??
+          (await prisma.customer.create({
+            data: { businessId: business.id, name, phone },
+          })),
+      );
+    }
     const records = [
       { service: services[0], status: QueueStatus.SERVING, counterCode: "01" },
       { service: services[1], status: QueueStatus.CALLED, counterCode: "03" },
@@ -325,12 +344,23 @@ async function main() {
     }
   }
 
+  const appUrl = (process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "")
+    .trim()
+    .replace(/\/+$/, "");
   console.info(`Demo user: ${email} / Antrian123!`);
   console.info(`Demo Super Admin: ${superAdminEmail} / SuperAdmin123!`);
   console.info(`Demo Owner (read-only): ${ownerEmail} / Owner12345!`);
   console.info(`Business: ${business.slug}`);
-  console.info(`Demo QR: http://localhost:3000/q/${qrToken}`);
-  console.info(`Demo booking: http://localhost:3000/book/${bookingToken}`);
+  console.info(
+    appUrl
+      ? `Demo QR: ${appUrl}/q/${qrToken}`
+      : `Demo QR token: ${qrToken} (set APP_URL untuk mencetak URL lengkap)`,
+  );
+  console.info(
+    appUrl
+      ? `Demo booking: ${appUrl}/book/${bookingToken}`
+      : `Demo booking token: ${bookingToken} (set APP_URL untuk mencetak URL lengkap)`,
+  );
 }
 
 main()

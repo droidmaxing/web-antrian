@@ -7,17 +7,8 @@ import {
   statusAfterAction,
   type QueueAction,
 } from "@/modules/queue/domain/state-machine";
-
-function dateForTimezone(timezone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return new Date(`${values.year}-${values.month}-${values.day}T00:00:00.000Z`);
-}
+import { dateForTimezone } from "@/modules/queue/domain/service-date";
+import { compareQueuesForAttention } from "@/modules/queue/domain/queue-order";
 
 export async function listQueues(
   context: BusinessContext,
@@ -36,15 +27,20 @@ export async function listQueues(
   if (!branch) throw new AppError("Cabang tidak ditemukan.", 404, "BRANCH_NOT_FOUND");
 
   const serviceDate = dateForTimezone(branch.timezone ?? branch.business.timezone);
-  return prisma.queue.findMany({
+  const queues = await prisma.queue.findMany({
     where: { businessId: context.businessId, branchId, serviceDate },
     include: {
-      service: { select: { name: true, code: true } },
-      counter: { select: { name: true, code: true } },
+      service: { select: { id: true, name: true, code: true } },
+      counter: { select: { id: true, name: true, code: true } },
       customer: { select: { name: true } },
     },
     orderBy: [{ issuedAt: "asc" }, { id: "asc" }],
   });
+
+  // Chronological order buries the people still waiting under a day of finished
+  // tickets. Rank live work first, then keep the oldest waiting ticket on top
+  // and show recently finished work newest-first.
+  return queues.sort(compareQueuesForAttention);
 }
 
 type CallNextInput = {
@@ -52,6 +48,39 @@ type CallNextInput = {
   counterId: string;
   serviceId?: string;
 };
+
+/**
+ * A restricted operator may only touch the counters assigned to them. Throwing
+ * here — not in the UI — is what actually stops a hand-crafted request.
+ */
+function assertCounterAccess(context: BusinessContext, counterId: string | null) {
+  if (!context.counterIds) return;
+  if (counterId && context.counterIds.includes(counterId)) return;
+  throw new AppError(
+    "Anda tidak memiliki akses ke loket ini.",
+    403,
+    "COUNTER_FORBIDDEN",
+  );
+}
+
+/**
+ * Waiting tickets have no counter yet, so the only sensible check is whether
+ * one of the operator's counters can serve that ticket's service at all.
+ */
+async function canOperateUnassigned(
+  context: BusinessContext,
+  serviceId: string,
+): Promise<boolean> {
+  if (!context.counterIds) return true;
+  const match = await prisma.counterService.findFirst({
+    where: {
+      counterId: { in: context.counterIds },
+      serviceId,
+    },
+    select: { counterId: true },
+  });
+  return Boolean(match);
+}
 
 export async function callNext(
   context: BusinessContext,
@@ -70,10 +99,19 @@ export async function callNext(
   if (!branch) throw new AppError("Cabang tidak ditemukan.", 404, "BRANCH_NOT_FOUND");
 
   const counter = await prisma.counter.findFirst({
-    where: { id: input.counterId, branchId: branch.id, active: true },
+    where: {
+      id: input.counterId,
+      branchId: branch.id,
+      active: true,
+    },
     select: { id: true },
   });
-  if (!counter) throw new AppError("Loket tidak ditemukan atau nonaktif.", 404, "COUNTER_NOT_FOUND");
+  if (!counter) throw new AppError("Loket tidak ditemukan atau bukan wewenang Anda.", 404, "COUNTER_NOT_FOUND");
+
+  // The scope check runs as its own step. Folding it into the same `where` with
+  // `id: { in: context.counterIds }` silently replaced the requested id (spread
+  // order), so an out-of-scope request quietly operated a different counter.
+  assertCounterAccess(context, counter.id);
 
   const counterServices = await prisma.counterService.findMany({
     where: {
@@ -184,7 +222,7 @@ export async function callNext(
           targetId: queue.id,
         },
       });
-      await tx.outboxEvent.create({
+      const outbox = await tx.outboxEvent.create({
         data: {
           businessId: context.businessId,
           branchId: branch.id,
@@ -199,9 +237,20 @@ export async function callNext(
             status: nextStatus,
           },
         },
+        select: { id: true },
       });
 
-      return { id: queue.id, ticketNumber: queue.ticketNumber, status: nextStatus };
+      // The event id doubles as the announcement idempotency key so the
+      // operator station and every connected display agree on "one call, one
+      // announcement" even if a response is replayed.
+      return {
+        id: queue.id,
+        ticketNumber: queue.ticketNumber,
+        status: nextStatus,
+        counterName: lockedCounter.name,
+        serviceName: queue.service.name,
+        eventId: outbox.id,
+      };
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
   );
@@ -239,6 +288,20 @@ export async function transitionQueue(
     });
     if (!queue) throw new AppError("Antrean tidak ditemukan.", 404, "QUEUE_NOT_FOUND");
     assertQueueTransition(action, queue.status);
+
+    // Counter-bound operators must not act on another counter's ticket, and a
+    // still-waiting ticket is only theirs if one of their counters serves it.
+    if (context.counterIds) {
+      if (queue.counterId) {
+        assertCounterAccess(context, queue.counterId);
+      } else if (!(await canOperateUnassigned(context, queue.serviceId))) {
+        throw new AppError(
+          "Antrean ini bukan layanan yang ditangani loket Anda.",
+          403,
+          "COUNTER_FORBIDDEN",
+        );
+      }
+    }
 
     if (action === "call") {
       throw new AppError("Gunakan panggil antrean berikutnya.", 400, "CALL_NEXT_REQUIRED");
@@ -314,7 +377,7 @@ export async function transitionQueue(
         targetId: queue.id,
       },
     });
-    await tx.outboxEvent.create({
+    const outbox = await tx.outboxEvent.create({
       data: {
         businessId: context.businessId,
         branchId: queue.branchId,
@@ -329,8 +392,16 @@ export async function transitionQueue(
           serviceName: service.name,
         },
       },
+      select: { id: true },
     });
 
-    return { id: queue.id, status: nextStatus };
+    return {
+      id: queue.id,
+      status: nextStatus,
+      ticketNumber: queue.ticketNumber,
+      counterName: counter?.name ?? null,
+      serviceName: service.name,
+      eventId: outbox.id,
+    };
   });
 }

@@ -3,17 +3,17 @@ import { notFound } from "next/navigation";
 import { PublicQueueForm } from "@/components/public-queue-form";
 import { getQrConfiguration } from "@/modules/queue/application/public-queue";
 import { AppError } from "@/modules/shared/errors";
+import { requestFromHeaders } from "@/lib/app-url";
 
 type PageProps = { params: Promise<{ token: string }> };
+
+export const dynamic = "force-dynamic";
 
 export default async function PublicQueuePage({ params }: PageProps) {
   const { token } = await params;
   let config;
   try {
-    config = await getQrConfiguration(
-      token,
-      new Request("http://localhost", { headers: await headers() }),
-    );
+    config = await getQrConfiguration(token, requestFromHeaders(await headers()));
   } catch (error) {
     if (error instanceof AppError && error.status === 404) notFound();
     throw error;

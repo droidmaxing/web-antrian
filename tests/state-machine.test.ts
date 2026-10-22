@@ -28,13 +28,14 @@ test("terminal queues cannot transition back into service", () => {
   }
 });
 
-test("owner role is read-only and admin cannot change business configuration", () => {
+test("owner role outranks admin, and admin cannot change business configuration", () => {
   const owner: BusinessContext = {
     userId: "owner-user",
     businessId: "business-a",
     businessSlug: "business-a",
     role: "OWNER",
     branchIds: null,
+    counterIds: null,
   };
   const admin: BusinessContext = {
     ...owner,
@@ -42,10 +43,13 @@ test("owner role is read-only and admin cannot change business configuration", (
     branchIds: ["branch-a"],
   };
 
-  assert.throws(
-    () => requireRole(owner, ["ADMIN", "SUPER_ADMIN"]),
-    (error: unknown) => error instanceof AppError && error.status === 403,
-  );
+  // The owner owns the workspace, so every role requirement is satisfied —
+  // otherwise the management UI would be read-only for them.
+  assert.doesNotThrow(() => requireRole(owner, ["ADMIN", "SUPER_ADMIN"]));
+  assert.doesNotThrow(() => requireRole(owner, ["SUPER_ADMIN"]));
+  assert.doesNotThrow(() => requireRole(owner, ["ADMIN"]));
+  assert.doesNotThrow(() => requireRole(owner, ["OWNER"]));
+
   assert.throws(
     () => requireRole(admin, ["SUPER_ADMIN"]),
     (error: unknown) => error instanceof AppError && error.status === 403,

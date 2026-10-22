@@ -8,20 +8,27 @@ import { listBranchBookings } from "@/modules/booking/application/booking-servic
 import { AppError } from "@/modules/shared/errors";
 import { ErrorState } from "@/components/error-state";
 
-type PageProps = { params: Promise<{ businessSlug: string }> };
+type PageProps = {
+  params: Promise<{ businessSlug: string }>;
+  searchParams: Promise<{ branch?: string }>;
+};
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage({ params }: PageProps) {
+export default async function DashboardPage({ params, searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
   const { businessSlug } = await params;
+  const { branch: requestedBranchId } = await searchParams;
   let context;
   try {
-    context = await requireBusinessContext(businessSlug);
+    context = await requireBusinessContext(businessSlug, requestedBranchId || undefined);
   } catch (error) {
     if (error instanceof AppError && error.status === 401) redirect("/login");
+    if (error instanceof AppError && error.code === "BRANCH_NOT_FOUND") {
+      redirect(`/dashboard/${businessSlug}`);
+    }
     if (error instanceof AppError && error.status === 404) notFound();
     if (error instanceof AppError && error.status === 403) {
       return (
@@ -64,6 +71,7 @@ export default async function DashboardPage({ params }: PageProps) {
                     service: { select: { name: true } },
                   },
                 },
+                services: { select: { serviceId: true } },
               },
             },
           },
@@ -77,7 +85,9 @@ export default async function DashboardPage({ params }: PageProps) {
     }),
   ]);
 
-  const branch = business.branches[0];
+  const branch =
+    business.branches.find((option) => option.id === requestedBranchId) ??
+    business.branches[0];
   if (!branch) {
     return (
       <main className="grid min-h-screen place-items-center bg-[#f7f8fa] p-6">
@@ -95,9 +105,31 @@ export default async function DashboardPage({ params }: PageProps) {
   }
 
   const queues = await listQueues(context, branch.id);
-  const completed = queues.filter((queue) => queue.status === "COMPLETED");
-  const waiting = queues.filter((queue) => queue.status === "WAITING");
-  const active = queues.filter(
+  /**
+   * A counter-bound operator should not have to mentally skip other counters'
+   * tickets. Waiting tickets have no counter yet, so they are kept when one of
+   * the operator's counters can serve that service.
+   */
+  const accessibleQueues = context.counterIds
+    ? (() => {
+        const scopedCounters = branch.counters.filter((counter) =>
+          context.counterIds!.includes(counter.id),
+        );
+        const serviceIds = new Set(
+          scopedCounters.flatMap((counter) =>
+            counter.services.map((entry) => entry.serviceId),
+          ),
+        );
+        return queues.filter((queue) =>
+          queue.counterId
+            ? context.counterIds!.includes(queue.counterId)
+            : serviceIds.has(queue.serviceId),
+        );
+      })()
+    : queues;
+  const completed = accessibleQueues.filter((queue) => queue.status === "COMPLETED");
+  const waiting = accessibleQueues.filter((queue) => queue.status === "WAITING");
+  const active = accessibleQueues.filter(
     (queue) => queue.status === "CALLED" || queue.status === "SERVING",
   );
   const serviceMinutes = completed
@@ -109,7 +141,7 @@ export default async function DashboardPage({ params }: PageProps) {
   const averageServiceMinutes = serviceMinutes.length
     ? Math.round(serviceMinutes.reduce((sum, minutes) => sum + minutes, 0) / serviceMinutes.length)
     : 0;
-  const averageWaitMinutes = queues
+  const averageWaitMinutes = accessibleQueues
     .filter((queue) => queue.startedAt)
     .map((queue) => (queue.startedAt!.getTime() - queue.issuedAt.getTime()) / 60_000);
   const waitTime = averageWaitMinutes.length
@@ -139,18 +171,42 @@ export default async function DashboardPage({ params }: PageProps) {
       businessName={business.name}
       businessSlug={businessSlug}
       branch={{
+
         id: branch.id,
         name: branch.name,
         timezone: branch.timezone ?? business.timezone,
         services,
-        counters: branch.counters.map((counter) => ({
-          ...counter,
-          currentTicket: counter.activeQueue?.ticketNumber ?? null,
-          currentService: counter.activeQueue?.service.name ?? null,
-          queueStatus: counter.activeQueue?.status ?? null,
-        })),
+        counters: branch.counters
+          .filter(
+            (counter) =>
+              !context.counterIds || context.counterIds.includes(counter.id),
+          )
+          .map((counter) => ({
+            ...counter,
+            currentTicket: counter.activeQueue?.ticketNumber ?? null,
+            currentService: counter.activeQueue?.service.name ?? null,
+            queueStatus: counter.activeQueue?.status ?? null,
+            // How many tickets this counter can actually serve right now: the
+            // global WAITING count is useless for a counter that only handles
+            // one service, which is what made "Panggil berikutnya" look broken.
+            waitingForCounter: queues.filter(
+              (queue) =>
+                queue.status === "WAITING" &&
+                counter.services.some((entry) => entry.serviceId === queue.serviceId),
+            ).length,
+          })),
       }}
+      branches={business.branches.map((option) => ({ id: option.id, name: option.name }))}
+      counters={business.branches.flatMap((option) =>
+        option.counters.map((counter) => ({
+          id: counter.id,
+          name: counter.name,
+          code: counter.code,
+          branchId: option.id,
+        })),
+      )}
       role={context.role}
+      user={{ id: context.userId, name: session.user.name ?? "Pengguna" }}
       userName={session.user.name ?? "Pengguna"}
       enabledFeatures={featureRows.map((feature) => feature.featureKey)}
       bookings={bookings.map((booking) => ({
@@ -162,21 +218,23 @@ export default async function DashboardPage({ params }: PageProps) {
         queue: booking.queue,
       }))}
       metrics={{
-        total: queues.length,
+        total: accessibleQueues.length,
         waiting: waiting.length,
         active: active.length,
         completed: completed.length,
         averageWaitMinutes: waitTime,
         averageServiceMinutes,
       }}
-      queues={queues.map((queue) => ({
+      queues={accessibleQueues.map((queue) => ({
         id: queue.id,
         ticketNumber: queue.ticketNumber,
         status: queue.status,
         issuedAt: queue.issuedAt.toISOString(),
         serviceName: queue.service.name,
         serviceCode: queue.service.code,
+        serviceId: queue.service.id,
         counterName: queue.counter?.name ?? null,
+        counterId: queue.counter?.id ?? null,
         customerName: queue.customer?.name ?? "Pelanggan",
       }))}
     />

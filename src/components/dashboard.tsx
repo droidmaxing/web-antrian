@@ -4,7 +4,9 @@ import {
   Activity,
   ArrowDownRight,
   ArrowUpRight,
+  BarChart3,
   Bell,
+  Building2,
   CalendarDays,
   Check,
   CheckCheck,
@@ -12,8 +14,11 @@ import {
   CircleHelp,
   Clock3,
   Command,
+  Contact2,
+  Layers,
   LayoutDashboard,
   LogOut,
+  MonitorCog,
   MoreHorizontal,
   Plus,
   Radio,
@@ -23,15 +28,33 @@ import {
   Sparkles,
   Users2,
   Volume2,
+  Tv,
   type LucideIcon,
 } from "lucide-react";
 import { InlineNotice } from "@/components/inline-notice";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FeatureKey, MembershipRole, QueueStatus } from "@prisma/client";
 import { FeatureSettings } from "@/components/feature-settings";
 import { AccessLinks } from "@/components/access-links";
+import { ServicesManager } from "@/components/manage/services-manager";
+import { CountersManager } from "@/components/manage/counters-manager";
+import { TeamManager } from "@/components/manage/team-manager";
+import { ReportsManager } from "@/components/manage/reports-manager";
+import { BranchesManager } from "@/components/manage/branches-manager";
+import { CustomersManager } from "@/components/manage/customers-manager";
+import { DisplaysManager } from "@/components/manage/displays-manager";
+import {
+  AnnouncementLedger,
+  buildAnnouncementText,
+  shouldAnnounce,
+} from "@/modules/announcement/announcement";
+import { buildAnnouncementClips } from "@/modules/announcement/audio-clips";
+import {
+  AnnouncementAudioPlayer,
+  type AudioPlayerStatus,
+} from "@/modules/announcement/audio-player";
 import {
   BookingManagement,
   type BookingRow,
@@ -44,7 +67,9 @@ type QueueRow = {
   issuedAt: string;
   serviceName: string;
   serviceCode: string;
+  serviceId: string;
   counterName: string | null;
+  counterId: string | null;
   customerName: string;
 };
 
@@ -60,6 +85,7 @@ type BranchData = {
     currentTicket: string | null;
     currentService: string | null;
     queueStatus: QueueStatus | null;
+    waitingForCounter: number;
   }[];
 };
 
@@ -67,7 +93,10 @@ type DashboardProps = {
   businessName: string;
   businessSlug: string;
   branch: BranchData;
+  branches: { id: string; name: string }[];
+  counters: { id: string; name: string; code: string; branchId: string }[];
   role: MembershipRole;
+  user: { id: string; name: string };
   userName: string;
   enabledFeatures: FeatureKey[];
   bookings: BookingRow[];
@@ -80,6 +109,22 @@ type DashboardProps = {
     averageServiceMinutes: number;
   };
   queues: QueueRow[];
+};
+
+const VISIBLE_QUEUE_LIMIT = 8;
+
+/**
+ * The dashboard only ever loads today's queues, so this filter narrows the
+ * already-loaded list by issue time instead of pretending to change the
+ * business date.
+ */
+type TimeWindow = "today" | "1h" | "3h" | "8h";
+
+const timeWindowHours: Record<TimeWindow, number | null> = {
+  today: null,
+  "1h": 1,
+  "3h": 3,
+  "8h": 8,
 };
 
 const queueActionLabels: Record<string, string> = {
@@ -112,7 +157,10 @@ export function Dashboard({
   businessName,
   businessSlug,
   branch,
+  branches,
+  counters: counterOptions,
   role,
+  user,
   userName,
   enabledFeatures,
   bookings,
@@ -123,12 +171,115 @@ export function Dashboard({
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [noticeVariant, setNoticeVariant] = useState<"error" | "success">("success");
-  const canOperate = role === "ADMIN" || role === "SUPER_ADMIN";
-  const canConfigure = role === "SUPER_ADMIN";
+  const canOperate = role === "ADMIN" || role === "SUPER_ADMIN" || role === "OWNER";
+  const canConfigure = role === "SUPER_ADMIN" || role === "OWNER";
+  const canManageTeam = role === "OWNER" || role === "SUPER_ADMIN";
   const isOwner = role === "OWNER";
   const analyticsEnabled =
     enabledFeatures.includes("ANALYTICS") &&
     (isOwner || role === "SUPER_ADMIN");
+  const voiceEnabled = enabledFeatures.includes("VOICE_CALL");
+  const [voiceMuted, setVoiceMuted] = useState(false);
+  const [voiceReady, setVoiceReady] = useState(false);
+  const [spoken, setSpoken] = useState("");
+  const [queueQuery, setQueueQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "LIVE" | QueueStatus>("LIVE");
+  const [counterFilter, setCounterFilter] = useState<string>("ALL");
+  const [audioStatus, setAudioStatus] = useState<AudioPlayerStatus>("idle");
+  const [showAllQueues, setShowAllQueues] = useState(false);
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>("today");
+  // Captured from the click that selects a window: keeps render pure (no
+  // Date.now() during render) while still filtering relative to "now".
+  const [windowAnchor, setWindowAnchor] = useState<number | null>(null);
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const ledger = useRef(new AnnouncementLedger());
+  const playerRef = useRef<AnnouncementAudioPlayer | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+
+  // Signing out with a callbackUrl makes Auth.js build an absolute URL on the
+  // server, which can resolve to a different origin than the one the operator
+  // is actually browsing (e.g. localhost vs the real domain). Ending the
+  // session first and then navigating relative keeps the operator on the
+  // origin they are already on.
+  const handleSignOut = useCallback(async () => {
+    try {
+      await signOut({ redirect: false });
+    } finally {
+      // Relative navigation keeps the operator on the origin they are on; a
+      // refresh drops the cached authenticated shell.
+      router.replace("/login");
+      router.refresh();
+    }
+  }, [router]);
+
+
+  useEffect(() => {
+    if (!playerRef.current) playerRef.current = new AnnouncementAudioPlayer();
+    const player = playerRef.current;
+    const unsubscribe = player.onStatusChange((status) => {
+      setAudioStatus(status);
+      if (status === "ready") setVoiceReady(true);
+    });
+    return () => {
+      unsubscribe();
+      player.stop();
+    };
+  }, []);
+
+  // The operator station speaks the same sentence as the TV display, keyed by
+  // the outbox event id so a replayed response never announces twice.
+  const announce = useCallback(
+    async (payload: {
+      eventId?: string | null;
+      ticketNumber?: string | null;
+      counterName?: string | null;
+      status?: string | null;
+    }) => {
+      if (!voiceEnabled || voiceMuted) return;
+      if (!shouldAnnounce(payload.status)) return;
+      if (!payload.ticketNumber) return;
+      if (payload.eventId && !ledger.current.claim(payload.eventId)) return;
+
+      const text = buildAnnouncementText({
+        ticketNumber: payload.ticketNumber,
+        counterName: payload.counterName,
+      });
+      setSpoken(text);
+
+      const player = playerRef.current;
+      if (player) {
+        const outcome = await player.play(
+          buildAnnouncementClips({
+            ticketNumber: payload.ticketNumber,
+            counterName: payload.counterName,
+          }),
+        );
+        if (outcome === "played") return;
+      }
+
+      // Fallback only: the clip set is missing or the browser blocked autoplay.
+      if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "id-ID";
+      utterance.rate = 0.95;
+      const indonesian = window.speechSynthesis
+        .getVoices()
+        .find((voice) => voice.lang?.toLowerCase().startsWith("id"));
+      if (indonesian) utterance.voice = indonesian;
+      window.speechSynthesis.speak(utterance);
+    },
+    [voiceEnabled, voiceMuted],
+  );
+
+  async function enableVoice() {
+    const player = playerRef.current;
+    if (!player) return;
+    const ready = await player.prime();
+    if (ready) {
+      setVoiceReady(true);
+      setVoiceMuted(false);
+    }
+  }
 
   async function callNext(counterId: string) {
     setBusyAction(`call-${counterId}`);
@@ -141,8 +292,16 @@ export function Dashboard({
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message ?? "Gagal memanggil antrean.");
-      setNotice(`${result.data.ticketNumber} dipanggil ke loket.`);
+      setNotice(
+        `${result.data.ticketNumber} dipanggil ke ${result.data.counterName ?? "loket"}.`,
+      );
       setNoticeVariant("success");
+      announce({
+        eventId: result.data.eventId,
+        ticketNumber: result.data.ticketNumber,
+        counterName: result.data.counterName,
+        status: result.data.status,
+      });
       router.refresh();
     } catch (error) {
       setNoticeVariant("error");
@@ -168,6 +327,14 @@ export function Dashboard({
       if (!response.ok) throw new Error(result.error?.message ?? "Aksi antrean gagal.");
       setNotice(`Status antrean berhasil diperbarui.`);
       setNoticeVariant("success");
+      if (action === "recall") {
+        announce({
+          eventId: result.data?.eventId,
+          ticketNumber: result.data?.ticketNumber,
+          counterName: result.data?.counterName,
+          status: result.data?.status,
+        });
+      }
       router.refresh();
     } catch (error) {
       setNoticeVariant("error");
@@ -177,42 +344,170 @@ export function Dashboard({
     }
   }
 
+  const normalizedQuery = queueQuery.trim().toLowerCase();
+  const windowHours = timeWindowHours[timeWindow];
+  const windowStart =
+    windowHours === null || windowAnchor === null
+      ? null
+      : windowAnchor - windowHours * 3_600_000;
+  const queuesInWindow = windowStart === null
+    ? queues
+    : queues.filter((queue) => new Date(queue.issuedAt).getTime() >= windowStart);
+  const visibleQueues = queuesInWindow.filter((queue) => {
+    const matchesStatus =
+      statusFilter === "ALL"
+        ? true
+        : statusFilter === "LIVE"
+          ? queue.status === "WAITING" ||
+            queue.status === "CALLED" ||
+            queue.status === "SERVING"
+          : queue.status === statusFilter;
+    if (!matchesStatus) return false;
+    if (counterFilter !== "ALL") {
+      if (counterFilter === "UNASSIGNED") {
+        if (queue.counterId) return false;
+      } else if (queue.counterId !== counterFilter) {
+        return false;
+      }
+    }
+    if (!normalizedQuery) return true;
+    return (
+      queue.ticketNumber.toLowerCase().includes(normalizedQuery) ||
+      queue.customerName.toLowerCase().includes(normalizedQuery) ||
+      queue.serviceName.toLowerCase().includes(normalizedQuery) ||
+      (queue.counterName ?? "").toLowerCase().includes(normalizedQuery)
+    );
+  });
+  const displayedQueues = showAllQueues
+    ? visibleQueues
+    : visibleQueues.slice(0, VISIBLE_QUEUE_LIMIT);
+
+  // Real operational alerts derived from live queue state — no placeholder text.
+  const alerts: { id: string; title: string; detail: string }[] = [];
+  const calledNow = queues.filter(
+    (queue) => queue.status === "CALLED" || queue.status === "SERVING",
+  );
+  if (metrics.waiting > 0 && !calledNow.length) {
+    alerts.push({
+      id: "waiting-idle",
+      title: `${metrics.waiting} antrean menunggu tanpa panggilan aktif`,
+      detail: "Panggil nomor berikutnya atau aktifkan loket tambahan.",
+    });
+  }
+  const idleCounters = branch.counters.filter((counter) => !counter.currentTicket);
+  if (idleCounters.length && metrics.waiting > 0) {
+    alerts.push({
+      id: "idle-counters",
+      title: `${idleCounters.length} loket menganggur`,
+      detail: "Ada antrean menunggu sementara loket ini belum melayani.",
+    });
+  }
+  if (voiceEnabled && canOperate && !voiceReady) {
+    alerts.push({
+      id: "voice-locked",
+      title: "Suara pemanggilan belum aktif",
+      detail: "Klik Aktifkan suara agar panggilan otomatis terdengar.",
+    });
+  }
+  if (!branch.counters.length) {
+    alerts.push({
+      id: "no-counter",
+      title: "Belum ada loket di cabang ini",
+      detail: "Tambahkan loket supaya antrean bisa dipanggil.",
+    });
+  }
+
+  // ⌘K / Ctrl+K focuses the header search; Esc clears it. Registered once so
+  // the shortcut works from anywhere on the dashboard.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+      if (event.key === "Escape" && document.activeElement === searchRef.current) {
+        setQueueQuery("");
+        searchRef.current?.blur();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <main className="min-h-screen bg-[#f6f8f7] text-[#182321]">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[250px] flex-col border-r border-[#e9edeb] bg-white px-4 pb-5 pt-6 xl:flex">
-        <div className="flex items-center gap-3 px-3">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[250px] flex-col border-r border-[#e9edeb] bg-white xl:flex">
+        <div className="flex shrink-0 items-center gap-3 border-b border-[#f0f3f1] px-4 py-5">
           <div className="flex size-10 items-center justify-center rounded-[13px] bg-[#176b5b] text-white shadow-[0_4px_10px_rgba(23,107,91,.2)]">
             <span className="text-lg font-black">a.</span>
           </div>
           <span className="text-lg font-semibold tracking-[-.04em]">antrian</span>
-          <button className="ml-auto rounded-lg p-2 text-[#889590] hover:bg-[#f5f7f6]">
+          <button
+            type="button"
+            onClick={() => {
+              searchRef.current?.focus();
+              searchRef.current?.select();
+            }}
+            aria-label="Cari antrean (⌘K)"
+            className="ml-auto rounded-lg p-2 text-[#889590] hover:bg-[#f5f7f6]"
+          >
             <Command className="size-4" />
           </button>
         </div>
 
-        <button className="mt-9 flex w-full items-center gap-3 rounded-xl border border-[#e9edeb] p-3 text-left transition hover:border-[#cddbd5]">
-          <div className="flex size-9 items-center justify-center rounded-[10px] bg-[#edf5f1] text-[#176b5b]">
-            <span className="text-xs font-bold">{shortName(businessName)}</span>
+        {/* The nav list scrolls on its own so the logout button below never
+            leaves the viewport on short laptop screens. */}
+        <div className="dashboard-sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-5">
+        <details className="group">
+          <summary className="flex w-full cursor-pointer list-none items-center gap-3 rounded-xl border border-[#e9edeb] p-3 text-left transition hover:border-[#cddbd5] [&::-webkit-details-marker]:hidden">
+            <div className="flex size-9 items-center justify-center rounded-[10px] bg-[#edf5f1] text-[#176b5b]">
+              <span className="text-xs font-bold">{shortName(businessName)}</span>
+            </div>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">{businessName}</span>
+              <span className="mt-0.5 block text-xs text-[#889590]">{branch.name}</span>
+            </span>
+            <ChevronDown className="size-4 text-[#9ba6a2]" />
+          </summary>
+          <div className="mt-1.5 rounded-xl border border-[#e9edeb] bg-white p-1.5 shadow-[0_12px_32px_rgba(25,48,40,.12)]">
+            <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[.1em] text-[#a1aca8]">
+              Cabang
+            </p>
+            {branches.map((option) => (
+              <a
+                key={option.id}
+                href={`/dashboard/${businessSlug}?branch=${encodeURIComponent(option.id)}`}
+                className={`block rounded-lg px-2 py-1.5 text-xs ${
+                  option.id === branch.id
+                    ? "bg-[#edf5f1] font-semibold text-[#176b5b]"
+                    : "font-medium text-[#56635f] hover:bg-[#f6f8f7]"
+                }`}
+              >
+                {option.name}
+              </a>
+            ))}
+            {canConfigure && (
+              <a
+                href="#branches"
+                className="mt-1 block rounded-lg border-t border-[#eff2f0] px-2 py-1.5 text-xs font-semibold text-[#176b5b] hover:bg-[#f6f8f7]"
+              >
+                Kelola cabang
+              </a>
+            )}
           </div>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold">{businessName}</span>
-            <span className="mt-0.5 block text-xs text-[#889590]">Workspace</span>
-          </span>
-          <ChevronDown className="size-4 text-[#9ba6a2]" />
-        </button>
+        </details>
 
         <p className="mb-2 mt-8 px-3 text-[10px] font-semibold uppercase tracking-[.16em] text-[#9aa5a1]">
-          Workspace
+          Operasional
         </p>
         <nav className="space-y-1">
           <NavLink href="#overview" label="Ringkasan" icon={LayoutDashboard} active />
           <NavLink href="#queue" label="Antrean" icon={Users2} badge={metrics.waiting} />
-          <NavLink href="#counters" label="Loket" icon={Radio} />
+          <NavLink href="#counters" label="Status loket" icon={Radio} />
           {enabledFeatures.includes("BOOKING") && (
             <NavLink href="#bookings" label="Booking" icon={CalendarDays} />
-          )}
-          {analyticsEnabled && (
-            <NavLink href="#services" label="Layanan" icon={Activity} />
           )}
         </nav>
 
@@ -220,23 +515,22 @@ export function Dashboard({
           Pengelolaan
         </p>
         <nav className="space-y-1">
-          {!canConfigure && !isOwner ? null : (
-            <NavLink
-              href="#analytics"
-              label="Analitik"
-              icon={CalendarDays}
-              disabled={!enabledFeatures.includes("ANALYTICS")}
-            />
-          )}
+          <NavLink href="#services-manage" label="Layanan" icon={Layers} />
+          <NavLink href="#counters-manage" label="Loket" icon={MonitorCog} />
+          <NavLink href="#customers-manage" label="Pelanggan" icon={Contact2} />
+          <NavLink href="#displays-manage" label="Layar TV" icon={Tv} />
+          <NavLink href="#branches" label="Cabang" icon={Building2} />
+          {canManageTeam && <NavLink href="#team" label="Tim & akses" icon={Users2} />}
+          <NavLink href="#reports" label="Laporan" icon={BarChart3} />
           {canConfigure && <NavLink href="#settings" label="Pengaturan" icon={Settings2} />}
         </nav>
         {!analyticsEnabled && (canConfigure || isOwner) && (
           <p className="mx-3 mt-2 text-[11px] leading-4 text-[#9aa5a1]">
-            Analitik dinonaktifkan untuk bisnis ini.
+            Analitik ringkasan dinonaktifkan untuk bisnis ini.
           </p>
         )}
 
-        <div className="mt-auto rounded-2xl bg-[#edf6f2] p-4">
+        <div className="mt-6 rounded-2xl bg-[#edf6f2] p-4">
           <div className="mb-3 flex size-9 items-center justify-center rounded-xl bg-white text-[#176b5b]">
             <Sparkles className="size-[17px]" />
           </div>
@@ -244,17 +538,34 @@ export function Dashboard({
           <p className="mt-1 text-xs leading-5 text-[#75827f]">
             Satu tempat untuk mengelola antrean dan pelayanan.
           </p>
-          <button className="mt-3 text-xs font-semibold text-[#176b5b]">
+          <a
+            href="#settings"
+            className="mt-3 inline-block text-xs font-semibold text-[#176b5b] hover:underline"
+          >
             Pelajari sistem <span aria-hidden="true">↗</span>
-          </button>
+          </a>
+        </div>
         </div>
 
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#75827f] hover:bg-[#f6f8f7]"
-        >
-          <LogOut className="size-4" /> Keluar
-        </button>
+        {/* Pinned footer: always visible, never inside the scroll container. */}
+        <div className="shrink-0 border-t border-[#eef1f0] bg-white p-3">
+          <div className="flex items-center gap-2.5 px-2 pb-2.5">
+            <div className="flex size-8 items-center justify-center rounded-full bg-[#e7f1ed] text-[11px] font-bold text-[#276b5b]">
+              {shortName(userName)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold">{userName}</p>
+              <p className="truncate text-[10px] text-[#929e99]">{roleLabel(role)}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleSignOut()}
+            className="flex w-full items-center gap-3 rounded-xl border border-[#e9edeb] px-3 py-2.5 text-left text-sm font-medium text-[#4d5a56] transition hover:border-[#e0a99f] hover:bg-[#fdf4f2] hover:text-[#b4553f]"
+          >
+            <LogOut className="size-4" /> Keluar
+          </button>
+        </div>
       </aside>
 
       <section className="xl:pl-[250px]">
@@ -276,27 +587,114 @@ export function Dashboard({
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="hidden h-9 w-[210px] items-center gap-2 rounded-lg border border-[#edf0ef] bg-[#fafbfa] px-3 md:flex">
               <Search className="size-4 text-[#a1aca8]" />
-              <span className="flex-1 text-xs text-[#a1aca8]">Cari apa saja...</span>
-              <kbd className="rounded border border-[#e7ebe9] bg-white px-1.5 py-0.5 text-[10px] text-[#a1aca8]">
-                ⌘ K
-              </kbd>
+              <input
+                ref={searchRef}
+                value={queueQuery}
+                onChange={(event) => setQueueQuery(event.target.value)}
+                placeholder="Cari nomor, pelanggan, layanan..."
+                aria-label="Cari antrean"
+                className="min-w-0 flex-1 bg-transparent text-xs text-[#344440] outline-none placeholder:text-[#a1aca8]"
+              />
+              {queueQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setQueueQuery("")}
+                  aria-label="Hapus pencarian"
+                  className="text-[10px] text-[#a1aca8] hover:text-[#687570]"
+                >
+                  Reset
+                </button>
+              ) : (
+                <kbd className="rounded border border-[#e7ebe9] bg-white px-1.5 py-0.5 text-[10px] text-[#a1aca8]">
+                  ⌘ K
+                </kbd>
+              )}
             </div>
-            <button className="relative flex size-9 items-center justify-center rounded-lg text-[#75827f] hover:bg-[#f5f7f6]">
-              <Bell className="size-[18px]" />
-              <span className="absolute right-2 top-2 size-1.5 rounded-full bg-[#e47b69]" />
-            </button>
-            <span className="mx-1 hidden h-7 w-px bg-[#e9edeb] sm:block" />
-            <div className="flex items-center gap-2.5">
-              <div className="hidden text-right sm:block">
-                <p className="text-xs font-semibold">{userName}</p>
-                <p className="mt-0.5 text-[10px] text-[#929e99]">
-                  {roleLabel(role)}
-                </p>
-              </div>
-              <div className="flex size-9 items-center justify-center rounded-full bg-[#e7f1ed] text-xs font-bold text-[#276b5b]">
-                {shortName(userName)}
-              </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setNoticeOpen((current) => !current)}
+                aria-expanded={noticeOpen}
+                aria-label="Notifikasi operasional"
+                className="relative flex size-9 items-center justify-center rounded-lg text-[#75827f] hover:bg-[#f5f7f6]"
+              >
+                <Bell className="size-[18px]" />
+                {alerts.length > 0 && (
+                  <span className="absolute right-2 top-2 size-1.5 rounded-full bg-[#e47b69]" />
+                )}
+              </button>
+              {noticeOpen && (
+                <div className="absolute right-0 top-11 z-40 w-[290px] rounded-xl border border-[#e9edeb] bg-white p-3 shadow-[0_12px_32px_rgba(25,48,40,.12)]">
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[.1em] text-[#a1aca8]">
+                    Notifikasi
+                  </p>
+                  <div className="mt-2 space-y-1.5">
+                    {alerts.length ? (
+                      alerts.map((alert) => (
+                        <div
+                          key={alert.id}
+                          className="rounded-lg border border-[#eff2f0] px-2.5 py-2"
+                        >
+                          <p className="text-[11px] font-medium text-[#344440]">{alert.title}</p>
+                          <p className="mt-0.5 text-[10px] text-[#929e99]">{alert.detail}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="px-1 py-3 text-[11px] text-[#a1aca8]">
+                        Tidak ada notifikasi. Semua operasional normal.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+            <span className="mx-1 hidden h-9 w-px bg-[#e9edeb] sm:block" />
+            <details className="relative">
+              <summary
+                aria-label={`Menu akun ${userName}`}
+                className="flex cursor-pointer list-none items-center gap-2.5 rounded-xl px-1 py-1 transition hover:bg-[#f5f7f6] [&::-webkit-details-marker]:hidden"
+              >
+                <div className="hidden text-right sm:block">
+                  <p className="text-xs font-semibold">{userName}</p>
+                  <p className="mt-0.5 text-[10px] text-[#929e99]">
+                    {roleLabel(role)}
+                  </p>
+                </div>
+                <div className="flex size-9 items-center justify-center rounded-full bg-[#e7f1ed] text-xs font-bold text-[#276b5b]">
+                  {shortName(userName)}
+                </div>
+                <ChevronDown className="size-4 text-[#9ba6a2]" />
+              </summary>
+              <div className="absolute right-0 top-12 z-40 w-[230px] rounded-xl border border-[#e9edeb] bg-white p-1.5 shadow-[0_12px_32px_rgba(25,48,40,.12)]">
+                <div className="px-2.5 py-2">
+                  <p className="truncate text-sm font-semibold">{userName}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-[#929e99]">
+                    {roleLabel(role)} · {businessName}
+                  </p>
+                </div>
+                <div className="my-1 h-px bg-[#eef1f0]" />
+                <a
+                  href="#settings"
+                  className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#4d5a56] hover:bg-[#f6f8f7]"
+                >
+                  Pengaturan akun
+                </a>
+                <a
+                  href="#team"
+                  className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#4d5a56] hover:bg-[#f6f8f7]"
+                >
+                  Tim &amp; akses
+                </a>
+                <div className="my-1 h-px bg-[#eef1f0]" />
+                <button
+                  type="button"
+                  onClick={() => void handleSignOut()}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[#b4553f] hover:bg-[#fdf4f2]"
+                >
+                  <LogOut className="size-4" /> Keluar
+                </button>
+              </div>
+            </details>
           </div>
         </header>
 
@@ -310,17 +708,43 @@ export function Dashboard({
           {enabledFeatures.includes("BOOKING") && (
             <MobileNavLink href="#bookings" label="Booking" />
           )}
-          {analyticsEnabled && <MobileNavLink href="#services" label="Layanan" />}
+          <MobileNavLink href="#services-manage" label="Layanan" />
+          <MobileNavLink href="#customers-manage" label="Pelanggan" />
+          <MobileNavLink href="#displays-manage" label="Layar TV" />
+          <MobileNavLink href="#branches" label="Cabang" />
+          {canManageTeam && <MobileNavLink href="#team" label="Tim" />}
+          <MobileNavLink href="#reports" label="Laporan" />
           {canConfigure && <MobileNavLink href="#settings" label="Pengaturan" />}
         </nav>
 
         <div className="mx-auto max-w-[1440px] px-5 py-7 md:px-9 md:py-9">
           <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
-              <div className="mb-2 flex items-center gap-2 text-xs font-medium text-[#176b5b]">
+              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-[#176b5b]">
                 <span className="size-1.5 rounded-full bg-[#42a184]" />
-                {branch.name}
-                <ChevronDown className="size-3.5" />
+                {branches.length > 1 ? (
+                  <label className="relative flex items-center">
+                    <span className="sr-only">Pilih cabang</span>
+                    <select
+                      value={branch.id}
+                      onChange={(event) =>
+                        router.push(
+                          `/dashboard/${businessSlug}?branch=${encodeURIComponent(event.target.value)}`,
+                        )
+                      }
+                      className="cursor-pointer appearance-none rounded-md bg-transparent py-0.5 pr-5 text-xs font-medium text-[#176b5b] outline-none hover:bg-[#edf5f1]"
+                    >
+                      {branches.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-0 size-3.5" />
+                  </label>
+                ) : (
+                  <span>{branch.name}</span>
+                )}
                 <span className="text-[#c0c9c5]">·</span>
                 {new Intl.DateTimeFormat("id-ID", {
                   weekday: "long",
@@ -338,11 +762,24 @@ export function Dashboard({
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <button className="flex h-10 items-center gap-2 rounded-lg border border-[#e4e9e6] bg-white px-3 text-xs font-medium text-[#56635f] shadow-sm">
-                <CalendarDays className="size-4 text-[#889590]" />
-                Hari ini
-                <ChevronDown className="size-3.5 text-[#9aa5a1]" />
-              </button>
+              <label className="relative flex items-center">
+                <span className="sr-only">Rentang waktu antrean</span>
+                <CalendarDays className="pointer-events-none absolute left-3 size-4 text-[#889590]" />
+                <select
+                  value={timeWindow}
+                  onChange={(event) => {
+                    setTimeWindow(event.target.value as TimeWindow);
+                    setWindowAnchor(Date.now());
+                  }}
+                  className="h-10 cursor-pointer appearance-none rounded-lg border border-[#e4e9e6] bg-white pl-9 pr-8 text-xs font-medium text-[#56635f] shadow-sm outline-none hover:border-[#cddbd5]"
+                >
+                  <option value="today">Hari ini</option>
+                  <option value="1h">1 jam terakhir</option>
+                  <option value="3h">3 jam terakhir</option>
+                  <option value="8h">8 jam terakhir</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5 text-[#9aa5a1]" />
+              </label>
               {canOperate && (
                 <a
                   href="#queue"
@@ -419,13 +856,27 @@ export function Dashboard({
                     Distribusi tiket hari ini berdasarkan jam
                   </p>
                 </div>
-                <button className="flex items-center gap-2 rounded-lg border border-[#edf0ef] px-3 py-2 text-[11px] font-medium text-[#687570]">
-                  Hari ini <ChevronDown className="size-3.5 text-[#9aa5a1]" />
-                </button>
+                <label className="relative flex items-center gap-2 rounded-lg border border-[#edf0ef] px-3 py-2 text-[11px] font-medium text-[#687570]">
+                  <span className="sr-only">Rentang waktu grafik aktivitas</span>
+                  <select
+                    value={timeWindow}
+                    onChange={(event) => {
+                      setTimeWindow(event.target.value as TimeWindow);
+                      setWindowAnchor(Date.now());
+                    }}
+                    className="appearance-none bg-transparent pr-4 text-[11px] font-medium text-[#687570] outline-none"
+                  >
+                    <option value="today">Hari ini</option>
+                    <option value="1h">1 jam terakhir</option>
+                    <option value="3h">3 jam terakhir</option>
+                    <option value="8h">8 jam terakhir</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 size-3.5 text-[#9aa5a1]" />
+                </label>
               </div>
               {analyticsEnabled ? (
                 <>
-                  <QueueActivityChart queues={queues} timezone={branch.timezone} />
+                  <QueueActivityChart queues={queuesInWindow} timezone={branch.timezone} />
                   <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[#eff2f0] pt-4 sm:grid-cols-4">
                     <TinyMetric label="Rata-rata waktu tunggu" value={`${metrics.averageWaitMinutes} mnt`} icon={Clock3} />
                     <TinyMetric label="Rata-rata pelayanan" value={`${metrics.averageServiceMinutes} mnt`} icon={Activity} />
@@ -453,10 +904,61 @@ export function Dashboard({
                     Kondisi pelayanan saat ini
                   </p>
                 </div>
-                <button aria-label="Opsi status loket" className="rounded-lg p-1.5 text-[#9aa5a1] hover:bg-[#f6f8f7]">
-                  <MoreHorizontal className="size-5" />
-                </button>
+                <details className="group relative">
+                  <summary
+                    aria-label="Opsi status loket"
+                    className="flex cursor-pointer list-none items-center rounded-lg p-1.5 text-[#9aa5a1] hover:bg-[#f6f8f7] [&::-webkit-details-marker]:hidden"
+                  >
+                    <MoreHorizontal className="size-5" />
+                  </summary>
+                  <div className="absolute right-0 top-9 z-40 w-56 rounded-xl border border-[#e9edeb] bg-white p-1.5 shadow-[0_12px_32px_rgba(25,48,40,.12)]">
+                    <a
+                      href="#counters-manage"
+                      className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#56635f] hover:bg-[#f6f8f7]"
+                    >
+                      Kelola loket
+                    </a>
+                    <a
+                      href="#services-manage"
+                      className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#56635f] hover:bg-[#f6f8f7]"
+                    >
+                      Kelola layanan
+                    </a>
+                    {canOperate && (
+                      <button
+                        type="button"
+                        onClick={() => router.refresh()}
+                        className="block w-full rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[#56635f] hover:bg-[#f6f8f7]"
+                      >
+                        Segarkan status loket
+                      </button>
+                    )}
+                  </div>
+                </details>
               </div>
+              {voiceEnabled && canOperate && (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#eaf1ed] bg-[#f8fbf9] px-3 py-2.5">
+                  <p className="flex min-w-0 items-center gap-2 text-[10px] text-[#6c7a74]">
+                    <Volume2 className="size-3.5 shrink-0 text-[#4a8b73]" />
+                    <span className="truncate">
+                      {!voiceReady
+                        ? "Aktifkan suara sekali untuk mengizinkan pemanggilan otomatis."
+                        : voiceMuted
+                          ? "Suara pemanggilan sedang dimatikan di perangkat ini."
+                          : audioStatus === "playing"
+                            ? "Memutar audio pemanggilan…"
+                            : spoken || "Pemanggilan berikutnya akan diumumkan otomatis."}
+                    </span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => (voiceReady ? setVoiceMuted((current) => !current) : enableVoice())}
+                    className="shrink-0 rounded-lg border border-[#dbe7e1] bg-white px-2.5 py-1 text-[10px] font-semibold text-[#3c6b58] hover:bg-[#f2f7f4]"
+                  >
+                    {!voiceReady ? "Aktifkan suara" : voiceMuted ? "Nyalakan suara" : "Matikan suara"}
+                  </button>
+                </div>
+              )}
               <div className="mt-5 space-y-3">
                 {branch.counters.map((counter, index) => (
                   <div
@@ -479,15 +981,31 @@ export function Dashboard({
                     </div>
                     <div className="text-right">
                       <p className={`text-[11px] font-medium ${counter.currentTicket ? "text-[#277660]" : "text-[#9aa5a1]"}`}>
-                        {counter.currentTicket ? "Melayani" : "Tersedia"}
+                        {counter.currentTicket
+                          ? counter.queueStatus === "SERVING"
+                            ? "Melayani"
+                            : "Dipanggil"
+                          : "Tersedia"}
                       </p>
                       {canOperate && !counter.currentTicket && (
                         <button
                           onClick={() => callNext(counter.id)}
-                          disabled={busyAction === `call-${counter.id}` || metrics.waiting === 0}
+                          disabled={
+                            busyAction === `call-${counter.id}` ||
+                            counter.waitingForCounter === 0
+                          }
+                          title={
+                            counter.waitingForCounter === 0
+                              ? "Tidak ada antrean menunggu untuk layanan loket ini."
+                              : `Panggil antrean berikutnya (${counter.waitingForCounter} menunggu).`
+                          }
                           className="mt-1 text-[10px] font-semibold text-[#176b5b] hover:underline disabled:opacity-40"
                         >
-                          {busyAction === `call-${counter.id}` ? "Memanggil..." : "Panggil berikutnya"}
+                          {busyAction === `call-${counter.id}`
+                            ? "Memanggil..."
+                            : counter.waitingForCounter === 0
+                              ? "Tidak ada antrean"
+                              : `Panggil berikutnya · ${counter.waitingForCounter}`}
                         </button>
                       )}
                     </div>
@@ -500,8 +1018,8 @@ export function Dashboard({
                   <EmptyState title="Belum ada loket" description="Tambahkan loket untuk mulai melayani antrean." />
                 )}
               </div>
-              <a href="#services" className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-[#edf0ef] py-2.5 text-xs font-semibold text-[#596661] hover:bg-[#fafbfa]">
-                Lihat semua loket <ArrowUpRight className="size-3.5" />
+              <a href="#counters-manage" className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-[#edf0ef] py-2.5 text-xs font-semibold text-[#596661] hover:bg-[#fafbfa]">
+                Kelola semua loket <ArrowUpRight className="size-3.5" />
               </a>
             </section>
           </div>
@@ -518,7 +1036,7 @@ export function Dashboard({
                   </div>
                   <p className="mt-1 text-xs text-[#929e99]">Pantau dan kelola setiap pelanggan</p>
                 </div>
-                <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => router.refresh()}
                     className="flex size-9 items-center justify-center rounded-lg border border-[#edf0ef] text-[#76827d] hover:bg-[#f8faf9]"
@@ -526,10 +1044,42 @@ export function Dashboard({
                   >
                     <RefreshCw className="size-4" />
                   </button>
-                  <button className="flex h-9 items-center gap-2 rounded-lg border border-[#edf0ef] px-3 text-xs font-medium text-[#687570]">
-                    Semua status <ChevronDown className="size-3.5" />
-                  </button>
-                </div>
+                  <label className="relative flex h-9 items-center gap-2 rounded-lg border border-[#edf0ef] px-3 text-xs font-medium text-[#687570]">
+                    <span className="sr-only">Filter loket</span>
+                    <select
+                      value={counterFilter}
+                      onChange={(event) => setCounterFilter(event.target.value)}
+                      className="max-w-[9.5rem] appearance-none bg-transparent pr-4 text-xs font-medium outline-none"
+                    >
+                      <option value="ALL">Semua loket</option>
+                      <option value="UNASSIGNED">Belum ditugaskan</option>
+                      {branch.counters.map((counter) => (
+                        <option key={counter.id} value={counter.id}>
+                          {counter.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" />
+                  </label>
+                  <label className="relative flex h-9 items-center gap-2 rounded-lg border border-[#edf0ef] px-3 text-xs font-medium text-[#687570]">
+                    <span className="sr-only">Filter status antrean</span>
+                    <select
+                      value={statusFilter}
+                      onChange={(event) => setStatusFilter(event.target.value as "ALL" | "LIVE" | QueueStatus)}
+                      className="appearance-none bg-transparent pr-4 text-xs font-medium outline-none"
+                    >
+                      <option value="LIVE">Aktif & menunggu</option>
+                      <option value="ALL">Semua status</option>
+                      <option value="WAITING">Menunggu</option>
+                      <option value="CALLED">Dipanggil</option>
+                      <option value="SERVING">Dilayani</option>
+                      <option value="COMPLETED">Selesai</option>
+                      <option value="SKIPPED">Lewat</option>
+                      <option value="CANCELLED">Dibatalkan</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" />
+                  </label>
+                  </div>
               </div>
               {queues.length ? (
                 <>
@@ -541,7 +1091,7 @@ export function Dashboard({
                     <span className="text-right">Aksi</span>
                   </div>
                   <div className="divide-y divide-[#eff2f0]">
-                    {queues.map((queue) => (
+                    {displayedQueues.map((queue) => (
                       <QueueItem
                         key={queue.id}
                         queue={queue}
@@ -551,6 +1101,20 @@ export function Dashboard({
                       />
                     ))}
                   </div>
+                  {!visibleQueues.length && (
+                    <div className="px-6 py-10">
+                      <EmptyState
+                        title="Tidak ada antrean yang cocok"
+                        description={
+                          timeWindow !== "today"
+                            ? `Tidak ada antrean pada rentang ${timeWindow === "1h" ? "1 jam" : timeWindow === "3h" ? "3 jam" : "8 jam"} terakhir. Pilih "Hari ini" untuk melihat semua antrean hari ini.`
+                            : statusFilter === "LIVE"
+                              ? "Tidak ada antrean aktif atau menunggu. Pilih \"Semua status\" untuk melihat antrean yang sudah selesai."
+                              : "Ubah kata kunci pencarian, filter loket, atau pilih status lain."
+                        }
+                      />
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="px-6 py-10">
@@ -558,8 +1122,19 @@ export function Dashboard({
                 </div>
               )}
               <div className="flex items-center justify-between border-t border-[#eff2f0] px-5 py-3.5 text-xs text-[#929e99] md:px-6">
-                <span>Menampilkan {queues.length} antrean</span>
-                <button className="font-medium text-[#176b5b]">Lihat semua</button>
+                <span>
+                  Menampilkan {displayedQueues.length} dari {visibleQueues.length} antrean
+                  {visibleQueues.length !== queues.length ? ` (total ${queues.length})` : ""}
+                </span>
+                {visibleQueues.length > VISIBLE_QUEUE_LIMIT && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllQueues((current) => !current)}
+                    className="font-medium text-[#176b5b] hover:underline"
+                  >
+                    {showAllQueues ? "Ringkas" : `Lihat semua (${visibleQueues.length})`}
+                  </button>
+                )}
               </div>
             </section>
 
@@ -571,9 +1146,27 @@ export function Dashboard({
                     <h2 className="text-[15px] font-semibold tracking-[-.02em]">Layanan populer</h2>
                     <p className="mt-1 text-xs text-[#929e99]">Berdasarkan antrean hari ini</p>
                   </div>
-                  <button aria-label="Bantuan layanan populer" className="text-[#a3ada9]">
-                    <CircleHelp className="size-4" />
-                  </button>
+                  <details className="relative">
+                    <summary
+                      aria-label="Bantuan layanan populer"
+                      className="cursor-pointer list-none text-[#a3ada9] hover:text-[#75827f] [&::-webkit-details-marker]:hidden"
+                    >
+                      <CircleHelp className="size-4" />
+                    </summary>
+                    <div className="absolute right-0 top-6 z-40 w-64 rounded-xl border border-[#e9edeb] bg-white p-3 text-left shadow-[0_12px_32px_rgba(25,48,40,.12)]">
+                      <p className="text-[11px] font-semibold text-[#40504a]">Cara membaca</p>
+                      <p className="mt-1 text-[11px] leading-5 text-[#889590]">
+                        Persentase dihitung dari jumlah antrean hari ini per layanan.
+                        Kosong berarti layanan belum menerima antrean.
+                      </p>
+                      <a
+                        href="#reports"
+                        className="mt-2 block text-[11px] font-semibold text-[#176b5b] hover:underline"
+                      >
+                        Lihat laporan lengkap
+                      </a>
+                    </div>
+                  </details>
                 </div>
                 <div className="mt-5 space-y-4">
                   {branch.services.map((service, index) => {
@@ -631,6 +1224,51 @@ export function Dashboard({
               </section>
               )}
             </div>
+          </div>
+          <div className="mt-5 grid gap-5 2xl:grid-cols-2">
+            <ServicesManager businessSlug={businessSlug} canConfigure={canConfigure} />
+            <CountersManager
+              businessSlug={businessSlug}
+              branchId={branch.id}
+              branchName={branch.name}
+              canConfigure={canConfigure}
+              services={branch.services}
+            />
+          </div>
+          <div className="mt-5">
+            <CustomersManager businessSlug={businessSlug} canManage={canConfigure} />
+          </div>
+          <div className="mt-5">
+            <DisplaysManager
+              businessSlug={businessSlug}
+              counters={counterOptions}
+              canManage={canConfigure}
+            />
+          </div>
+          <div className="mt-5">
+            <BranchesManager
+              businessSlug={businessSlug}
+              canManage={canConfigure}
+              currentBranchId={branch.id}
+            />
+          </div>
+          {canManageTeam && (
+            <div className="mt-5">
+              <TeamManager
+                businessSlug={businessSlug}
+                branches={branches}
+                counters={counterOptions}
+                canManage={canManageTeam}
+                currentUserId={user.id}
+              />
+            </div>
+          )}
+          <div className="mt-5">
+            <ReportsManager
+              businessSlug={businessSlug}
+              branchId={branch.id}
+              canView={canManageTeam}
+            />
           </div>
           {enabledFeatures.includes("BOOKING") && (
             <div className="mt-5">

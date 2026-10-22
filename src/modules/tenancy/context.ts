@@ -9,6 +9,12 @@ export type BusinessContext = {
   businessSlug: string;
   role: MembershipRole;
   branchIds: string[] | null;
+  /**
+   * Counters this user is allowed to operate. `null` means unrestricted, which
+   * is what every account that predates the CounterMember table gets — so
+   * turning the feature on never locks an existing operator out.
+   */
+  counterIds: string[] | null;
 };
 
 export async function requireBusinessContext(
@@ -36,6 +42,7 @@ export async function requireBusinessContext(
     include: {
       business: { select: { id: true, slug: true } },
       branchScopes: { select: { branchId: true } },
+      counterScopes: { select: { counterId: true } },
     },
   });
 
@@ -47,6 +54,15 @@ export async function requireBusinessContext(
     membership.role === "OWNER" || membership.role === "SUPER_ADMIN"
       ? null
       : membership.branchScopes.map((scope) => scope.branchId);
+
+  // Owners and super admins oversee everything; everyone else can only be
+  // bound to specific counters, and an empty scope list still means "all".
+  const counterIds =
+    membership.role === "OWNER" || membership.role === "SUPER_ADMIN"
+      ? null
+      : membership.counterScopes.length
+        ? membership.counterScopes.map((scope) => scope.counterId)
+        : null;
 
   if (branchId) {
     const multiBranch = await prisma.featureConfiguration.findUnique({
@@ -88,14 +104,22 @@ export async function requireBusinessContext(
     businessSlug: membership.business.slug,
     role: membership.role,
     branchIds,
+    counterIds,
   };
 }
 
+/**
+ * OWNER is the highest role in a tenant: it implicitly satisfies every role
+ * requirement, including SUPER_ADMIN and operator-level lists. Without this
+ * expansion the business owner — the person who created the workspace — could
+ * not add or edit services, counters, branches, the team, or display settings,
+ * which made the whole management UI look read-only.
+ */
 export function requireRole(
   context: BusinessContext,
   roles: MembershipRole[],
 ) {
-  if (!roles.includes(context.role)) {
-    throw new AppError("Anda tidak memiliki izin untuk tindakan ini.", 403, "FORBIDDEN");
-  }
+  if (roles.includes(context.role)) return;
+  if (context.role === "OWNER") return;
+  throw new AppError("Anda tidak memiliki izin untuk tindakan ini.", 403, "FORBIDDEN");
 }

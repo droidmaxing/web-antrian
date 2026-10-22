@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AppError, errorResponse, readJsonRequest } from "@/modules/shared/errors";
 import { validationAppError } from "@/modules/shared/validation-error";
+import { clientAddress, enforceRateLimit } from "@/modules/shared/rate-limit";
 import {
   createPublicBooking,
   getAvailableBookingSlots,
@@ -66,6 +67,9 @@ export async function POST(request: Request, { params }: RouteContext) {
         customerEmail: "Email",
       });
     }
+    // Public booking form: same abuse surface as QR issuance (someone could
+    // reserve every slot), so throttle per IP before creating anything.
+    await enforceRateLimit(`booking:${token}:${clientAddress(request)}`, 10, 60);
     const data = await createPublicBooking(token, request, parsed.data);
     return Response.json(
       {

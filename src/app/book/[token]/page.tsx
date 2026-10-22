@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { PublicBookingForm } from "@/components/public-booking-form";
 import { getBookingConfiguration } from "@/modules/booking/application/booking-service";
 import { AppError } from "@/modules/shared/errors";
+import { requestFromHeaders } from "@/lib/app-url";
 
 type PageProps = { params: Promise<{ token: string }> };
+
 export const dynamic = "force-dynamic";
 
 export default async function PublicBookingPage({ params }: PageProps) {
@@ -13,7 +15,7 @@ export default async function PublicBookingPage({ params }: PageProps) {
   try {
     configuration = await getBookingConfiguration(
       token,
-      new Request("http://localhost", { headers: await headers() }),
+      requestFromHeaders(await headers()),
     );
   } catch (error) {
     if (error instanceof AppError && error.status === 404) notFound();

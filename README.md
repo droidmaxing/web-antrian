@@ -14,10 +14,10 @@ than industry-specific applications.
 ## Quick start with Docker Compose
 
 ```bash
-cp .env.example .env
+cp .env.example .env                 # set APP_URL + NEXT_PUBLIC_APP_URL first
 docker compose up -d --build
 docker compose ps                    # web-antrian-mysql (healthy), web-antrian-app
-curl -fsS http://127.0.0.1:3000
+curl -fsS "$APP_URL"                 # defaults to http://127.0.0.1:3000
 docker compose logs -f --tail=50 app
 docker compose down                  # do NOT pass -v: it deletes the MySQL data volume
 ```
@@ -27,14 +27,22 @@ Compose fills `DATABASE_URL`, `AUTH_SECRET`, and `AUTH_TRUST_HOST`, then runs
 application `3000:3000`, MySQL `3307:3306`. The compose credentials and secret
 are for local development only.
 
+`APP_URL` is the single source of truth for every absolute link the application
+generates — QR codes, customer status links, display/TV links, and auth
+callbacks. `NEXT_PUBLIC_APP_URL` carries the same value into client components.
+Both must point at the public origin of the deployment; localhost is only ever a
+local-development default. `APP_PROTOCOL` optionally forces `http`/`https` when a
+reverse proxy does not forward `X-Forwarded-Proto`.
+
 ## Local setup
 
 Requirements: Node.js 20+, MySQL 8+, and npm.
 
-1. Copy `.env.example` to `.env` and set `DATABASE_URL`, a unique `AUTH_SECRET`,
-   and `AUTH_TRUST_HOST=true`. Only enable trusted-host mode when the application
-   is accessed directly in local development or behind a reverse proxy that
-   validates the incoming `Host` header.
+1. Copy `.env.example` to `.env` and set `APP_URL`, `NEXT_PUBLIC_APP_URL`,
+   `DATABASE_URL`, a unique `AUTH_SECRET`, and `AUTH_TRUST_HOST=true`. Only enable
+   trusted-host mode when the application is accessed directly in local
+   development or behind a reverse proxy that validates the incoming `Host`
+   header.
 2. Create the MySQL database named in `DATABASE_URL`.
 3. Install dependencies with `npm install`.
 4. Generate the Prisma client and apply the migrations:

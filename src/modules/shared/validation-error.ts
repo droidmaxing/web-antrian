@@ -13,7 +13,7 @@ export function validationAppError(
     const label =
       labels[key] ??
       key.replace(/([a-z])([A-Z])/g, "$1 $2").toLocaleLowerCase();
-    fields[key] = `Periksa kembali ${label}.`;
+    fields[key] = `Periksa kembali ${label} — nilainya belum sesuai.`;
   }
   return new AppError(message, 400, "INVALID_INPUT", fields);
 }
