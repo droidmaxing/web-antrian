@@ -6,7 +6,7 @@ than industry-specific applications.
 
 ## Stack
 
-- Next.js App Router, React, TypeScript, Tailwind CSS, shadcn/ui
+- Next.js App Router, React, TypeScript, Tailwind CSS, and lucide-react icons
 - MySQL and Prisma
 - Auth.js credentials authentication
 - Zod input validation
@@ -78,6 +78,10 @@ development only. Replace it and rotate `AUTH_SECRET` before deploying.
   service slot, concurrent slot locking, branch operating hours, confirmation
   links, admin confirmation/cancellation, and same-day queue check-in.
 - Role-aware operational dashboard and a customer-facing QR queue flow.
+- Per-workspace branding: an optional app title and an uploaded logo drive the
+  browser tab title, favicon, sidebar, and public QR page. The dashboard greeting
+  and dates follow the branch timezone. Both are configured on the workspace
+  settings page (`/dashboard/<slug>/pengaturan`), Super Admin only.
 - Branded 404 and runtime-error pages, retryable availability feedback, and
   accessible field-level validation messages for public queue and booking forms.
 - Searchable service pickers appear automatically when a business has more than
