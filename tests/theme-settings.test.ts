@@ -3,10 +3,13 @@ import test from "node:test";
 import {
   DEFAULT_PRIMARY_COLOR,
   LOGO_MAX_LENGTH,
+  TITLE_MAX_LENGTH,
   brandPalette,
+  brandTitle,
   brandVars,
   isHexColor,
   normalizeHexColor,
+  normalizeTitle,
 } from "../src/modules/tenancy/brand";
 
 // prisma.ts reads DATABASE_URL when the module loads; the theme-service helpers
@@ -56,6 +59,16 @@ test("every brand shade is derived and emitted as a CSS variable", () => {
   ]);
   assert.equal(vars(null)["--brand-700"], DEFAULT_PRIMARY_COLOR);
   assert.equal(vars("nonsense")["--brand-700"], DEFAULT_PRIMARY_COLOR);
+});
+
+test("the app title is trimmed, collapsed, capped, and falls back to the business name", () => {
+  assert.equal(normalizeTitle("  Warung   Kopi  "), "Warung Kopi");
+  assert.equal(normalizeTitle("   "), null);
+  assert.equal(normalizeTitle(null), null);
+  assert.equal(normalizeTitle(42), null);
+  assert.equal(normalizeTitle("x".repeat(200))?.length, TITLE_MAX_LENGTH);
+  assert.equal(brandTitle({ title: null }, "Nama Bisnis"), "Nama Bisnis");
+  assert.equal(brandTitle({ title: "Warung Kopi" }, "Nama Bisnis"), "Warung Kopi");
 });
 
 test("the logo upload accepts PNG, JPEG, and WebP data URLs", async () => {

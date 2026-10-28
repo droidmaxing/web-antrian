@@ -515,6 +515,7 @@ model RateLimitBucket {
 /// warna atau logo; tanpa baris aplikasi memakai nilai bawaan dari tema.
 model BusinessTheme {
   businessId   String   @id
+  title        String?  @db.VarChar(60)
   primaryColor String   @default("#176b5b") @db.VarChar(7)
   logoMimeType String?  @db.VarChar(32)
   logoData     String?  @db.Text

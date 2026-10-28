@@ -60,7 +60,7 @@ export default async function GuidePage({ params }: PageProps) {
       />
       <main className="mx-auto max-w-[1100px] px-5 py-7 md:px-8 md:py-9">
         <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-brand-700">
-          Pelajari sistem
+          Panduan
         </p>
         <h1 className="mt-1.5 text-2xl font-semibold tracking-[-.03em]">
           Panduan penggunaan {business.name}

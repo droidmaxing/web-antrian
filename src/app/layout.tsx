@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   title: "Antrian | Operasional bisnis lebih tertata",
   description:
     "Kelola antrean, booking, cabang, dan pengalaman pelanggan dari satu platform.",
+  /** Favicon bawaan; workspace dashboard menggantinya dengan logo bisnis. */
+  icons: { icon: "/icon.svg" },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

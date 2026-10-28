@@ -4,7 +4,12 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImageIcon, LoaderCircle, Palette, RotateCcw, Trash2, Upload } from "lucide-react";
 import { InlineNotice } from "@/components/inline-notice";
-import { LOGO_MAX_LENGTH, logoDataUrl, type BrandTheme } from "@/modules/tenancy/brand";
+import {
+  LOGO_MAX_LENGTH,
+  TITLE_MAX_LENGTH,
+  logoDataUrl,
+  type BrandTheme,
+} from "@/modules/tenancy/brand";
 
 /** 300 KB on disk; the API caps the base64 payload at LOGO_MAX_LENGTH chars. */
 const MAX_LOGO_BYTES = 300_000;
@@ -22,7 +27,13 @@ const PRESETS = [
 function apiMessage(result: unknown, fallback: string) {
   const error = (result as { error?: { message?: string; fields?: Record<string, string> } })
     ?.error;
-  return error?.fields?.logo ?? error?.fields?.primaryColor ?? error?.message ?? fallback;
+  return (
+    error?.fields?.logo ??
+    error?.fields?.title ??
+    error?.fields?.primaryColor ??
+    error?.message ??
+    fallback
+  );
 }
 
 /**
@@ -39,6 +50,7 @@ export function ThemeSettings({
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [current, setCurrent] = useState(initialTheme);
+  const [title, setTitle] = useState(initialTheme.title ?? "");
   const [primaryColor, setPrimaryColor] = useState(initialTheme.primaryColor);
   const [pendingLogo, setPendingLogo] = useState<string | null>(null);
   const [removeLogo, setRemoveLogo] = useState(false);
@@ -48,7 +60,8 @@ export function ThemeSettings({
 
   const previewSrc = removeLogo ? null : (pendingLogo ?? logoDataUrl(current));
   const colorChanged = primaryColor.toLowerCase() !== current.primaryColor.toLowerCase();
-  const hasChanges = colorChanged || removeLogo || pendingLogo !== null;
+  const titleChanged = title.trim() !== (current.title ?? "");
+  const hasChanges = colorChanged || titleChanged || removeLogo || pendingLogo !== null;
 
   function pickFile(file: File | undefined) {
     setError("");
@@ -90,7 +103,8 @@ export function ThemeSettings({
     setError("");
     setSaved("");
     try {
-      const body: { primaryColor?: string; logo?: string | null } = {};
+      const body: { title?: string | null; primaryColor?: string; logo?: string | null } = {};
+      if (titleChanged) body.title = title.trim() || null;
       if (colorChanged) body.primaryColor = primaryColor;
       if (removeLogo) body.logo = null;
       else if (pendingLogo) body.logo = pendingLogo;
@@ -106,6 +120,7 @@ export function ThemeSettings({
       }
       const theme = result.data as BrandTheme;
       setCurrent(theme);
+      setTitle(theme.title ?? "");
       setPrimaryColor(theme.primaryColor);
       setPendingLogo(null);
       setRemoveLogo(false);
@@ -133,11 +148,12 @@ export function ThemeSettings({
       }
       const theme = result.data as BrandTheme;
       setCurrent(theme);
+      setTitle(theme.title ?? "");
       setPrimaryColor(theme.primaryColor);
       setPendingLogo(null);
       setRemoveLogo(false);
       if (fileRef.current) fileRef.current.value = "";
-      setSaved("Warna dan logo dikembalikan ke tampilan standar.");
+      setSaved("Judul, warna, dan logo dikembalikan ke tampilan standar.");
       router.refresh();
     } catch (resetError) {
       setError(resetError instanceof Error ? resetError.message : "Terjadi kesalahan.");
@@ -153,7 +169,7 @@ export function ThemeSettings({
           <Palette className="size-[18px]" />
         </span>
         <div>
-          <h2 className="text-[15px] font-semibold tracking-[-.02em]">Warna dan logo</h2>
+          <h2 className="text-[15px] font-semibold tracking-[-.02em]">Judul, warna, dan logo</h2>
           <p className="mt-0.5 text-xs text-[#929e99]">
             Hanya Super Admin. Berlaku di dashboard, halaman QR, booking, dan layar TV.
           </p>
@@ -162,7 +178,29 @@ export function ThemeSettings({
 
       <div className="mt-5 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div>
-          <label htmlFor="primary-color" className="text-xs font-semibold text-[#40504a]">
+          <label htmlFor="app-title" className="text-xs font-semibold text-[#40504a]">
+            Judul aplikasi
+          </label>
+          <input
+            id="app-title"
+            type="text"
+            value={title}
+            maxLength={TITLE_MAX_LENGTH}
+            placeholder="Nama bisnis Anda"
+            onChange={(event) => {
+              setTitle(event.target.value);
+              setSaved("");
+            }}
+            className="mt-2 h-11 w-full max-w-xs rounded-xl border border-[#e1e7e4] px-3 text-sm text-[#344440] outline-none focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08]"
+          />
+          <p className="mt-2 text-[11px] leading-4 text-[#929e99]">
+            Muncul sebagai judul tab browser. Kosongkan untuk memakai nama bisnis.
+          </p>
+
+          <label
+            htmlFor="primary-color"
+            className="mt-6 block text-xs font-semibold text-[#40504a]"
+          >
             Warna utama
           </label>
           <div className="mt-2 flex items-center gap-2.5">
@@ -266,9 +304,11 @@ export function ThemeSettings({
             </span>
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold text-[#182321]">
-                Nama bisnis Anda
+                {title.trim() || "Nama bisnis Anda"}
               </span>
-              <span className="block text-[11px] text-[#929e99]">Contoh tampilan header</span>
+              <span className="block text-[11px] text-[#929e99]">
+                Judul tab browser dan header
+              </span>
             </span>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">

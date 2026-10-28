@@ -2,7 +2,7 @@ import { z } from "zod";
 import { errorResponse, readJsonRequest } from "@/modules/shared/errors";
 import { validationAppError } from "@/modules/shared/validation-error";
 import { requireBusinessContext } from "@/modules/tenancy/context";
-import { LOGO_MAX_LENGTH } from "@/modules/tenancy/brand";
+import { LOGO_MAX_LENGTH, TITLE_MAX_LENGTH } from "@/modules/tenancy/brand";
 import { resetTheme, updateTheme } from "@/modules/tenancy/theme-service";
 
 type RouteContext = { params: Promise<{ businessSlug: string }> };
@@ -10,6 +10,8 @@ type RouteContext = { params: Promise<{ businessSlug: string }> };
 /** Both handlers are Super Admin only; the role check lives in theme-service. */
 const updateSchema = z
   .object({
+    /** Judul aplikasi; null mengembalikannya ke nama bisnis. */
+    title: z.string().max(TITLE_MAX_LENGTH).nullable().optional(),
     primaryColor: z
       .string()
       .trim()
@@ -19,7 +21,10 @@ const updateSchema = z
     logo: z.string().startsWith("data:image/").max(LOGO_MAX_LENGTH + 64).nullable().optional(),
   })
   .refine(
-    (value) => value.primaryColor !== undefined || value.logo !== undefined,
+    (value) =>
+      value.title !== undefined ||
+      value.primaryColor !== undefined ||
+      value.logo !== undefined,
     "Tidak ada perubahan yang dikirim.",
   );
 
@@ -29,6 +34,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
     const parsed = updateSchema.safeParse(await readJsonRequest(request));
     if (!parsed.success) {
       throw validationAppError(parsed.error, "Periksa kembali pengaturan tampilan.", {
+        title: "judul aplikasi",
         primaryColor: "warna utama",
         logo: "logo",
       });

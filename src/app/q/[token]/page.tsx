@@ -1,15 +1,30 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { PublicQueueForm } from "@/components/public-queue-form";
 import { BrandLogo } from "@/components/brand-logo";
 import { getQrConfiguration } from "@/modules/queue/application/public-queue";
 import { AppError } from "@/modules/shared/errors";
 import { requestFromHeaders } from "@/lib/app-url";
-import { brandVars } from "@/modules/tenancy/brand";
+import { brandTitle, brandVars, logoDataUrl } from "@/modules/tenancy/brand";
 
 type PageProps = { params: Promise<{ token: string }> };
 
 export const dynamic = "force-dynamic";
+
+/** Judul tab dan favicon ikut branding workspace pemilik token QR. */
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { token } = await params;
+  try {
+    const config = await getQrConfiguration(token, requestFromHeaders(await headers()));
+    return {
+      title: brandTitle(config.theme, config.business),
+      icons: { icon: logoDataUrl(config.theme) ?? "/icon.svg" },
+    };
+  } catch {
+    return {};
+  }
+}
 
 export default async function PublicQueuePage({ params }: PageProps) {
   const { token } = await params;
@@ -31,7 +46,7 @@ export default async function PublicQueuePage({ params }: PageProps) {
           <span className="flex size-8 items-center justify-center overflow-hidden rounded-[10px] bg-brand-700 text-sm font-black text-white">
             <BrandLogo theme={config.theme} className="text-sm font-black" />
           </span>
-          antrean digital
+          {brandTitle(config.theme, config.business)}
         </div>
         <section className="overflow-hidden rounded-[24px] border border-[#e8eeeb] bg-white shadow-[0_18px_60px_rgba(28,60,47,.08)]">
           <div className="relative overflow-hidden bg-brand-700 px-6 pb-6 pt-7 text-white">

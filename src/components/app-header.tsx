@@ -1,7 +1,7 @@
 import { BrandLogo } from "@/components/brand-logo";
 import { SignOutButton } from "@/components/sign-out-button";
 import { capabilitiesFor, roleLabel } from "@/modules/tenancy/access";
-import { brandVars, type BrandTheme } from "@/modules/tenancy/brand";
+import { brandTitle, brandVars, type BrandTheme } from "@/modules/tenancy/brand";
 import type { MembershipRole } from "@prisma/client";
 
 /**
@@ -28,7 +28,7 @@ export function AppHeader({
     { href: `/dashboard/${businessSlug}`, label: "Dashboard", id: "dashboard", show: true },
     {
       href: `/dashboard/${businessSlug}/panduan`,
-      label: "Pelajari sistem",
+      label: "Panduan",
       id: "panduan",
       show: true,
     },
@@ -52,7 +52,7 @@ export function AppHeader({
           </span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold text-[#182321]">
-              {businessName}
+              {brandTitle(theme, businessName)}
             </span>
             <span className="block text-[11px] text-[#889590]">Kembali ke dashboard</span>
           </span>

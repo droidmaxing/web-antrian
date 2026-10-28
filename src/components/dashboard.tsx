@@ -2,7 +2,6 @@
 
 import {
   Activity,
-  ArrowDownRight,
   ArrowUpRight,
   BarChart3,
   Bell,
@@ -14,13 +13,11 @@ import {
   ChevronDown,
   CircleHelp,
   Clock3,
-  Command,
   Contact2,
   Layers,
   LayoutDashboard,
   LogOut,
   MonitorCog,
-  MoreHorizontal,
   Plus,
   Radio,
   RefreshCw,
@@ -40,7 +37,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { FeatureKey, MembershipRole, QueueStatus } from "@prisma/client";
 import { BrandLogo } from "@/components/brand-logo";
 import { capabilitiesFor, roleLabel } from "@/modules/tenancy/access";
-import { brandVars, type BrandTheme } from "@/modules/tenancy/brand";
+import { brandTitle, brandVars, type BrandTheme } from "@/modules/tenancy/brand";
+import { greetingFor } from "@/modules/shared/greeting";
 import { ServicesManager } from "@/components/manage/services-manager";
 import { CountersManager } from "@/components/manage/counters-manager";
 import { TeamManager } from "@/components/manage/team-manager";
@@ -102,6 +100,8 @@ type DashboardProps = {
   role: MembershipRole;
   user: { id: string; name: string };
   userName: string;
+  /** Waktu server (ISO): salam dan tanggal datang dari server agar hidrasi sama. */
+  serverNow: string;
   enabledFeatures: FeatureKey[];
   bookings: BookingRow[];
   metrics: {
@@ -165,6 +165,7 @@ export function Dashboard({
   role,
   user,
   userName,
+  serverNow,
   enabledFeatures,
   bookings,
   metrics,
@@ -448,21 +449,12 @@ export function Dashboard({
     >
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[250px] flex-col border-r border-[#e9edeb] bg-white xl:flex">
         <div className="flex shrink-0 items-center gap-3 border-b border-[#f0f3f1] px-4 py-5">
-          <div className="flex size-10 items-center justify-center overflow-hidden rounded-[13px] bg-brand-700 text-white shadow-[0_4px_10px_rgba(23,107,91,.2)]">
+          <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[13px] bg-brand-700 text-white shadow-[0_4px_10px_rgba(23,107,91,.2)]">
             <BrandLogo theme={theme} />
           </div>
-          <span className="text-lg font-semibold tracking-[-.04em]">antrian</span>
-          <button
-            type="button"
-            onClick={() => {
-              searchRef.current?.focus();
-              searchRef.current?.select();
-            }}
-            aria-label="Cari antrean (⌘K)"
-            className="ml-auto rounded-lg p-2 text-[#889590] hover:bg-[#f5f7f6]"
-          >
-            <Command className="size-4" />
-          </button>
+          <span className="min-w-0 flex-1 truncate text-lg font-semibold tracking-[-.04em]">
+            {brandTitle(theme, businessName)}
+          </span>
         </div>
 
         {/* The nav list scrolls on its own so the logout button below never
@@ -511,7 +503,7 @@ export function Dashboard({
           Operasional
         </p>
         <nav className="space-y-1">
-          <NavLink href="#overview" label="Ringkasan" icon={LayoutDashboard} active />
+          <NavLink href="#overview" label="Ringkasan" icon={LayoutDashboard} />
           <NavLink href="#queue" label="Antrean" icon={Users2} badge={metrics.waiting} />
           <NavLink href="#counters" label="Status loket" icon={Radio} />
           {enabledFeatures.includes("BOOKING") && (
@@ -538,7 +530,7 @@ export function Dashboard({
         <nav className="space-y-1">
           <NavLink
             href={`/dashboard/${businessSlug}/panduan`}
-            label="Pelajari sistem"
+            label="Panduan"
             icon={BookOpen}
           />
           {canConfigure && (
@@ -549,35 +541,6 @@ export function Dashboard({
             />
           )}
         </nav>
-        {!analyticsEnabled && (canConfigure || isOwner) && (
-          <p className="mx-3 mt-2 text-[11px] leading-4 text-[#9aa5a1]">
-            Analitik ringkasan dinonaktifkan untuk bisnis ini.
-          </p>
-        )}
-
-        <div className="mt-6 rounded-2xl bg-[#edf6f2] p-4">
-          <div className="mb-3 flex size-9 items-center justify-center rounded-xl bg-white text-brand-700">
-            <Sparkles className="size-[17px]" />
-          </div>
-          <p className="text-sm font-semibold">Layanan lebih rapi</p>
-          <p className="mt-1 text-xs leading-5 text-[#75827f]">
-            Satu tempat untuk mengelola antrean dan pelayanan.
-          </p>
-          <a
-            href={`/dashboard/${businessSlug}/panduan`}
-            className="mt-3 inline-block text-xs font-semibold text-brand-700 hover:underline"
-          >
-            Pelajari sistem <span aria-hidden="true">↗</span>
-          </a>
-          {canConfigure && (
-            <a
-              href={`/dashboard/${businessSlug}/pengaturan`}
-              className="mt-2 block text-xs font-semibold text-brand-700 hover:underline"
-            >
-              Pengaturan workspace <span aria-hidden="true">↗</span>
-            </a>
-          )}
-        </div>
         </div>
 
         {/* Pinned footer: always visible, never inside the scroll container. */}
@@ -602,47 +565,39 @@ export function Dashboard({
       </aside>
 
       <section className="xl:pl-[250px]">
-        <header className="sticky top-0 z-10 flex h-[72px] items-center justify-between border-b border-[#e9edeb] bg-white/95 px-5 backdrop-blur md:px-9">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-brand-700 text-sm font-black text-white xl:hidden">
-              a.
+        <header className="sticky top-0 z-10 border-b border-[#e9edeb] bg-white/95 backdrop-blur">
+          <div className="flex h-[72px] items-center justify-between gap-3 px-5 md:px-9">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-700 text-white xl:hidden">
+                <BrandLogo theme={theme} />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[11px] text-[#889590]">{businessName}</p>
+                <p className="truncate text-sm font-semibold">{branch.name}</p>
+              </div>
             </div>
-            <div className="hidden items-center gap-2 text-sm text-[#9aa5a1] sm:flex">
-              <span>Workspace</span>
-              <span>/</span>
-              <span className="font-medium text-[#344440]">Ringkasan</span>
-            </div>
-            <div className="sm:hidden">
-              <p className="text-[11px] text-[#889590]">{businessName}</p>
-              <p className="text-sm font-semibold">{branch.name}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="hidden h-9 w-[210px] items-center gap-2 rounded-lg border border-[#edf0ef] bg-[#fafbfa] px-3 md:flex">
-              <Search className="size-4 text-[#a1aca8]" />
-              <input
-                ref={searchRef}
-                value={queueQuery}
-                onChange={(event) => setQueueQuery(event.target.value)}
-                placeholder="Cari nomor, pelanggan, layanan..."
-                aria-label="Cari antrean"
-                className="min-w-0 flex-1 bg-transparent text-xs text-[#344440] outline-none placeholder:text-[#a1aca8]"
-              />
-              {queueQuery ? (
-                <button
-                  type="button"
-                  onClick={() => setQueueQuery("")}
-                  aria-label="Hapus pencarian"
-                  className="text-[10px] text-[#a1aca8] hover:text-[#687570]"
-                >
-                  Reset
-                </button>
-              ) : (
-                <kbd className="rounded border border-[#e7ebe9] bg-white px-1.5 py-0.5 text-[10px] text-[#a1aca8]">
-                  ⌘ K
-                </kbd>
-              )}
-            </div>
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <div className="hidden h-9 w-[210px] items-center gap-2 rounded-lg border border-[#edf0ef] bg-[#fafbfa] px-3 md:flex">
+                <Search className="size-4 text-[#a1aca8]" />
+                <input
+                  ref={searchRef}
+                  value={queueQuery}
+                  onChange={(event) => setQueueQuery(event.target.value)}
+                  placeholder="Cari nomor, pelanggan, layanan..."
+                  aria-label="Cari antrean"
+                  className="min-w-0 flex-1 bg-transparent text-xs text-[#344440] outline-none placeholder:text-[#a1aca8]"
+                />
+                {queueQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setQueueQuery("")}
+                    aria-label="Hapus pencarian"
+                    className="text-[10px] text-[#a1aca8] hover:text-[#687570]"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             <div className="relative">
               <button
                 type="button"
@@ -706,29 +661,6 @@ export function Dashboard({
                   </p>
                 </div>
                 <div className="my-1 h-px bg-[#eef1f0]" />
-                <a
-                  href={`/dashboard/${businessSlug}/panduan`}
-                  className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#4d5a56] hover:bg-[#f6f8f7]"
-                >
-                  Pelajari sistem
-                </a>
-                {canConfigure && (
-                  <a
-                    href={`/dashboard/${businessSlug}/pengaturan`}
-                    className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#4d5a56] hover:bg-[#f6f8f7]"
-                  >
-                    Pengaturan
-                  </a>
-                )}
-                {canManageTeam && (
-                  <a
-                    href="#team"
-                    className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#4d5a56] hover:bg-[#f6f8f7]"
-                  >
-                    Tim &amp; akses
-                  </a>
-                )}
-                <div className="my-1 h-px bg-[#eef1f0]" />
                 <button
                   type="button"
                   onClick={() => void handleSignOut()}
@@ -738,12 +670,35 @@ export function Dashboard({
                 </button>
               </div>
             </details>
+            </div>
+          </div>
+          {/* Pencarian selalu tersedia; di layar sempit ia turun ke baris kedua. */}
+          <div className="px-5 pb-3 md:hidden">
+            <label className="flex h-9 items-center gap-2 rounded-lg border border-[#edf0ef] bg-[#fafbfa] px-3">
+              <span className="sr-only">Cari antrean</span>
+              <Search className="size-4 shrink-0 text-[#a1aca8]" />
+              <input
+                value={queueQuery}
+                onChange={(event) => setQueueQuery(event.target.value)}
+                placeholder="Cari nomor, pelanggan, layanan..."
+                className="min-w-0 flex-1 bg-transparent text-xs text-[#344440] outline-none placeholder:text-[#a1aca8]"
+              />
+              {queueQuery && (
+                <button
+                  type="button"
+                  onClick={() => setQueueQuery("")}
+                  className="shrink-0 text-[10px] text-[#a1aca8] hover:text-[#687570]"
+                >
+                  Reset
+                </button>
+              )}
+            </label>
           </div>
         </header>
 
         <nav
           aria-label="Navigasi dashboard"
-          className="dashboard-mobile-nav sticky top-[72px] z-[9] flex gap-1 overflow-x-auto border-b border-[#e9edeb] bg-white px-3 py-2 xl:hidden"
+          className="dashboard-mobile-nav sticky top-[120px] z-[9] flex gap-1 overflow-x-auto border-b border-[#e9edeb] bg-white px-3 py-2 md:top-[72px] xl:hidden"
         >
           <MobileNavLink href="#overview" label="Ringkasan" />
           <MobileNavLink href="#queue" label="Antrean" />
@@ -798,10 +753,11 @@ export function Dashboard({
                   month: "long",
                   year: "numeric",
                   timeZone: branch.timezone,
-                }).format(new Date())}
+                }).format(new Date(serverNow))}
               </div>
               <h1 className="text-[26px] font-semibold tracking-[-.04em] sm:text-[30px]">
-                Selamat pagi, {userName.split(" ")[0]} <span>👋</span>
+                {greetingFor(branch.timezone, serverNow)}, {userName.split(" ")[0]}{" "}
+                <span aria-hidden="true">👋</span>
               </h1>
               <p className="mt-1.5 text-sm text-[#889590]">
                 Pantau operasional dan antrean hari ini.
@@ -860,7 +816,6 @@ export function Dashboard({
               note="nomor diterbitkan hari ini"
               icon={Users2}
               tone="green"
-              trend="Hari berjalan"
             />
             <MetricCard
               title="Menunggu"
@@ -868,7 +823,6 @@ export function Dashboard({
               note="pelanggan dalam antrean"
               icon={Clock3}
               tone="amber"
-              trend="Perlu dipantau"
             />
             <MetricCard
               title="Sedang dilayani"
@@ -876,7 +830,6 @@ export function Dashboard({
               note="antrean di loket"
               icon={Activity}
               tone="blue"
-              trend="Saat ini"
             />
             <MetricCard
               title="Selesai"
@@ -884,7 +837,6 @@ export function Dashboard({
               note="pelayanan dituntaskan"
               icon={CheckCheck}
               tone="violet"
-              trend="Hari ini"
             />
           </div>
 
@@ -899,30 +851,17 @@ export function Dashboard({
                     Aktivitas antrean
                   </h2>
                   <p className="mt-1 text-xs text-[#929e99]">
-                    Distribusi tiket hari ini berdasarkan jam
+                    Distribusi tiket berdasarkan rentang waktu di atas
                   </p>
                 </div>
-                <label className="relative flex items-center gap-2 rounded-lg border border-[#edf0ef] px-3 py-2 text-[11px] font-medium text-[#687570]">
-                  <span className="sr-only">Rentang waktu grafik aktivitas</span>
-                  <select
-                    value={timeWindow}
-                    onChange={(event) => {
-                      setTimeWindow(event.target.value as TimeWindow);
-                      setWindowAnchor(Date.now());
-                    }}
-                    className="appearance-none bg-transparent pr-4 text-[11px] font-medium text-[#687570] outline-none"
-                  >
-                    <option value="today">Hari ini</option>
-                    <option value="1h">1 jam terakhir</option>
-                    <option value="3h">3 jam terakhir</option>
-                    <option value="8h">8 jam terakhir</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2 size-3.5 text-[#9aa5a1]" />
-                </label>
               </div>
               {analyticsEnabled ? (
                 <>
-                  <QueueActivityChart queues={queuesInWindow} timezone={branch.timezone} />
+                  <QueueActivityChart
+                    queues={queuesInWindow}
+                    timezone={branch.timezone}
+                    nowIso={serverNow}
+                  />
                   <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[#eff2f0] pt-4 sm:grid-cols-4">
                     <TinyMetric label="Rata-rata waktu tunggu" value={`${metrics.averageWaitMinutes} mnt`} icon={Clock3} />
                     <TinyMetric label="Rata-rata pelayanan" value={`${metrics.averageServiceMinutes} mnt`} icon={Activity} />
@@ -950,37 +889,6 @@ export function Dashboard({
                     Kondisi pelayanan saat ini
                   </p>
                 </div>
-                <details className="group relative">
-                  <summary
-                    aria-label="Opsi status loket"
-                    className="flex cursor-pointer list-none items-center rounded-lg p-1.5 text-[#9aa5a1] hover:bg-[#f6f8f7] [&::-webkit-details-marker]:hidden"
-                  >
-                    <MoreHorizontal className="size-5" />
-                  </summary>
-                  <div className="absolute right-0 top-9 z-40 w-56 rounded-xl border border-[#e9edeb] bg-white p-1.5 shadow-[0_12px_32px_rgba(25,48,40,.12)]">
-                    <a
-                      href="#counters-manage"
-                      className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#56635f] hover:bg-[#f6f8f7]"
-                    >
-                      Kelola loket
-                    </a>
-                    <a
-                      href="#services-manage"
-                      className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#56635f] hover:bg-[#f6f8f7]"
-                    >
-                      Kelola layanan
-                    </a>
-                    {canOperate && (
-                      <button
-                        type="button"
-                        onClick={() => router.refresh()}
-                        className="block w-full rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[#56635f] hover:bg-[#f6f8f7]"
-                      >
-                        Segarkan status loket
-                      </button>
-                    )}
-                  </div>
-                </details>
               </div>
               {voiceEnabled && canOperate && (
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#eaf1ed] bg-[#f8fbf9] px-3 py-2.5">
@@ -1006,7 +914,7 @@ export function Dashboard({
                 </div>
               )}
               <div className="mt-5 space-y-3">
-                {branch.counters.map((counter, index) => (
+                {branch.counters.map((counter) => (
                   <div
                     key={counter.id}
                     className="flex items-center gap-3 rounded-xl border border-[#eff2f0] p-3"
@@ -1055,9 +963,6 @@ export function Dashboard({
                         </button>
                       )}
                     </div>
-                    {index === 0 && counter.currentTicket && (
-                      <Volume2 className="size-4 text-[#9aa5a1]" />
-                    )}
                   </div>
                 ))}
                 {!branch.counters.length && (
@@ -1329,30 +1234,18 @@ export function Dashboard({
           {canConfigure && (
             <a
               href={`/dashboard/${businessSlug}/pengaturan`}
-              className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl border border-[#e9edeb] bg-white p-5 shadow-[0_2px_8px_rgba(25,48,40,.025)] transition hover:border-[#cddbd5] md:p-6"
+              className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-brand-700 hover:underline"
             >
-              <span className="flex size-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
-                <Settings2 className="size-[18px]" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">Pengaturan workspace</span>
-                <span className="mt-0.5 block text-xs text-[#75827f]">
-                  Warna tema, logo, fitur bisnis, dan tautan pelanggan kini ada di halaman
-                  tersendiri agar dashboard tetap ringkas.
-                </span>
-              </span>
-              <span className="text-xs font-semibold text-brand-700">
-                Buka pengaturan <span aria-hidden="true">↗</span>
-              </span>
+              <Settings2 className="size-4" /> Pengaturan workspace
             </a>
           )}
           <footer className="mt-8 flex flex-col justify-between gap-2 border-t border-[#e8ecea] py-5 text-[11px] text-[#a0aaa6] sm:flex-row">
-            <span>© 2026 Antrian Management System</span>
+            <span>
+              © {serverNow.slice(0, 4)} {brandTitle(theme, businessName)}
+            </span>
             <span className="flex items-center gap-2">
               <span className="size-1.5 rounded-full bg-[#55ad86]" />
               Data tersimpan dengan aman
-              <span className="mx-1">·</span>
-              {roleLabel(role)}
             </span>
           </footer>
         </div>
@@ -1376,22 +1269,17 @@ function NavLink({
   href,
   label,
   icon: Icon,
-  active = false,
   badge,
-  disabled = false,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
-  active?: boolean;
   badge?: number;
-  disabled?: boolean;
 }) {
   return (
     <a
-      href={disabled ? undefined : href}
-      aria-disabled={disabled}
-      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] transition ${active ? "bg-brand-50 font-semibold text-brand-700" : "text-[#75827f] hover:bg-[#f7f9f8] hover:text-[#344440]"} ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
+      href={href}
+      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] text-[#75827f] transition hover:bg-[#f7f9f8] hover:text-[#344440]"
     >
       <Icon className="size-[17px]" />
       <span className="flex-1">{label}</span>
@@ -1410,14 +1298,12 @@ function MetricCard({
   note,
   icon: Icon,
   tone,
-  trend,
 }: {
   title: string;
   value: number;
   note: string;
   icon: LucideIcon;
   tone: "green" | "amber" | "blue" | "violet";
-  trend: string;
 }) {
   const tones = {
     green: "bg-brand-50 text-[#43886d]",
@@ -1433,15 +1319,9 @@ function MetricCard({
           <Icon className="size-4" />
         </span>
       </div>
-      <div className="mt-3 flex items-end justify-between">
-        <div>
-          <p className="text-[28px] font-semibold leading-none tracking-[-.04em]">{value}</p>
-          <p className="mt-2 text-[11px] text-[#929e99]">{note}</p>
-        </div>
-        <span className="mb-0.5 flex items-center gap-1 rounded-full bg-[#f3f7f5] px-2 py-1 text-[9px] font-medium text-[#638d7b]">
-          {tone === "amber" ? <ArrowDownRight className="size-3" /> : <ArrowUpRight className="size-3" />}
-          {trend}
-        </span>
+      <div className="mt-3">
+        <p className="text-[28px] font-semibold leading-none tracking-[-.04em]">{value}</p>
+        <p className="mt-2 text-[11px] text-[#929e99]">{note}</p>
       </div>
     </article>
   );
@@ -1472,23 +1352,25 @@ function TinyMetric({
 function QueueActivityChart({
   queues,
   timezone,
+  nowIso,
 }: {
   queues: QueueRow[];
   timezone: string;
+  nowIso: string;
 }) {
   const hours = Array.from({ length: 9 }, (_, index) => index + 7);
-  const counts = hours.map((hour) =>
-    queues.filter((queue) => {
-      const localHour = Number(
-        new Intl.DateTimeFormat("en-GB", {
-          timeZone: timezone,
-          hour: "2-digit",
-          hourCycle: "h23",
-        }).format(new Date(queue.issuedAt)),
-      );
-      return localHour === hour;
-    }).length,
+  const localHour = (value: string) =>
+    Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: timezone,
+        hour: "2-digit",
+        hourCycle: "h23",
+      }).format(new Date(value)),
+    );
+  const counts = hours.map(
+    (hour) => queues.filter((queue) => localHour(queue.issuedAt) === hour).length,
   );
+  const currentHour = localHour(nowIso);
   const max = Math.max(1, ...counts);
   return (
     <div className="mt-5">
@@ -1513,7 +1395,7 @@ function QueueActivityChart({
                   <span className="mb-1.5 text-[9px] font-medium text-[#78857f]">{count}</span>
                 )}
                 <div
-                  className={`w-full max-w-[34px] rounded-t-[5px] transition-all ${index === 4 ? "bg-brand-700" : count ? "bg-[#9dccb5]" : "bg-[#ecf1ee]"}`}
+                  className={`w-full max-w-[34px] rounded-t-[5px] transition-all ${hours[index] === currentHour ? "bg-brand-700" : count ? "bg-[#9dccb5]" : "bg-[#ecf1ee]"}`}
                   style={{ height: `${height}px` }}
                 />
               </div>

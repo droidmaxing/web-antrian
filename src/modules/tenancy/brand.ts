@@ -6,6 +6,8 @@
 import type { CSSProperties } from "react";
 
 export type BrandTheme = {
+  /** Optional app title: browser tab, and the fallback is the business name. */
+  title: string | null;
   primaryColor: string;
   logoMimeType: string | null;
   logoData: string | null;
@@ -14,10 +16,25 @@ export type BrandTheme = {
 export const DEFAULT_PRIMARY_COLOR = "#176b5b";
 
 export const DEFAULT_THEME: BrandTheme = {
+  title: null,
   primaryColor: DEFAULT_PRIMARY_COLOR,
   logoMimeType: null,
   logoData: null,
 };
+
+/** Long enough for a brand name, short enough to stay readable in a tab. */
+export const TITLE_MAX_LENGTH = 60;
+
+/** Trims and collapses whitespace; an empty title means "use the fallback". */
+export function normalizeTitle(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const title = value.trim().replace(/\s+/g, " ");
+  return title ? title.slice(0, TITLE_MAX_LENGTH) : null;
+}
+
+export function brandTitle(theme: Pick<BrandTheme, "title">, fallback: string): string {
+  return theme.title ?? fallback;
+}
 
 export const LOGO_MIME_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 export type LogoMimeType = (typeof LOGO_MIME_TYPES)[number];

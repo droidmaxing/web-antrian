@@ -152,12 +152,12 @@ const SECTIONS: GuideSection[] = [
   },
   {
     title: "Menyesuaikan tampilan",
-    description: "Warna dan logo workspace.",
+    description: "Judul, warna, dan logo workspace.",
     steps: [
       {
-        title: "Ubah warna dan logo",
+        title: "Ubah judul, warna, dan logo",
         detail:
-          "Halaman Pengaturan menyimpan warna utama dan logo bisnis. Warna tersebut dipakai konsisten di dashboard, halaman QR, dan halaman booking.",
+          "Halaman Pengaturan menyimpan judul aplikasi, warna utama, dan logo bisnis. Judul dipakai sebagai nama tab browser, sedangkan warna dan logo dipakai konsisten di dashboard, halaman QR, dan halaman booking.",
         href: "/dashboard/${slug}/pengaturan",
         hrefLabel: "Buka pengaturan",
         requires: "manageTheme",

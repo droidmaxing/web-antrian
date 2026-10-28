@@ -9,9 +9,12 @@ import {
   LOGO_MAX_LENGTH,
   LogoMimeType,
   normalizeHexColor,
+  normalizeTitle,
 } from "@/modules/tenancy/brand";
 
 export type ThemeInput = {
+  /** undefined keeps the current title, null clears it back to the business name. */
+  title?: string | null;
   primaryColor?: string;
   /** undefined keeps the current logo, null removes it, a data URL replaces it. */
   logo?: string | null;
@@ -74,12 +77,14 @@ export function parseLogoUpload(value: unknown): LogoUpload {
 }
 
 function toTheme(row: {
+  title: string | null;
   primaryColor: string;
   logoMimeType: string | null;
   logoData: string | null;
 } | null): BrandTheme {
   if (!row) return DEFAULT_THEME;
   return {
+    title: row.title,
     primaryColor: row.primaryColor,
     logoMimeType: row.logoMimeType,
     logoData: row.logoData,
@@ -87,6 +92,7 @@ function toTheme(row: {
 }
 
 const THEME_FIELDS = {
+  title: true,
   primaryColor: true,
   logoMimeType: true,
   logoData: true,
@@ -122,10 +128,12 @@ export async function updateTheme(
   requireRole(context, ["SUPER_ADMIN"]);
   const primaryColor = normalizeHexColor(input.primaryColor ?? DEFAULT_PRIMARY_COLOR);
   const logo = input.logo === undefined ? undefined : input.logo === null ? null : parseLogoUpload(input.logo);
+  const title = input.title === undefined ? undefined : normalizeTitle(input.title);
 
   return await prisma.$transaction(async (tx) => {
     const data = {
       primaryColor,
+      ...(title === undefined ? {} : { title }),
       ...(logo === undefined
         ? {}
         : { logoMimeType: logo?.mimeType ?? null, logoData: logo?.data ?? null }),
@@ -145,6 +153,7 @@ export async function updateTheme(
         targetId: context.businessId,
         metadata: {
           primaryColor,
+          title: title === undefined ? "unchanged" : title ?? "removed",
           logo: logo === undefined ? "unchanged" : logo === null ? "removed" : logo.mimeType,
         },
       }),

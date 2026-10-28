@@ -211,6 +211,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
       role={context.role}
       user={{ id: context.userId, name: session.user.name ?? "Pengguna" }}
       userName={session.user.name ?? "Pengguna"}
+      serverNow={new Date().toISOString()}
       enabledFeatures={featureRows.map((feature) => feature.featureKey)}
       bookings={bookings.map((booking) => ({
         id: booking.id,
