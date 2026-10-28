@@ -14,7 +14,7 @@ than industry-specific applications.
 ## Quick start with Docker Compose
 
 ```bash
-cp .env.example .env                 # set APP_URL + NEXT_PUBLIC_APP_URL first
+cp .env.example .env                 # set APP_URL (IP host / domain) first
 docker compose up -d --build
 docker compose ps                    # web-antrian-mysql (healthy), web-antrian-app
 curl -fsS "$APP_URL"                 # defaults to http://127.0.0.1:3000

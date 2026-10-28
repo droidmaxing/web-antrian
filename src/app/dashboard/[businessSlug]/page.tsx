@@ -7,6 +7,7 @@ import { Dashboard } from "@/components/dashboard";
 import { listBranchBookings } from "@/modules/booking/application/booking-service";
 import { AppError } from "@/modules/shared/errors";
 import { ErrorState } from "@/components/error-state";
+import { getTheme } from "@/modules/tenancy/theme-service";
 
 type PageProps = {
   params: Promise<{ businessSlug: string }>;
@@ -41,7 +42,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
     }
     throw error;
   }
-  const [business, services] = await Promise.all([
+  const [business, services, theme] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: context.businessId },
       select: {
@@ -83,6 +84,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
       select: { id: true, name: true, code: true },
       orderBy: { name: "asc" },
     }),
+    getTheme(context.businessId),
   ]);
 
   const branch =
@@ -92,7 +94,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
     return (
       <main className="grid min-h-screen place-items-center bg-[#f7f8fa] p-6">
         <div className="max-w-md rounded-2xl border border-[#e9edeb] bg-white p-8 text-center shadow-sm">
-          <p className="text-sm font-medium text-[#176b5b]">Belum ada cabang</p>
+          <p className="text-sm font-medium text-brand-700">Belum ada cabang</p>
           <h1 className="mt-2 text-xl font-semibold text-[#182321]">
             Bisnis Anda belum memiliki cabang aktif
           </h1>
@@ -170,6 +172,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
     <Dashboard
       businessName={business.name}
       businessSlug={businessSlug}
+      theme={theme}
       branch={{
 
         id: branch.id,

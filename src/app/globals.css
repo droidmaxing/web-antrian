@@ -7,6 +7,13 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  /* Workspace branding: every brand utility resolves through these variables so
+     a Super Admin theme (set per business) can recolour the whole app. */
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
@@ -49,20 +56,26 @@
 }
 
 :root {
+  /* Defaults for the workspace palette; brandVars() overrides them per business. */
+  --brand-50: #edf5f1;
+  --brand-100: #eef5f2;
+  --brand-200: #e5f2ee;
+  --brand-700: #176b5b;
+  --brand-800: #125648;
   --background: #f7f8fa;
   --foreground: #182321;
   --card: #ffffff;
   --card-foreground: #182321;
   --popover: #ffffff;
   --popover-foreground: #182321;
-  --primary: #176b5b;
+  --primary: var(--brand-700);
   --primary-foreground: #ffffff;
-  --secondary: #eef5f2;
-  --secondary-foreground: #176b5b;
+  --secondary: var(--brand-100);
+  --secondary-foreground: var(--brand-700);
   --muted: #f0f3f2;
   --muted-foreground: #75827f;
-  --accent: #e5f2ee;
-  --accent-foreground: #176b5b;
+  --accent: var(--brand-200);
+  --accent-foreground: var(--brand-700);
   --destructive: #d25252;
   --border: #e9edeb;
   --input: #e0e6e3;
@@ -75,10 +88,10 @@
   --radius: 0.625rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #182321;
-  --sidebar-primary: #176b5b;
+  --sidebar-primary: var(--brand-700);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef5f2;
-  --sidebar-accent-foreground: #176b5b;
+  --sidebar-accent: var(--brand-100);
+  --sidebar-accent-foreground: var(--brand-700);
   --sidebar-border: #e9edeb;
   --sidebar-ring: #78b6a4;
 }
@@ -120,6 +133,55 @@ a {
 
 .dashboard-sidebar-scroll:hover::-webkit-scrollbar-thumb {
   background: #c3d0cb;
+}
+
+/* Struk nomor antrean untuk printer termal 80mm.
+   Lebar kertas 80mm, area cetak ±72mm. Semua elemen lain disembunyikan saat
+   mencetak (bukan display:none) supaya tata letak halaman layar tidak ikut
+   tercetak ulang di tengah proses. */
+.struk-80mm {
+  width: 72mm;
+  padding: 3mm 0;
+  background: #fff;
+  color: #000;
+  font-family: ui-monospace, "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  /* Chrome mengabaikan `size: 80mm auto` (jatuh ke Letter) — diukur langsung
+     lewat Page.printToPDF: 80mm x 297mm menghasilkan halaman 227pt (~80mm).
+     Panjang kertas tetap 297mm; struk sendiri pendek dan printer termal
+     memotong setelah isi habis (atau atur ukuran kertas di driver printer). */
+  @page {
+    size: 80mm 297mm;
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #fff;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .struk-80mm,
+  .struk-80mm * {
+    visibility: visible;
+  }
+
+  .struk-80mm {
+    position: absolute;
+    left: 0;
+    top: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
 .dark {

@@ -1,9 +1,11 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { PublicQueueForm } from "@/components/public-queue-form";
+import { BrandLogo } from "@/components/brand-logo";
 import { getQrConfiguration } from "@/modules/queue/application/public-queue";
 import { AppError } from "@/modules/shared/errors";
 import { requestFromHeaders } from "@/lib/app-url";
+import { brandVars } from "@/modules/tenancy/brand";
 
 type PageProps = { params: Promise<{ token: string }> };
 
@@ -20,16 +22,19 @@ export default async function PublicQueuePage({ params }: PageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f3f7f5] px-5 py-8 sm:py-12">
+    <main
+      className="min-h-screen bg-[#f3f7f5] px-5 py-8 sm:py-12"
+      style={brandVars(config.theme.primaryColor)}
+    >
       <div className="mx-auto max-w-md">
         <div className="mb-6 flex items-center justify-center gap-2 text-sm font-semibold tracking-tight text-[#24483c]">
-          <span className="flex size-8 items-center justify-center rounded-[10px] bg-[#176b5b] text-sm font-black text-white">
-            a.
+          <span className="flex size-8 items-center justify-center overflow-hidden rounded-[10px] bg-brand-700 text-sm font-black text-white">
+            <BrandLogo theme={config.theme} className="text-sm font-black" />
           </span>
           antrean digital
         </div>
         <section className="overflow-hidden rounded-[24px] border border-[#e8eeeb] bg-white shadow-[0_18px_60px_rgba(28,60,47,.08)]">
-          <div className="relative overflow-hidden bg-[#176b5b] px-6 pb-6 pt-7 text-white">
+          <div className="relative overflow-hidden bg-brand-700 px-6 pb-6 pt-7 text-white">
             <div className="absolute -right-12 -top-16 size-48 rounded-full border border-white/10" />
             <div className="absolute -right-4 -top-8 size-32 rounded-full border border-white/10" />
             <p className="relative flex items-center gap-2 text-[11px] font-medium text-white/70">

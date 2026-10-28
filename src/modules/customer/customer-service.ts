@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
 import { auditData } from "@/modules/shared/audit";
 import { BusinessContext, requireRole } from "@/modules/tenancy/context";
+import {
+  CUSTOMER_PAGE_SIZES,
+  resolvePage,
+} from "@/modules/customer/domain/pagination";
 
 /**
  * Customer directory for a tenant.
@@ -32,6 +36,15 @@ export type CustomerRow = {
   bookingCount: number;
   lastVisitAt: string | null;
   lastServiceName: string | null;
+};
+
+/** Halaman daftar pelanggan: baris + info halaman supaya klien bisa memberi navigasi. */
+export type CustomerPageResult = {
+  rows: CustomerRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
 };
 
 /** Digits only, Indonesian country code normalised to a leading 0. */
@@ -130,11 +143,10 @@ async function assertUniqueContact(
 
 export async function listCustomers(
   context: BusinessContext,
-  options: { query?: string; limit?: number } = {},
-): Promise<CustomerRow[]> {
+  options: { query?: string; page?: number; pageSize?: number } = {},
+): Promise<CustomerPageResult> {
   requireRole(context, [...READ_ROLES]);
   const query = options.query?.trim() ?? "";
-  const limit = Math.min(Math.max(options.limit ?? 100, 1), 500);
 
   const where: Prisma.CustomerWhereInput = {
     businessId: context.businessId,
@@ -149,10 +161,21 @@ export async function listCustomers(
       : {}),
   };
 
+  // Total dulu supaya nomor halaman yang diminta bisa dijepit ke halaman yang
+  // benar-benar ada, bukan mengembalikan daftar kosong.
+  const total = await prisma.customer.count({ where });
+  const { skip, take, page, pageSize, pageCount } = resolvePage(
+    total,
+    options.pageSize ?? CUSTOMER_PAGE_SIZES[0],
+    options.page ?? 1,
+  );
+
   const customers = await prisma.customer.findMany({
     where,
-    orderBy: [{ updatedAt: "desc" }],
-    take: limit,
+    // Urut nama supaya halaman berikutnya tidak menggeser baris yang sudah tampil.
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+    skip,
+    take,
     select: {
       id: true,
       name: true,
@@ -169,15 +192,21 @@ export async function listCustomers(
     },
   });
 
-  return customers.map(({ _count, queues, ...customer }) => ({
-    ...customer,
-    createdAt: customer.createdAt.toISOString(),
-    updatedAt: customer.updatedAt.toISOString(),
-    queueCount: _count.queues,
-    bookingCount: _count.bookings,
-    lastVisitAt: queues[0]?.issuedAt.toISOString() ?? null,
-    lastServiceName: queues[0]?.service.name ?? null,
-  }));
+  return {
+    total,
+    page,
+    pageSize,
+    pageCount,
+    rows: customers.map(({ _count, queues, ...customer }) => ({
+      ...customer,
+      createdAt: customer.createdAt.toISOString(),
+      updatedAt: customer.updatedAt.toISOString(),
+      queueCount: _count.queues,
+      bookingCount: _count.bookings,
+      lastVisitAt: queues[0]?.issuedAt.toISOString() ?? null,
+      lastServiceName: queues[0]?.service.name ?? null,
+    })),
+  };
 }
 
 export async function createCustomer(context: BusinessContext, input: CustomerInput) {

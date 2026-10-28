@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { InlineNotice } from "@/components/inline-notice";
+import { Pager, usePaged } from "@/components/pagination";
 import {
   CalendarClock,
   Check,
@@ -45,6 +46,7 @@ export function BookingManagement({
   readOnly: boolean;
 }) {
   const router = useRouter();
+  const paged = usePaged(bookings);
   const [pending, setPending] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [noticeVariant, setNoticeVariant] = useState<"error" | "success">("success");
@@ -108,7 +110,7 @@ export function BookingManagement({
 
       {bookings.length ? (
         <div className="divide-y divide-[#eff2f0]">
-          {bookings.map((booking) => (
+          {paged.rows?.map((booking) => (
             <article
               key={booking.id}
               className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center md:px-6"
@@ -198,6 +200,17 @@ export function BookingManagement({
           </div>
         </div>
       )}
+      <div className="px-5 md:px-6">
+        <Pager
+          total={paged.total}
+          page={paged.page}
+          pageCount={paged.pageCount}
+          pageSize={paged.pageSize}
+          unit="booking"
+          onPage={paged.setPage}
+          onPageSize={paged.setPageSize}
+        />
+      </div>
       <div className="flex items-center justify-between border-t border-[#eff2f0] px-5 py-3.5 text-[10px] text-[#929e99] md:px-6">
         <span>{readOnly ? "Tampilan baca saja" : "Perubahan tercatat dalam audit log"}</span>
         <MapPin className="size-3.5" />
@@ -239,7 +252,7 @@ function ActionButton({
       disabled={loading}
       className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[10px] font-semibold transition disabled:opacity-50 ${
         primary
-          ? "bg-[#176b5b] text-white hover:bg-[#125648]"
+          ? "bg-brand-700 text-white hover:bg-brand-800"
           : "border border-[#e6ebe8] text-[#687570] hover:bg-[#f8faf9]"
       }`}
     >

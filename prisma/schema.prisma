@@ -78,6 +78,7 @@ model Business {
   displays      Display[]
   accessTokens  AccessToken[]
   auditLogs     AuditLog[]
+  theme         BusinessTheme?
 }
 
 model Branch {
@@ -508,4 +509,16 @@ model RateLimitBucket {
   count         Int      @default(0)
 
   @@index([windowStarted])
+}
+
+/// Tampilan kustom per bisnis. Baris hanya dibuat setelah Superadmin menyimpan
+/// warna atau logo; tanpa baris aplikasi memakai nilai bawaan dari tema.
+model BusinessTheme {
+  businessId   String   @id
+  primaryColor String   @default("#176b5b") @db.VarChar(7)
+  logoMimeType String?  @db.VarChar(32)
+  logoData     String?  @db.Text
+  updatedAt    DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }

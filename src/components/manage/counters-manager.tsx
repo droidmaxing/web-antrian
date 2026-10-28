@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, CirclePlus, LoaderCircle, Power, Search, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CirclePlus, LoaderCircle, Power, Search, Trash2, X } from "lucide-react";
+import { Pager, usePaged } from "@/components/pagination";
 import { InlineNotice } from "@/components/inline-notice";
 
 type CounterRow = {
@@ -38,11 +40,12 @@ export function CountersManager({
 }) {
   const [counters, setCounters] = useState<CounterRow[] | null>(null);
   const [query, setQuery] = useState("");
-  const [visibleCount, setVisibleCount] = useState(12);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [noticeVariant, setNoticeVariant] = useState<"error" | "success">("success");
+
+  const router = useRouter();
 
   async function load() {
     try {
@@ -71,6 +74,15 @@ export function CountersManager({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessSlug, branchId]);
+
+  /**
+   * Sesudah perubahan: muat ulang daftar di sini DAN render ulang server
+   * (select, metrik, kartu ringkasan) supaya tidak perlu refresh manual.
+   */
+  async function reload() {
+    await load();
+    router.refresh();
+  }
 
   async function submit() {
     if (!draft) return;
@@ -110,7 +122,7 @@ export function CountersManager({
       setNoticeVariant("success");
       setNotice(draft.id ? "Loket diperbarui." : "Loket baru ditambahkan.");
       setDraft(null);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menyimpan loket.");
@@ -135,7 +147,7 @@ export function CountersManager({
       if (!response.ok) throw new Error(result.error?.message ?? "Gagal mengubah status loket.");
       setNoticeVariant("success");
       setNotice(`Loket ${counter.name} ${counter.active ? "dinonaktifkan" : "diaktifkan"}.`);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal mengubah status loket.");
@@ -164,7 +176,7 @@ export function CountersManager({
           ? `Loket ${counter.name} dinonaktifkan karena memiliki riwayat antrean.`
           : `Loket ${counter.name} dihapus.`,
       );
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menghapus loket.");
@@ -189,7 +201,7 @@ export function CountersManager({
     return haystack.includes(normalizedQuery);
   });
 
-  const pagedCounters = visibleCounters.slice(0, visibleCount);
+  const paged = usePaged(counters ? visibleCounters : null);
 
   return (
     <section
@@ -214,7 +226,7 @@ export function CountersManager({
               })
             }
             disabled={!services.length}
-            className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3 text-xs font-semibold text-white hover:bg-[#125648] disabled:opacity-40"
+            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800 disabled:opacity-40"
           >
             <CirclePlus className="size-4" /> Tambah loket
           </button>
@@ -300,7 +312,7 @@ export function CountersManager({
                     }
                     className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium transition ${
                       selected
-                        ? "border-[#176b5b] bg-[#eaf4ef] text-[#176b5b]"
+                        ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
                         : "border-[#e0e6e3] bg-white text-[#687570]"
                     }`}
                   >
@@ -314,7 +326,7 @@ export function CountersManager({
             <button
               type="submit"
               disabled={busy}
-              className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               {busy && <LoaderCircle className="size-3.5 animate-spin" />}
               Simpan
@@ -334,12 +346,12 @@ export function CountersManager({
         {counters === null && (
           <p className="py-6 text-center text-xs text-[#a1aca8]">Memuat loket…</p>
         )}
-        {pagedCounters.map((counter) => (
+        {paged.rows?.map((counter) => (
           <div
             key={counter.id}
             className="flex flex-wrap items-center gap-3 rounded-xl border border-[#eff2f0] p-3"
           >
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#edf5f1] font-mono text-[10px] font-bold text-[#377861]">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-brand-50 font-mono text-[10px] font-bold text-[#377861]">
               {counter.code}
             </span>
             <div className="min-w-0 flex-1">
@@ -412,22 +424,15 @@ export function CountersManager({
           </p>
         )}
         {counters && counters.length > 0 && (
-          <p className="mt-4 text-center text-[10px] text-[#a1aca8]">
-            Menampilkan {pagedCounters.length} dari {visibleCounters.length} loket
-            {visibleCounters.length !== counters.length
-              ? ` (total ${counters.length} di cabang ini)`
-              : ""}
-            .
-          </p>
-        )}
-        {visibleCounters.length > visibleCount && (
-          <button
-            onClick={() => setVisibleCount((value) => value + 12)}
-            className="mx-auto mt-3 flex h-9 items-center gap-2 rounded-lg border border-[#e2e9e5] px-3 text-xs font-semibold text-[#4d5c57] hover:bg-[#f4f7f5]"
-          >
-            <ChevronDown className="size-4" />
-            Muat {Math.min(12, visibleCounters.length - visibleCount)} loket lagi
-          </button>
+          <Pager
+            total={paged.total}
+            page={paged.page}
+            pageCount={paged.pageCount}
+            pageSize={paged.pageSize}
+            unit="loket"
+            onPage={paged.setPage}
+            onPageSize={paged.setPageSize}
+          />
         )}
       </div>
     </section>

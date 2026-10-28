@@ -161,7 +161,7 @@ export function ReportsManager({
           <button
             onClick={() => void load()}
             disabled={loading}
-            className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3 text-xs font-semibold text-white disabled:opacity-50"
+            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white disabled:opacity-50"
           >
             {loading ? <LoaderCircle className="size-3.5 animate-spin" /> : <CalendarRange className="size-3.5" />}
             Terapkan

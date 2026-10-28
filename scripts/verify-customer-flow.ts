@@ -42,8 +42,10 @@ async function main() {
   results.push(`create  -> id=${created.id} phone=${created.phone}`);
 
   const listed = await listCustomers(context, { query: phone });
-  const found = listed.find((row) => row.id === created.id);
-  results.push(`list    -> matches=${listed.length} found=${Boolean(found)} queueCount=${found?.queueCount}`);
+  const found = listed.rows.find((row) => row.id === created.id);
+  results.push(
+    `list    -> total=${listed.total} page=${listed.page}/${listed.pageCount} found=${Boolean(found)} queueCount=${found?.queueCount}`,
+  );
 
   const updated = await updateCustomer(context, created.id, { name: "Uji Pelanggan Diubah" });
   results.push(`update  -> name=${updated.name}`);

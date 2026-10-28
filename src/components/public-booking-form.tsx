@@ -161,7 +161,7 @@ export function PublicBookingForm({
             label: service.name,
             description: service.code,
           }))}
-          className="h-12 w-full rounded-xl border border-[#e1e8e4] bg-white px-3.5 text-sm text-[#344440] outline-none transition focus:border-[#79b39e] focus:ring-4 focus:ring-[#176b5b]/[.08]"
+          className="h-12 w-full rounded-xl border border-[#e1e8e4] bg-white px-3.5 text-sm text-[#344440] outline-none transition focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08]"
         />
         <FieldError id="booking-service-error" message={fieldErrors.serviceId} />
       </label>
@@ -185,7 +185,7 @@ export function PublicBookingForm({
             }}
             aria-invalid={Boolean(fieldErrors.date)}
             aria-describedby={fieldErrors.date ? "booking-date-error" : undefined}
-            className={`h-12 w-full rounded-xl border bg-white pl-10 pr-3 text-sm text-[#344440] outline-none transition focus:border-[#79b39e] focus:ring-4 focus:ring-[#176b5b]/[.08] ${fieldErrors.date ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+            className={`h-12 w-full rounded-xl border bg-white pl-10 pr-3 text-sm text-[#344440] outline-none transition focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.date ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
           />
         </span>
         <FieldError id="booking-date-error" message={fieldErrors.date} />
@@ -220,7 +220,7 @@ export function PublicBookingForm({
                 }}
                 className={`h-10 rounded-lg border text-xs font-semibold transition ${
                   selectedTime === slot.time
-                    ? "border-[#176b5b] bg-[#176b5b] text-white shadow-sm"
+                    ? "border-brand-700 bg-brand-700 text-white shadow-sm"
                     : slot.available
                       ? "border-[#e1e8e4] bg-white text-[#4b5a54] hover:border-[#93c0ab] hover:bg-[#f4f9f6]"
                       : "cursor-not-allowed border-[#eff1f0] bg-[#f7f8f8] text-[#c0c8c4] line-through"
@@ -265,7 +265,7 @@ export function PublicBookingForm({
               autoComplete="name"
               placeholder="Nama lengkap"
               aria-label="Nama lengkap"
-              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-[#176b5b]/[.08] ${fieldErrors.customerName ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerName ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
             />
             <FieldError id="booking-name-error" message={fieldErrors.customerName} />
           </div>
@@ -285,7 +285,7 @@ export function PublicBookingForm({
               autoComplete="tel"
               placeholder="Nomor telepon"
               aria-label="Nomor telepon"
-              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-[#176b5b]/[.08] ${fieldErrors.customerPhone ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerPhone ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
             />
             <FieldError id="booking-phone-error" message={fieldErrors.customerPhone} />
           </div>
@@ -303,7 +303,7 @@ export function PublicBookingForm({
               autoComplete="email"
               placeholder="Email (opsional)"
               aria-label="Email (opsional)"
-              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-[#176b5b]/[.08] ${fieldErrors.customerEmail ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerEmail ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
             />
             <FieldError id="booking-email-error" message={fieldErrors.customerEmail} />
           </div>
@@ -320,7 +320,7 @@ export function PublicBookingForm({
                 setAvailability(null);
                 setAvailabilityAttempt((attempt) => attempt + 1);
               }}
-              className="text-xs font-semibold text-[#176b5b] underline-offset-4 hover:underline"
+              className="text-xs font-semibold text-brand-700 underline-offset-4 hover:underline"
             >
               Coba muat jadwal lagi
             </button>
@@ -330,7 +330,7 @@ export function PublicBookingForm({
       <button
         type="submit"
         disabled={submitting || loadingSlots || !selectedTime}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#176b5b] text-sm font-semibold text-white shadow-[0_5px_12px_rgba(23,107,91,.12)] transition hover:bg-[#125648] disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 text-sm font-semibold text-white shadow-[0_5px_12px_rgba(23,107,91,.12)] transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting ? (
           <>

@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { AccessTokenType, BookingStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
+import { getTheme } from "@/modules/tenancy/theme-service";
 import { requireFeature } from "@/modules/feature/feature-gate";
 import {
   buildThirtyMinuteSlots,
@@ -140,6 +141,7 @@ export async function getBookingConfiguration(token: string, request: Request) {
       return date.toISOString().slice(0, 10);
     })(),
     services,
+    theme: await getTheme(access.businessId),
   };
 }
 

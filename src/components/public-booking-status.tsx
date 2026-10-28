@@ -75,7 +75,7 @@ export function PublicBookingStatus({ token }: { token: string }) {
         <InlineNotice message={error} />
         <Link
           href="/login"
-          className="mt-4 flex h-10 items-center justify-center rounded-xl bg-[#176b5b] px-4 text-sm font-semibold text-white hover:bg-[#125648]"
+          className="mt-4 flex h-10 items-center justify-center rounded-xl bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"
         >
           Kembali ke halaman utama
         </Link>
@@ -105,7 +105,7 @@ export function PublicBookingStatus({ token }: { token: string }) {
 
   return (
     <section className="overflow-hidden rounded-[24px] border border-[#e8eeeb] bg-white shadow-[0_18px_60px_rgba(28,60,47,.08)]">
-      <div className={`px-6 py-7 text-center text-white ${cancelled ? "bg-[#8b6666]" : "bg-[#176b5b]"}`}>
+      <div className={`px-6 py-7 text-center text-white ${cancelled ? "bg-[#8b6666]" : "bg-brand-700"}`}>
         <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-white/15">
           {cancelled ? <Clock3 className="size-6" /> : <CalendarCheck className="size-6" />}
         </div>
@@ -124,7 +124,7 @@ export function PublicBookingStatus({ token }: { token: string }) {
             <p className="text-[10px] font-medium uppercase tracking-[.1em] text-[#779181]">
               Nomor antrean check-in
             </p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight text-[#176b5b]">
+            <p className="mt-1 text-2xl font-semibold tracking-tight text-brand-700">
               {booking.queue.ticketNumber}
             </p>
             <p className="mt-1 text-xs text-[#7b9285]">
@@ -166,7 +166,7 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-start gap-3 rounded-xl border border-[#eff2f0] p-3.5">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#edf5f1] text-[#57836d]">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-[#57836d]">
         <Icon className="size-4" />
       </div>
       <div className="min-w-0">

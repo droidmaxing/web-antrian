@@ -24,7 +24,7 @@ export function ErrorState({
           aria-label="Antrian, kembali ke halaman masuk"
           className="mx-auto flex w-fit items-center gap-2 text-sm font-semibold tracking-tight text-[#24483c]"
         >
-          <span className="flex size-8 items-center justify-center rounded-[10px] bg-[#176b5b] text-sm font-black text-white">
+          <span className="flex size-8 items-center justify-center rounded-[10px] bg-brand-700 text-sm font-black text-white">
             a.
           </span>
           antrian
@@ -53,7 +53,7 @@ export function ErrorState({
             <button
               type="button"
               onClick={onRetry}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#176b5b] px-5 text-sm font-semibold text-white transition hover:bg-[#125648] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#176b5b]/20"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-700/20"
             >
               <RotateCcw className="size-4" />
               Coba lagi
@@ -61,14 +61,14 @@ export function ErrorState({
           )}
           <Link
             href="/login"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#e4ebe7] bg-white px-5 text-sm font-semibold text-[#52615b] transition hover:bg-[#f7faf8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#176b5b]/10"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#e4ebe7] bg-white px-5 text-sm font-semibold text-[#52615b] transition hover:bg-[#f7faf8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-700/10"
           >
             <ArrowLeft className="size-4" />
             Halaman masuk
           </Link>
           <Link
             href="/"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-[#527c68] transition hover:bg-[#f1f7f4] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#176b5b]/10"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-[#527c68] transition hover:bg-[#f1f7f4] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-700/10"
           >
             Beranda <ArrowRight className="size-4" />
           </Link>

@@ -56,13 +56,13 @@ export default async function LoginPage() {
       <section className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-[420px]">
           <div className="mb-12 flex items-center gap-3 text-lg font-semibold tracking-tight text-[#143e36] lg:hidden">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-[#e5f2ee] text-[#176b5b]">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-brand-200 text-brand-700">
               <span className="text-xl font-black">a.</span>
             </div>
             antrian
           </div>
           <div className="mb-9">
-            <p className="mb-3 text-sm font-medium text-[#176b5b]">
+            <p className="mb-3 text-sm font-medium text-brand-700">
               Selamat datang kembali
             </p>
             <h2 className="text-3xl font-semibold tracking-tight text-[#182321]">

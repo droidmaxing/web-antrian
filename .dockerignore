@@ -1,0 +1,6 @@
+# Konteks build: cuma source yang perlu. Menyalin node_modules/.next host bikin build berat
+# dan bisa menimpa node_modules hasil `npm ci` di image (native module beda versi).
+node_modules
+.next
+.git
+.env*

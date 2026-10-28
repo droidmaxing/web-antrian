@@ -15,10 +15,25 @@ const createSchema = z.object({
 export async function GET(request: Request, { params }: RouteContext) {
   try {
     const { businessSlug } = await params;
-    const query = new URL(request.url).searchParams.get("query") ?? undefined;
+    const searchParams = new URL(request.url).searchParams;
     const context = await requireBusinessContext(businessSlug);
-    const customers = await listCustomers(context, { query });
-    return Response.json({ data: customers }, { headers: { "Cache-Control": "no-store" } });
+    const result = await listCustomers(context, {
+      query: searchParams.get("query") ?? undefined,
+      page: Number(searchParams.get("page") ?? 1),
+      pageSize: Number(searchParams.get("pageSize") ?? 10),
+    });
+    return Response.json(
+      {
+        data: result.rows,
+        meta: {
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize,
+          pageCount: result.pageCount,
+        },
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     return errorResponse(error);
   }

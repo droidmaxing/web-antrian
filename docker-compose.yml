@@ -1,44 +1,65 @@
+# web-antrian — manajemen antrean (Next.js + Prisma + MySQL 8)
+#
+# Konvensi seragam semua project di workspace ini:
+#   - app  : port host di-bind ke 0.0.0.0 -> akses dari device lain: http://<IP-host>:3000
+#            Link QR/antrean memakai APP_URL dari .env (isi dengan IP host!)
+#   - mysql: port host di-bind ke 127.0.0.1 -> DB tidak terbuka ke LAN (akses dari luar via SSH tunnel)
+#   - nama container eksplisit <project>-<service> supaya rapi di `docker compose ps`
+#   - password/secret HANYA di .env (di-gitignore); compose memakai ${VAR:?...}, template di .env.example
+#   - volume berisi data asli -> JANGAN `docker compose down -v`
+#
+# Jalankan : docker compose up -d --build
+# Status   : docker compose ps && curl -fsS http://127.0.0.1:3000
+# Berhenti : docker compose down
+
 services:
   mysql:
     image: mysql:8.0
     container_name: web-antrian-mysql
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: queue_management
-      MYSQL_USER: queue_user
-      MYSQL_PASSWORD: queue_pass
-      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Salin .env.example ke .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-queue_management}
+      MYSQL_USER: ${MYSQL_USER:-queue_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Salin .env.example ke .env}
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306"
     volumes:
       - web_antrian_db:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
-      timeout: 3s
-      retries: 10
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # NEXT_PUBLIC_* di-inline ke bundle klien saat build -> harus dikirim sebagai build arg.
+      args:
+        NEXT_PUBLIC_APP_URL: ${APP_URL:-}
     image: web-antrian-app
     container_name: web-antrian-app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "0.0.0.0:3000:3000"
     environment:
-      DATABASE_URL: mysql://queue_user:${MYSQL_PASSWORD:-queue_pass}@mysql:3306/${MYSQL_DATABASE:-queue_management}
-      AUTH_SECRET: ${AUTH_SECRET:-local-dev-only-secret-change-before-deploy}
+      DATABASE_URL: mysql://${MYSQL_USER:-queue_user}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-queue_management}
+      AUTH_SECRET: ${AUTH_SECRET:?Salin .env.example ke .env}
       AUTH_TRUST_HOST: "true"
-      # Base URL must come from the environment. Leaving these empty makes the
-      # app derive the origin from forwarded request headers, so a deployment
-      # never inherits a localhost origin by accident.
+      HOST: "0.0.0.0"
+      # Base URL publik. Isi dengan alamat yang dipakai klien (IP host kalau diakses dari
+      # device lain di LAN / domain kalau produksi). Kosong = diturunkan dari header request.
       APP_URL: ${APP_URL:-}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-}
+      NEXT_PUBLIC_APP_URL: ${APP_URL:-}
       APP_PROTOCOL: ${APP_PROTOCOL:-http}
     depends_on:
       mysql:
         condition: service_healthy
-    command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run db:seed && npm run build && npm start"
+    # `next build` sudah jalan di Dockerfile; jangan diulang di sini (menambah menit ke tiap start).
+    command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run db:seed && npm start"
 
 volumes:
   web_antrian_db:

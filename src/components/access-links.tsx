@@ -114,7 +114,7 @@ export function AccessLinks({
           disabled={!qrEnabled || busy !== null}
           className="flex items-center gap-3 rounded-xl border border-[#e9edeb] p-4 text-left transition hover:border-[#b8d5c7] hover:bg-[#fbfdfb] disabled:cursor-not-allowed disabled:opacity-45"
         >
-          <span className="flex size-10 items-center justify-center rounded-xl bg-[#edf5f1] text-[#34775f]">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-brand-50 text-[#34775f]">
             {busy === "qr" ? <LoaderCircle className="size-5 animate-spin" /> : <QrCode className="size-5" />}
           </span>
           <span>

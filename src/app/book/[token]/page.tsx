@@ -1,9 +1,11 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { PublicBookingForm } from "@/components/public-booking-form";
+import { BrandLogo } from "@/components/brand-logo";
 import { getBookingConfiguration } from "@/modules/booking/application/booking-service";
 import { AppError } from "@/modules/shared/errors";
 import { requestFromHeaders } from "@/lib/app-url";
+import { brandVars } from "@/modules/tenancy/brand";
 
 type PageProps = { params: Promise<{ token: string }> };
 
@@ -23,16 +25,19 @@ export default async function PublicBookingPage({ params }: PageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f3f7f5] px-4 py-6 sm:px-6 sm:py-10">
+    <main
+      className="min-h-screen bg-[#f3f7f5] px-4 py-6 sm:px-6 sm:py-10"
+      style={brandVars(configuration.theme.primaryColor)}
+    >
       <div className="mx-auto max-w-xl">
         <div className="mb-5 flex items-center justify-center gap-2 text-sm font-semibold tracking-tight text-[#24483c]">
-          <span className="flex size-8 items-center justify-center rounded-[10px] bg-[#176b5b] text-sm font-black text-white">
-            a.
+          <span className="flex size-8 items-center justify-center overflow-hidden rounded-[10px] bg-brand-700 text-sm font-black text-white">
+            <BrandLogo theme={configuration.theme} className="text-sm font-black" />
           </span>
           booking online
         </div>
         <section className="overflow-hidden rounded-[24px] border border-[#e8eeeb] bg-white shadow-[0_18px_60px_rgba(28,60,47,.08)]">
-          <header className="relative overflow-hidden bg-[#176b5b] px-5 py-6 text-white sm:px-7 sm:py-7">
+          <header className="relative overflow-hidden bg-brand-700 px-5 py-6 text-white sm:px-7 sm:py-7">
             <div className="absolute -right-12 -top-20 size-52 rounded-full border border-white/10" />
             <div className="relative">
               <p className="flex items-center gap-2 text-[11px] font-medium text-white/70">

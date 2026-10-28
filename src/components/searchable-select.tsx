@@ -163,7 +163,7 @@ export function SearchableSelect({
                   )}
                 </span>
                 {option.value === value && (
-                  <Check className="size-4 shrink-0 text-[#176b5b]" />
+                  <Check className="size-4 shrink-0 text-brand-700" />
                 )}
               </button>
             ))

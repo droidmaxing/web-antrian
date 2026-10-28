@@ -100,7 +100,7 @@ export function FeatureSettings({
               key={feature.key}
               className="flex items-center gap-3 rounded-xl border border-[#eff2f0] p-3"
             >
-              <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${active ? "bg-[#eaf5ef] text-[#43886d]" : "bg-[#f3f5f4] text-[#98a39f]"}`}>
+              <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${active ? "bg-brand-50 text-[#43886d]" : "bg-[#f3f5f4] text-[#98a39f]"}`}>
                 {active ? <Check className="size-4" /> : <ToggleLeft className="size-4" />}
               </div>
               <div className="min-w-0 flex-1">
@@ -116,7 +116,7 @@ export function FeatureSettings({
                 aria-label={`${active ? "Nonaktifkan" : "Aktifkan"} ${feature.title}`}
                 disabled={saving !== null}
                 onClick={() => void toggle(feature.key)}
-                className={`relative h-5 w-9 shrink-0 rounded-full transition disabled:opacity-50 ${active ? "bg-[#176b5b]" : "bg-[#dfe5e2]"}`}
+                className={`relative h-5 w-9 shrink-0 rounded-full transition disabled:opacity-50 ${active ? "bg-brand-700" : "bg-[#dfe5e2]"}`}
               >
                 {saving === feature.key ? (
                   <LoaderCircle className="absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 animate-spin text-white" />

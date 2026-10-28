@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Building2, CirclePlus, LoaderCircle, Pencil, Power, X } from "lucide-react";
+import { Pager, usePaged } from "@/components/pagination";
 import { InlineNotice } from "@/components/inline-notice";
 
 type BranchRow = {
@@ -54,10 +56,13 @@ export function BranchesManager({
   currentBranchId: string;
 }) {
   const [branches, setBranches] = useState<BranchRow[] | null>(null);
+  const paged = usePaged(branches);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [noticeVariant, setNoticeVariant] = useState<"error" | "success">("success");
+
+  const router = useRouter();
 
   async function load() {
     try {
@@ -86,6 +91,15 @@ export function BranchesManager({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessSlug]);
 
+  /**
+   * Sesudah perubahan: muat ulang daftar di sini DAN render ulang server
+   * (select, metrik, kartu ringkasan) supaya tidak perlu refresh manual.
+   */
+  async function reload() {
+    await load();
+    router.refresh();
+  }
+
   async function submit() {
     if (!draft) return;
     setBusy(true);
@@ -112,7 +126,7 @@ export function BranchesManager({
       setNoticeVariant("success");
       setNotice(draft.id ? "Cabang diperbarui." : `Cabang ${payload.name} ditambahkan.`);
       setDraft(null);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menyimpan cabang.");
@@ -137,7 +151,7 @@ export function BranchesManager({
       if (!response.ok) throw new Error(result.error?.message ?? "Gagal mengubah status cabang.");
       setNoticeVariant("success");
       setNotice(branch.active ? `${branch.name} dinonaktifkan.` : `${branch.name} diaktifkan kembali.`);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal mengubah status cabang.");
@@ -180,7 +194,7 @@ export function BranchesManager({
               setNotice("");
               setDraft({ ...emptyDraft });
             }}
-            className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3 text-xs font-semibold text-white hover:bg-[#125648]"
+            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"
           >
             <CirclePlus className="size-3.5" /> Cabang baru
           </button>
@@ -265,7 +279,7 @@ export function BranchesManager({
             <button
               type="submit"
               disabled={busy}
-              className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3 text-xs font-semibold text-white disabled:opacity-50"
+              className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white disabled:opacity-50"
             >
               {busy && <LoaderCircle className="size-3.5 animate-spin" />}
               {draft.id ? "Simpan perubahan" : "Tambah cabang"}
@@ -287,16 +301,16 @@ export function BranchesManager({
         </div>
       ) : branches.length ? (
         <div className="mt-4 divide-y divide-[#f2f5f3] overflow-hidden rounded-xl border border-[#eff2f0]">
-          {branches.map((branch) => (
+          {paged.rows?.map((branch) => (
             <div key={branch.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <span className="flex size-9 items-center justify-center rounded-[10px] bg-[#edf5f1] text-[10px] font-bold text-[#377861]">
+              <span className="flex size-9 items-center justify-center rounded-[10px] bg-brand-50 text-[10px] font-bold text-[#377861]">
                 {branch.ticketPrefix}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 text-xs font-semibold text-[#344440]">
                   {branch.name}
                   {branch.id === currentBranchId && (
-                    <span className="rounded-full bg-[#edf5f1] px-2 py-0.5 text-[9px] font-medium text-[#377861]">
+                    <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[9px] font-medium text-[#377861]">
                       Sedang dibuka
                     </span>
                   )}
@@ -343,6 +357,18 @@ export function BranchesManager({
           Belum ada cabang. Tambahkan cabang pertama untuk mulai melayani antrean.
         </p>
       )}
+
+      <div className="mt-3">
+        <Pager
+          total={paged.total}
+          page={paged.page}
+          pageCount={paged.pageCount}
+          pageSize={paged.pageSize}
+          unit="cabang"
+          onPage={paged.setPage}
+          onPageSize={paged.setPageSize}
+        />
+      </div>
 
       {!editable && (
         <p className="mt-4 text-[10px] leading-5 text-[#a1aca8]">

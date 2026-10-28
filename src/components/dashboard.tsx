@@ -7,6 +7,7 @@ import {
   BarChart3,
   Bell,
   Building2,
+  BookOpen,
   CalendarDays,
   Check,
   CheckCheck,
@@ -32,12 +33,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { InlineNotice } from "@/components/inline-notice";
+import { Pager, usePaged } from "@/components/pagination";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FeatureKey, MembershipRole, QueueStatus } from "@prisma/client";
-import { FeatureSettings } from "@/components/feature-settings";
-import { AccessLinks } from "@/components/access-links";
+import { BrandLogo } from "@/components/brand-logo";
+import { capabilitiesFor, roleLabel } from "@/modules/tenancy/access";
+import { brandVars, type BrandTheme } from "@/modules/tenancy/brand";
 import { ServicesManager } from "@/components/manage/services-manager";
 import { CountersManager } from "@/components/manage/counters-manager";
 import { TeamManager } from "@/components/manage/team-manager";
@@ -92,6 +95,7 @@ type BranchData = {
 type DashboardProps = {
   businessName: string;
   businessSlug: string;
+  theme: BrandTheme;
   branch: BranchData;
   branches: { id: string; name: string }[];
   counters: { id: string; name: string; code: string; branchId: string }[];
@@ -110,8 +114,6 @@ type DashboardProps = {
   };
   queues: QueueRow[];
 };
-
-const VISIBLE_QUEUE_LIMIT = 8;
 
 /**
  * The dashboard only ever loads today's queues, so this filter narrows the
@@ -156,6 +158,7 @@ function shortName(name: string) {
 export function Dashboard({
   businessName,
   businessSlug,
+  theme,
   branch,
   branches,
   counters: counterOptions,
@@ -171,9 +174,13 @@ export function Dashboard({
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [noticeVariant, setNoticeVariant] = useState<"error" | "success">("success");
-  const canOperate = role === "ADMIN" || role === "SUPER_ADMIN" || role === "OWNER";
-  const canConfigure = role === "SUPER_ADMIN" || role === "OWNER";
-  const canManageTeam = role === "OWNER" || role === "SUPER_ADMIN";
+  // Capabilities come from modules/tenancy/access so the interface cannot drift
+  // from what the API's requireRole checks allow.
+  const capabilities = capabilitiesFor(role);
+  const canOperate = capabilities.operateQueue;
+  const canConfigure = capabilities.configureBusiness;
+  const canManageTeam = capabilities.manageTeam;
+  const canViewReports = capabilities.viewReports;
   const isOwner = role === "OWNER";
   const analyticsEnabled =
     enabledFeatures.includes("ANALYTICS") &&
@@ -186,7 +193,6 @@ export function Dashboard({
   const [statusFilter, setStatusFilter] = useState<"ALL" | "LIVE" | QueueStatus>("LIVE");
   const [counterFilter, setCounterFilter] = useState<string>("ALL");
   const [audioStatus, setAudioStatus] = useState<AudioPlayerStatus>("idle");
-  const [showAllQueues, setShowAllQueues] = useState(false);
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("today");
   // Captured from the click that selects a window: keeps render pure (no
   // Date.now() during render) while still filtering relative to "now".
@@ -378,9 +384,8 @@ export function Dashboard({
       (queue.counterName ?? "").toLowerCase().includes(normalizedQuery)
     );
   });
-  const displayedQueues = showAllQueues
-    ? visibleQueues
-    : visibleQueues.slice(0, VISIBLE_QUEUE_LIMIT);
+  const paged = usePaged(visibleQueues);
+  const displayedQueues = paged.rows ?? [];
 
   // Real operational alerts derived from live queue state — no placeholder text.
   const alerts: { id: string; title: string; detail: string }[] = [];
@@ -437,11 +442,14 @@ export function Dashboard({
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#f6f8f7] text-[#182321]">
+    <main
+      className="min-h-screen bg-[#f6f8f7] text-[#182321]"
+      style={brandVars(theme.primaryColor)}
+    >
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-[250px] flex-col border-r border-[#e9edeb] bg-white xl:flex">
         <div className="flex shrink-0 items-center gap-3 border-b border-[#f0f3f1] px-4 py-5">
-          <div className="flex size-10 items-center justify-center rounded-[13px] bg-[#176b5b] text-white shadow-[0_4px_10px_rgba(23,107,91,.2)]">
-            <span className="text-lg font-black">a.</span>
+          <div className="flex size-10 items-center justify-center overflow-hidden rounded-[13px] bg-brand-700 text-white shadow-[0_4px_10px_rgba(23,107,91,.2)]">
+            <BrandLogo theme={theme} />
           </div>
           <span className="text-lg font-semibold tracking-[-.04em]">antrian</span>
           <button
@@ -462,7 +470,7 @@ export function Dashboard({
         <div className="dashboard-sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-5">
         <details className="group">
           <summary className="flex w-full cursor-pointer list-none items-center gap-3 rounded-xl border border-[#e9edeb] p-3 text-left transition hover:border-[#cddbd5] [&::-webkit-details-marker]:hidden">
-            <div className="flex size-9 items-center justify-center rounded-[10px] bg-[#edf5f1] text-[#176b5b]">
+            <div className="flex size-9 items-center justify-center rounded-[10px] bg-brand-50 text-brand-700">
               <span className="text-xs font-bold">{shortName(businessName)}</span>
             </div>
             <span className="min-w-0 flex-1">
@@ -481,7 +489,7 @@ export function Dashboard({
                 href={`/dashboard/${businessSlug}?branch=${encodeURIComponent(option.id)}`}
                 className={`block rounded-lg px-2 py-1.5 text-xs ${
                   option.id === branch.id
-                    ? "bg-[#edf5f1] font-semibold text-[#176b5b]"
+                    ? "bg-brand-50 font-semibold text-brand-700"
                     : "font-medium text-[#56635f] hover:bg-[#f6f8f7]"
                 }`}
               >
@@ -491,7 +499,7 @@ export function Dashboard({
             {canConfigure && (
               <a
                 href="#branches"
-                className="mt-1 block rounded-lg border-t border-[#eff2f0] px-2 py-1.5 text-xs font-semibold text-[#176b5b] hover:bg-[#f6f8f7]"
+                className="mt-1 block rounded-lg border-t border-[#eff2f0] px-2 py-1.5 text-xs font-semibold text-brand-700 hover:bg-[#f6f8f7]"
               >
                 Kelola cabang
               </a>
@@ -518,11 +526,28 @@ export function Dashboard({
           <NavLink href="#services-manage" label="Layanan" icon={Layers} />
           <NavLink href="#counters-manage" label="Loket" icon={MonitorCog} />
           <NavLink href="#customers-manage" label="Pelanggan" icon={Contact2} />
-          <NavLink href="#displays-manage" label="Layar TV" icon={Tv} />
+          {canConfigure && <NavLink href="#displays-manage" label="Layar TV" icon={Tv} />}
           <NavLink href="#branches" label="Cabang" icon={Building2} />
           {canManageTeam && <NavLink href="#team" label="Tim & akses" icon={Users2} />}
-          <NavLink href="#reports" label="Laporan" icon={BarChart3} />
-          {canConfigure && <NavLink href="#settings" label="Pengaturan" icon={Settings2} />}
+          {canViewReports && <NavLink href="#reports" label="Laporan" icon={BarChart3} />}
+        </nav>
+
+        <p className="mb-2 mt-8 px-3 text-[10px] font-semibold uppercase tracking-[.16em] text-[#9aa5a1]">
+          Bantuan & pengaturan
+        </p>
+        <nav className="space-y-1">
+          <NavLink
+            href={`/dashboard/${businessSlug}/panduan`}
+            label="Pelajari sistem"
+            icon={BookOpen}
+          />
+          {canConfigure && (
+            <NavLink
+              href={`/dashboard/${businessSlug}/pengaturan`}
+              label="Pengaturan"
+              icon={Settings2}
+            />
+          )}
         </nav>
         {!analyticsEnabled && (canConfigure || isOwner) && (
           <p className="mx-3 mt-2 text-[11px] leading-4 text-[#9aa5a1]">
@@ -531,7 +556,7 @@ export function Dashboard({
         )}
 
         <div className="mt-6 rounded-2xl bg-[#edf6f2] p-4">
-          <div className="mb-3 flex size-9 items-center justify-center rounded-xl bg-white text-[#176b5b]">
+          <div className="mb-3 flex size-9 items-center justify-center rounded-xl bg-white text-brand-700">
             <Sparkles className="size-[17px]" />
           </div>
           <p className="text-sm font-semibold">Layanan lebih rapi</p>
@@ -539,11 +564,19 @@ export function Dashboard({
             Satu tempat untuk mengelola antrean dan pelayanan.
           </p>
           <a
-            href="#settings"
-            className="mt-3 inline-block text-xs font-semibold text-[#176b5b] hover:underline"
+            href={`/dashboard/${businessSlug}/panduan`}
+            className="mt-3 inline-block text-xs font-semibold text-brand-700 hover:underline"
           >
             Pelajari sistem <span aria-hidden="true">↗</span>
           </a>
+          {canConfigure && (
+            <a
+              href={`/dashboard/${businessSlug}/pengaturan`}
+              className="mt-2 block text-xs font-semibold text-brand-700 hover:underline"
+            >
+              Pengaturan workspace <span aria-hidden="true">↗</span>
+            </a>
+          )}
         </div>
         </div>
 
@@ -571,7 +604,7 @@ export function Dashboard({
       <section className="xl:pl-[250px]">
         <header className="sticky top-0 z-10 flex h-[72px] items-center justify-between border-b border-[#e9edeb] bg-white/95 px-5 backdrop-blur md:px-9">
           <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-[#176b5b] text-sm font-black text-white xl:hidden">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-brand-700 text-sm font-black text-white xl:hidden">
               a.
             </div>
             <div className="hidden items-center gap-2 text-sm text-[#9aa5a1] sm:flex">
@@ -674,17 +707,27 @@ export function Dashboard({
                 </div>
                 <div className="my-1 h-px bg-[#eef1f0]" />
                 <a
-                  href="#settings"
+                  href={`/dashboard/${businessSlug}/panduan`}
                   className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#4d5a56] hover:bg-[#f6f8f7]"
                 >
-                  Pengaturan akun
+                  Pelajari sistem
                 </a>
-                <a
-                  href="#team"
-                  className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#4d5a56] hover:bg-[#f6f8f7]"
-                >
-                  Tim &amp; akses
-                </a>
+                {canConfigure && (
+                  <a
+                    href={`/dashboard/${businessSlug}/pengaturan`}
+                    className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#4d5a56] hover:bg-[#f6f8f7]"
+                  >
+                    Pengaturan
+                  </a>
+                )}
+                {canManageTeam && (
+                  <a
+                    href="#team"
+                    className="block rounded-lg px-2.5 py-2 text-xs font-medium text-[#4d5a56] hover:bg-[#f6f8f7]"
+                  >
+                    Tim &amp; akses
+                  </a>
+                )}
                 <div className="my-1 h-px bg-[#eef1f0]" />
                 <button
                   type="button"
@@ -710,17 +753,20 @@ export function Dashboard({
           )}
           <MobileNavLink href="#services-manage" label="Layanan" />
           <MobileNavLink href="#customers-manage" label="Pelanggan" />
-          <MobileNavLink href="#displays-manage" label="Layar TV" />
+          {canConfigure && <MobileNavLink href="#displays-manage" label="Layar TV" />}
           <MobileNavLink href="#branches" label="Cabang" />
           {canManageTeam && <MobileNavLink href="#team" label="Tim" />}
-          <MobileNavLink href="#reports" label="Laporan" />
-          {canConfigure && <MobileNavLink href="#settings" label="Pengaturan" />}
+          {canViewReports && <MobileNavLink href="#reports" label="Laporan" />}
+          <MobileNavLink href={`/dashboard/${businessSlug}/panduan`} label="Panduan" />
+          {canConfigure && (
+            <MobileNavLink href={`/dashboard/${businessSlug}/pengaturan`} label="Pengaturan" />
+          )}
         </nav>
 
         <div className="mx-auto max-w-[1440px] px-5 py-7 md:px-9 md:py-9">
           <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
-              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-[#176b5b]">
+              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-brand-700">
                 <span className="size-1.5 rounded-full bg-[#42a184]" />
                 {branches.length > 1 ? (
                   <label className="relative flex items-center">
@@ -732,7 +778,7 @@ export function Dashboard({
                           `/dashboard/${businessSlug}?branch=${encodeURIComponent(event.target.value)}`,
                         )
                       }
-                      className="cursor-pointer appearance-none rounded-md bg-transparent py-0.5 pr-5 text-xs font-medium text-[#176b5b] outline-none hover:bg-[#edf5f1]"
+                      className="cursor-pointer appearance-none rounded-md bg-transparent py-0.5 pr-5 text-xs font-medium text-brand-700 outline-none hover:bg-brand-50"
                     >
                       {branches.map((option) => (
                         <option key={option.id} value={option.id}>
@@ -783,7 +829,7 @@ export function Dashboard({
               {canOperate && (
                 <a
                   href="#queue"
-                  className="flex h-10 items-center gap-2 rounded-lg bg-[#176b5b] px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#125648]"
+                  className="flex h-10 items-center gap-2 rounded-lg bg-brand-700 px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-800"
                 >
                   <Plus className="size-4" />
                   <span className="hidden sm:inline">Kelola antrean</span>
@@ -999,7 +1045,7 @@ export function Dashboard({
                               ? "Tidak ada antrean menunggu untuk layanan loket ini."
                               : `Panggil antrean berikutnya (${counter.waitingForCounter} menunggu).`
                           }
-                          className="mt-1 text-[10px] font-semibold text-[#176b5b] hover:underline disabled:opacity-40"
+                          className="mt-1 text-[10px] font-semibold text-brand-700 hover:underline disabled:opacity-40"
                         >
                           {busyAction === `call-${counter.id}`
                             ? "Memanggil..."
@@ -1121,20 +1167,16 @@ export function Dashboard({
                   <EmptyState title="Belum ada antrean hari ini" description="Antrean baru akan tampil di sini setelah nomor diterbitkan." />
                 </div>
               )}
-              <div className="flex items-center justify-between border-t border-[#eff2f0] px-5 py-3.5 text-xs text-[#929e99] md:px-6">
-                <span>
-                  Menampilkan {displayedQueues.length} dari {visibleQueues.length} antrean
-                  {visibleQueues.length !== queues.length ? ` (total ${queues.length})` : ""}
-                </span>
-                {visibleQueues.length > VISIBLE_QUEUE_LIMIT && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllQueues((current) => !current)}
-                    className="font-medium text-[#176b5b] hover:underline"
-                  >
-                    {showAllQueues ? "Ringkas" : `Lihat semua (${visibleQueues.length})`}
-                  </button>
-                )}
+              <div className="px-5 md:px-6">
+                <Pager
+                  total={paged.total}
+                  page={paged.page}
+                  pageCount={paged.pageCount}
+                  pageSize={paged.pageSize}
+                  unit="antrean"
+                  onPage={paged.setPage}
+                  onPageSize={paged.setPageSize}
+                />
               </div>
             </section>
 
@@ -1161,7 +1203,7 @@ export function Dashboard({
                       </p>
                       <a
                         href="#reports"
-                        className="mt-2 block text-[11px] font-semibold text-[#176b5b] hover:underline"
+                        className="mt-2 block text-[11px] font-semibold text-brand-700 hover:underline"
                       >
                         Lihat laporan lengkap
                       </a>
@@ -1194,7 +1236,7 @@ export function Dashboard({
               </section>
               )}
               {analyticsEnabled && (
-              <section id="analytics" className="rounded-2xl bg-[#176b5b] p-5 text-white shadow-[0_8px_20px_rgba(23,107,91,.12)] md:p-6">
+              <section id="analytics" className="rounded-2xl bg-brand-700 p-5 text-white shadow-[0_8px_20px_rgba(23,107,91,.12)] md:p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex size-9 items-center justify-center rounded-xl bg-white/15">
                     <Sparkles className="size-[17px]" />
@@ -1238,13 +1280,15 @@ export function Dashboard({
           <div className="mt-5">
             <CustomersManager businessSlug={businessSlug} canManage={canConfigure} />
           </div>
-          <div className="mt-5">
-            <DisplaysManager
-              businessSlug={businessSlug}
-              counters={counterOptions}
-              canManage={canConfigure}
-            />
-          </div>
+          {canConfigure && (
+            <div className="mt-5">
+              <DisplaysManager
+                businessSlug={businessSlug}
+                counters={counterOptions}
+                canManage={canConfigure}
+              />
+            </div>
+          )}
           <div className="mt-5">
             <BranchesManager
               businessSlug={businessSlug}
@@ -1263,13 +1307,15 @@ export function Dashboard({
               />
             </div>
           )}
-          <div className="mt-5">
-            <ReportsManager
-              businessSlug={businessSlug}
-              branchId={branch.id}
-              canView={canManageTeam}
-            />
-          </div>
+          {canViewReports && (
+            <div className="mt-5">
+              <ReportsManager
+                businessSlug={businessSlug}
+                branchId={branch.id}
+                canView={canManageTeam}
+              />
+            </div>
+          )}
           {enabledFeatures.includes("BOOKING") && (
             <div className="mt-5">
               <BookingManagement
@@ -1281,19 +1327,24 @@ export function Dashboard({
             </div>
           )}
           {canConfigure && (
-            <div className="mt-5 grid gap-5 2xl:grid-cols-2">
-              <FeatureSettings
-                businessSlug={businessSlug}
-                enabledFeatures={enabledFeatures}
-              />
-              <AccessLinks
-                businessSlug={businessSlug}
-                branchId={branch.id}
-                qrEnabled={enabledFeatures.includes("QR_QUEUE")}
-                displayEnabled={enabledFeatures.includes("TV_DISPLAY")}
-                bookingEnabled={enabledFeatures.includes("BOOKING")}
-              />
-            </div>
+            <a
+              href={`/dashboard/${businessSlug}/pengaturan`}
+              className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl border border-[#e9edeb] bg-white p-5 shadow-[0_2px_8px_rgba(25,48,40,.025)] transition hover:border-[#cddbd5] md:p-6"
+            >
+              <span className="flex size-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                <Settings2 className="size-[18px]" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">Pengaturan workspace</span>
+                <span className="mt-0.5 block text-xs text-[#75827f]">
+                  Warna tema, logo, fitur bisnis, dan tautan pelanggan kini ada di halaman
+                  tersendiri agar dashboard tetap ringkas.
+                </span>
+              </span>
+              <span className="text-xs font-semibold text-brand-700">
+                Buka pengaturan <span aria-hidden="true">↗</span>
+              </span>
+            </a>
           )}
           <footer className="mt-8 flex flex-col justify-between gap-2 border-t border-[#e8ecea] py-5 text-[11px] text-[#a0aaa6] sm:flex-row">
             <span>© 2026 Antrian Management System</span>
@@ -1314,7 +1365,7 @@ function MobileNavLink({ href, label }: { href: string; label: string }) {
   return (
     <a
       href={href}
-      className="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-[#718079] transition hover:bg-[#edf5f1] hover:text-[#176b5b]"
+      className="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-[#718079] transition hover:bg-brand-50 hover:text-brand-700"
     >
       {label}
     </a>
@@ -1340,7 +1391,7 @@ function NavLink({
     <a
       href={disabled ? undefined : href}
       aria-disabled={disabled}
-      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] transition ${active ? "bg-[#edf5f1] font-semibold text-[#176b5b]" : "text-[#75827f] hover:bg-[#f7f9f8] hover:text-[#344440]"} ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
+      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] transition ${active ? "bg-brand-50 font-semibold text-brand-700" : "text-[#75827f] hover:bg-[#f7f9f8] hover:text-[#344440]"} ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
     >
       <Icon className="size-[17px]" />
       <span className="flex-1">{label}</span>
@@ -1369,7 +1420,7 @@ function MetricCard({
   trend: string;
 }) {
   const tones = {
-    green: "bg-[#eaf5ef] text-[#43886d]",
+    green: "bg-brand-50 text-[#43886d]",
     amber: "bg-[#fff5e7] text-[#c68a33]",
     blue: "bg-[#edf2fc] text-[#6889c5]",
     violet: "bg-[#f3effb] text-[#8f72be]",
@@ -1443,7 +1494,7 @@ function QueueActivityChart({
     <div className="mt-5">
       <div className="mb-2 flex items-center gap-2">
         <span className="text-2xl font-semibold tracking-[-.04em]">{queues.length}</span>
-        <span className="rounded-full bg-[#eaf5ef] px-2 py-1 text-[10px] font-medium text-[#43886d]">
+        <span className="rounded-full bg-brand-50 px-2 py-1 text-[10px] font-medium text-[#43886d]">
           <ArrowUpRight className="mr-0.5 inline size-3" /> antrean
         </span>
       </div>
@@ -1462,7 +1513,7 @@ function QueueActivityChart({
                   <span className="mb-1.5 text-[9px] font-medium text-[#78857f]">{count}</span>
                 )}
                 <div
-                  className={`w-full max-w-[34px] rounded-t-[5px] transition-all ${index === 4 ? "bg-[#176b5b]" : count ? "bg-[#9dccb5]" : "bg-[#ecf1ee]"}`}
+                  className={`w-full max-w-[34px] rounded-t-[5px] transition-all ${index === 4 ? "bg-brand-700" : count ? "bg-[#9dccb5]" : "bg-[#ecf1ee]"}`}
                   style={{ height: `${height}px` }}
                 />
               </div>
@@ -1524,7 +1575,7 @@ function QueueItem({
     <article className="flex flex-col gap-3 px-5 py-3.5 transition hover:bg-[#fcfdfc] md:grid md:grid-cols-[1.2fr_1fr_1.1fr_.8fr_1fr] md:items-center md:gap-4 md:px-6">
       <div className="flex items-center justify-between md:justify-start md:gap-2.5">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-9 items-center justify-center rounded-[10px] bg-[#edf5f1] text-[10px] font-bold text-[#377861]">
+          <div className="flex size-9 items-center justify-center rounded-[10px] bg-brand-50 text-[10px] font-bold text-[#377861]">
             {shortName(queue.customerName)}
           </div>
           <div>
@@ -1553,7 +1604,7 @@ function QueueItem({
               key={action}
               onClick={() => onAction(queue.id, action)}
               disabled={busyAction === `${action}-${queue.id}`}
-              className={`rounded-lg px-2 py-1.5 text-[10px] font-semibold transition disabled:opacity-50 ${action === "complete" || action === "start" ? "bg-[#176b5b] text-white hover:bg-[#125648]" : "bg-[#f4f7f5] text-[#687570] hover:bg-[#eaf0ed]"}`}
+              className={`rounded-lg px-2 py-1.5 text-[10px] font-semibold transition disabled:opacity-50 ${action === "complete" || action === "start" ? "bg-brand-700 text-white hover:bg-brand-800" : "bg-[#f4f7f5] text-[#687570] hover:bg-[#eaf0ed]"}`}
             >
               {busyAction === `${action}-${queue.id}`
                 ? "..."
@@ -1600,20 +1651,11 @@ function EmptyState({
 }) {
   return (
     <div className="rounded-xl border border-dashed border-[#e2e9e5] bg-[#fbfcfb] px-4 py-7 text-center">
-      <div className="mx-auto flex size-9 items-center justify-center rounded-xl bg-[#eef5f1] text-[#538a73]">
+      <div className="mx-auto flex size-9 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
         <Users2 className="size-4" />
       </div>
       <p className="mt-3 text-xs font-semibold text-[#46544f]">{title}</p>
       <p className="mt-1 text-[11px] text-[#98a39f]">{description}</p>
     </div>
   );
-}
-
-function roleLabel(role: MembershipRole) {
-  const labels: Record<MembershipRole, string> = {
-    OWNER: "Owner",
-    SUPER_ADMIN: "Super Admin",
-    ADMIN: "Admin Operasional",
-  };
-  return labels[role];
 }

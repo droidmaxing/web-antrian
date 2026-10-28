@@ -103,7 +103,7 @@ export function PublicQueueForm({
             label: service.name,
             description: `${service.code} · ±${service.averageMinutes} menit`,
           }))}
-          className="h-12 w-full rounded-xl border border-[#e1e8e4] bg-white px-3.5 text-sm text-[#344440] outline-none focus:border-[#79b39e] focus:ring-4 focus:ring-[#176b5b]/[.08]"
+          className="h-12 w-full rounded-xl border border-[#e1e8e4] bg-white px-3.5 text-sm text-[#344440] outline-none focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08]"
         />
         <FieldError id="queue-service-error" message={fieldErrors.serviceId} />
       </label>
@@ -124,7 +124,7 @@ export function PublicQueueForm({
           aria-describedby={fieldErrors.customerName ? "queue-name-error" : undefined}
           autoComplete="name"
           placeholder="Masukkan nama lengkap"
-          className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-[#176b5b]/[.08] ${fieldErrors.customerName ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+          className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerName ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
         />
         <FieldError id="queue-name-error" message={fieldErrors.customerName} />
       </label>
@@ -144,14 +144,14 @@ export function PublicQueueForm({
           aria-describedby={fieldErrors.customerPhone ? "queue-phone-error" : undefined}
           autoComplete="tel"
           placeholder="+62 812 3456 7890"
-          className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-[#176b5b]/[.08] ${fieldErrors.customerPhone ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+          className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerPhone ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
         />
         <FieldError id="queue-phone-error" message={fieldErrors.customerPhone} />
       </label>
       {selectedService && (
         <div className="flex items-center justify-between rounded-xl bg-[#f1f7f4] px-4 py-3">
           <span className="text-xs text-[#75827f]">Estimasi layanan</span>
-          <span className="text-xs font-semibold text-[#176b5b]">
+          <span className="text-xs font-semibold text-brand-700">
             ±{selectedService.averageMinutes} menit
           </span>
         </div>
@@ -162,7 +162,7 @@ export function PublicQueueForm({
       <button
         type="submit"
         disabled={loading || !serviceId}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#176b5b] text-sm font-semibold text-white transition hover:bg-[#125648] disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? (
           <>

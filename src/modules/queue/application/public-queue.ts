@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { AccessTokenType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
+import { getTheme } from "@/modules/tenancy/theme-service";
 import { clientAddress, enforceRateLimit } from "@/modules/shared/rate-limit";
 
 export function hashAccessToken(token: string) {
@@ -47,6 +48,7 @@ export async function getQrConfiguration(token: string, request: Request) {
     business: access.business.name,
     branch: { id: access.branch.id, name: access.branch.name },
     services,
+    theme: await getTheme(access.businessId),
   };
 }
 
@@ -111,128 +113,135 @@ export async function issuePublicQueue(
   const serviceDate = new Date(`${values.year}-${values.month}-${values.day}T00:00:00.000Z`);
   const receiptToken = randomBytes(32).toString("base64url");
 
-  return prisma.$transaction(async (tx) => {
-    const existingCustomer = input.customerPhone
-      ? await tx.customer.findFirst({
+  return prisma.$transaction(
+    async (tx) => {
+      const existingCustomer = input.customerPhone
+        ? await tx.customer.findFirst({
+            where: {
+              businessId: access.businessId,
+              phone: input.customerPhone,
+            },
+            select: { id: true },
+          })
+        : null;
+      const customer = existingCustomer
+        ? await tx.customer.update({
+            where: { id: existingCustomer.id },
+            data: { name: input.customerName },
+          })
+        : await tx.customer.create({
+            data: {
+              businessId: access.businessId,
+              name: input.customerName,
+              phone: input.customerPhone,
+            },
+          });
+
+      const sequenceKey = {
+        branchId_serviceId_serviceDate: {
+          branchId,
+          serviceId: service.id,
+          serviceDate,
+        },
+      };
+      await tx.queueSequence.upsert({
+        where: sequenceKey,
+        create: { branchId, serviceId: service.id, serviceDate, lastNumber: 0 },
+        update: {},
+      });
+      const sequence = await tx.queueSequence.update({
+        where: sequenceKey,
+        data: { lastNumber: { increment: 1 } },
+        select: { lastNumber: true },
+      });
+      const queue = await tx.queue.create({
+        data: {
+          businessId: access.businessId,
+          branchId,
+          serviceId: service.id,
+          customerId: customer.id,
+          serviceDate,
+          sequenceNumber: sequence.lastNumber,
+          ticketNumber: `${service.code}-${String(sequence.lastNumber).padStart(3, "0")}`,
+          issuedAt: now,
+        },
+        select: {
+          id: true,
+          ticketNumber: true,
+          issuedAt: true,
+          sequenceNumber: true,
+          status: true,
+        },
+      });
+      await tx.accessToken.create({
+        data: {
+          businessId: access.businessId,
+          branchId,
+          serviceId: service.id,
+          queueId: queue.id,
+          tokenHash: hashAccessToken(receiptToken),
+          type: AccessTokenType.QUEUE_STATUS,
+          expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+        },
+      });
+      await tx.queueHistory.create({
+        data: {
+          queueId: queue.id,
+          fromStatus: null,
+          toStatus: "WAITING",
+          action: "ISSUE",
+        },
+      });
+      await tx.outboxEvent.create({
+        data: {
+          businessId: access.businessId,
+          branchId,
+          eventType: "queue.issued",
+          aggregateId: queue.id,
+          payload: { queueId: queue.id, ticketNumber: queue.ticketNumber },
+        },
+      });
+
+      const [waitingAhead, inService, compatibleCounters] = await Promise.all([
+        tx.queue.count({
           where: {
-            businessId: access.businessId,
-            phone: input.customerPhone,
+            branchId,
+            serviceId: service.id,
+            serviceDate,
+            status: "WAITING",
+            sequenceNumber: { lt: queue.sequenceNumber },
           },
-          select: { id: true },
-        })
-      : null;
-    const customer = existingCustomer
-      ? await tx.customer.update({
-          where: { id: existingCustomer.id },
-          data: { name: input.customerName },
-        })
-      : await tx.customer.create({
-          data: {
-            businessId: access.businessId,
-            name: input.customerName,
-            phone: input.customerPhone,
+        }),
+        tx.queue.count({
+          where: {
+            branchId,
+            serviceId: service.id,
+            serviceDate,
+            status: { in: ["CALLED", "SERVING"] },
           },
-        });
-
-    const sequenceKey = {
-      branchId_serviceId_serviceDate: {
-        branchId,
-        serviceId: service.id,
-        serviceDate,
-      },
-    };
-    await tx.queueSequence.upsert({
-      where: sequenceKey,
-      create: { branchId, serviceId: service.id, serviceDate, lastNumber: 0 },
-      update: {},
-    });
-    const sequence = await tx.queueSequence.update({
-      where: sequenceKey,
-      data: { lastNumber: { increment: 1 } },
-      select: { lastNumber: true },
-    });
-    const queue = await tx.queue.create({
-      data: {
-        businessId: access.businessId,
-        branchId,
-        serviceId: service.id,
-        customerId: customer.id,
-        serviceDate,
-        sequenceNumber: sequence.lastNumber,
-        ticketNumber: `${service.code}-${String(sequence.lastNumber).padStart(3, "0")}`,
-        issuedAt: now,
-      },
-      select: {
-        id: true,
-        ticketNumber: true,
-        issuedAt: true,
-        sequenceNumber: true,
-        status: true,
-      },
-    });
-    await tx.accessToken.create({
-      data: {
-        businessId: access.businessId,
-        branchId,
-        serviceId: service.id,
-        queueId: queue.id,
-        tokenHash: hashAccessToken(receiptToken),
-        type: AccessTokenType.QUEUE_STATUS,
-        expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-      },
-    });
-    await tx.queueHistory.create({
-      data: {
-        queueId: queue.id,
-        fromStatus: null,
-        toStatus: "WAITING",
-        action: "ISSUE",
-      },
-    });
-    await tx.outboxEvent.create({
-      data: {
-        businessId: access.businessId,
-        branchId,
-        eventType: "queue.issued",
-        aggregateId: queue.id,
-        payload: { queueId: queue.id, ticketNumber: queue.ticketNumber },
-      },
-    });
-
-    const [waitingAhead, inService, compatibleCounters] = await Promise.all([
-      tx.queue.count({
-        where: {
-          branchId,
-          serviceId: service.id,
-          serviceDate,
-          status: "WAITING",
-          sequenceNumber: { lt: queue.sequenceNumber },
-        },
-      }),
-      tx.queue.count({
-        where: {
-          branchId,
-          serviceId: service.id,
-          serviceDate,
-          status: { in: ["CALLED", "SERVING"] },
-        },
-      }),
-      tx.counterService.count({
-        where: {
-          serviceId: service.id,
-          counter: { branchId, active: true },
-        },
-      }),
-    ]);
-    const parallelCapacity = Math.max(compatibleCounters, 1);
-    return {
-      queue,
-      receiptToken,
-      estimateMinutes:
-        Math.ceil((waitingAhead + inService) / parallelCapacity) *
-        service.averageMinutes,
-    };
-  });
+        }),
+        tx.counterService.count({
+          where: {
+            serviceId: service.id,
+            counter: { branchId, active: true },
+          },
+        }),
+      ]);
+      const parallelCapacity = Math.max(compatibleCounters, 1);
+      return {
+        queue,
+        receiptToken,
+        estimateMinutes:
+          Math.ceil((waitingAhead + inService) / parallelCapacity) *
+          service.averageMinutes,
+      };
+    },
+    // Antrean QR di jam ramai bisa jatuh bersamaan; satu transaksi di sini
+    // mengantre di baris queueSequence yang sama. Timeout bawaan Prisma 5 detik
+    // terlalu ketat dan bikin 500 (P2028) untuk pelanggan yang sebenarnya cukup
+    // menunggu sedikit lebih lama, jadi beri ruang 20 detik.
+    { maxWait: 10_000, timeout: 20_000 },
+  );
 }
 
 export async function getPublicQueueStatus(token: string, request: Request) {
@@ -242,7 +251,8 @@ export async function getPublicQueueStatus(token: string, request: Request) {
       queue: {
         include: {
           service: { select: { name: true, averageMinutes: true } },
-          branch: { select: { timezone: true } },
+          branch: { select: { name: true, timezone: true } },
+          business: { select: { name: true } },
         },
       },
     },
@@ -292,6 +302,10 @@ export async function getPublicQueueStatus(token: string, request: Request) {
     ticketNumber: access.queue.ticketNumber,
     status: access.queue.status,
     service: access.queue.service.name,
+    // Nama usaha & cabang dipakai struk cetak (printer termal 80mm), supaya
+    // struk yang dibawa pelanggan masih jelas milik layar mana.
+    business: access.queue.business.name,
+    branch: access.queue.branch.name,
     waitingAhead: access.queue.status === "WAITING" ? ahead : 0,
     estimateMinutes:
       access.queue.status === "WAITING"

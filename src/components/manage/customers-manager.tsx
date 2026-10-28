@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CirclePlus, LoaderCircle, Pencil, Search, Trash2, X } from "lucide-react";
 import { InlineNotice } from "@/components/inline-notice";
 import { readApiError } from "@/lib/api-error";
+import { Pager } from "@/components/pagination";
+import { CUSTOMER_PAGE_SIZES } from "@/modules/customer/domain/pagination";
 
 type CustomerRow = {
   id: string;
@@ -27,8 +30,8 @@ type Draft = {
 
 const emptyDraft: Draft = { id: null, name: "", phone: "", email: "" };
 
-/** Pertumbuhan daftar pelanggan bisa cepat, jadi kartu ditampilkan bertahap. */
-const PAGE_SIZE = 20;
+/** Pertumbuhan daftar pelanggan bisa cepat, jadi daftar dipaginasi dari server. */
+const DEFAULT_PAGE_SIZE = CUSTOMER_PAGE_SIZES[0];
 
 const dateTime = new Intl.DateTimeFormat("id-ID", {
   day: "2-digit",
@@ -56,7 +59,10 @@ export function CustomersManager({
 }) {
   const [customers, setCustomers] = useState<CustomerRow[] | null>(null);
   const [query, setQuery] = useState(initialQuery);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [pageCount, setPageCount] = useState(1);
+  const [total, setTotal] = useState(0);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -64,7 +70,9 @@ export function CustomersManager({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const requestRef = useRef(0);
 
-  async function load(search: string) {
+  const router = useRouter();
+
+  async function load(search: string, targetPage: number, size: number) {
     const ticket = ++requestRef.current;
     try {
       const url = new URL(
@@ -72,11 +80,18 @@ export function CustomersManager({
         window.location.origin,
       );
       if (search.trim()) url.searchParams.set("query", search.trim());
+      url.searchParams.set("page", String(targetPage));
+      url.searchParams.set("pageSize", String(size));
       const response = await fetch(url.toString(), { cache: "no-store" });
       const result = await response.json();
       if (ticket !== requestRef.current) return;
       if (!response.ok) throw new Error(result.error?.message ?? "Gagal memuat pelanggan.");
       setCustomers(result.data);
+      setTotal(result.meta?.total ?? result.data.length);
+      setPageCount(result.meta?.pageCount ?? 1);
+      // Server bisa menjepit halaman yang diminta (mis. setelah penghapusan
+      // halaman terakhir jadi kosong) — ikuti nomor halaman yang benar.
+      setPage(result.meta?.page ?? 1);
     } catch (error) {
       if (ticket !== requestRef.current) return;
       setCustomers([]);
@@ -86,10 +101,19 @@ export function CustomersManager({
   }
 
   useEffect(() => {
-    const handle = window.setTimeout(() => void load(query), 250);
+    const handle = window.setTimeout(() => void load(query, page, pageSize), 250);
     return () => window.clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [businessSlug, query]);
+  }, [businessSlug, query, page, pageSize]);
+
+  /**
+   * Sesudah perubahan: muat ulang daftar di sini DAN render ulang server
+   * (select, metrik, kartu ringkasan) supaya tidak perlu refresh manual.
+   */
+  async function reload() {
+    await load(query, page, pageSize);
+    router.refresh();
+  }
 
   async function submit() {
     if (!draft) return;
@@ -127,7 +151,7 @@ export function CustomersManager({
       setNoticeVariant("success");
       setNotice(draft.id ? "Data pelanggan diperbarui." : "Pelanggan baru ditambahkan.");
       setDraft(null);
-      await load(query);
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menyimpan pelanggan.");
@@ -153,7 +177,7 @@ export function CustomersManager({
       }
       setNoticeVariant("success");
       setNotice(`Pelanggan ${customer.name} dihapus.`);
-      await load(query);
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menghapus pelanggan.");
@@ -172,13 +196,13 @@ export function CustomersManager({
           <h2 className="text-[15px] font-semibold tracking-[-0.02em]">Pelanggan</h2>
           <p className="mt-1 text-xs text-[#929e99]">
             Database pelanggan workspace ini{" "}
-            {customers ? `· ${customers.length} kontak` : ""}.
+            {customers ? `· ${total} kontak` : ""}.
           </p>
         </div>
         {canManage && (
           <button
             onClick={() => setDraft({ ...emptyDraft })}
-            className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3 text-xs font-semibold text-white hover:bg-[#125648]"
+            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"
           >
             <CirclePlus className="size-4" /> Tambah pelanggan
           </button>
@@ -191,14 +215,20 @@ export function CustomersManager({
         <Search className="size-4 text-[#a1aca8]" />
         <input
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setPage(1);
+          }}
           placeholder="Cari nama, nomor telepon, atau email..."
           className="h-full w-full bg-transparent text-xs text-[#344440] outline-none placeholder:text-[#a9b3af]"
         />
         {query && (
           <button
             type="button"
-            onClick={() => setQuery("")}
+            onClick={() => {
+              setQuery("");
+              setPage(1);
+            }}
             aria-label="Bersihkan pencarian"
             className="rounded p-1 text-[#a1aca8] hover:bg-[#eef1ef]"
           >
@@ -277,7 +307,7 @@ export function CustomersManager({
             <button
               type="submit"
               disabled={busy}
-              className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               {busy && <LoaderCircle className="size-3.5 animate-spin" />}
               Simpan
@@ -297,12 +327,12 @@ export function CustomersManager({
         {customers === null && (
           <p className="py-6 text-center text-xs text-[#a1aca8]">Memuat pelanggan…</p>
         )}
-        {customers?.slice(0, visibleCount).map((customer) => (
+        {customers?.map((customer) => (
           <div
             key={customer.id}
             className="flex flex-wrap items-center gap-3 rounded-xl border border-[#eff2f0] p-3"
           >
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#edf5f1] text-[11px] font-bold text-[#377861]">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-[#377861]">
               {customer.name.slice(0, 2).toUpperCase()}
             </span>
             <div className="min-w-0 flex-1">
@@ -352,22 +382,16 @@ export function CustomersManager({
               : "Belum ada pelanggan. Tambahkan kontak pertama untuk workspace ini."}
           </p>
         )}
-        {customers && customers.length > visibleCount && (
-          <div className="flex flex-col items-center gap-1 pt-1">
-            <button
-              type="button"
-              onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
-              className="h-9 rounded-lg border border-[#e0e6e3] px-4 text-[11px] font-semibold text-[#41524c] hover:bg-[#f6f9f7]"
-            >
-              Muat {Math.min(PAGE_SIZE, customers.length - visibleCount)} pelanggan lagi
-            </button>
-          </div>
-        )}
-        {customers && customers.length > 0 && (
-          <p className="pt-2 text-center text-[10px] text-[#a1aca8]">
-            Menampilkan {Math.min(visibleCount, customers.length)} dari {customers.length} kontak
-            {query.trim() ? ` (hasil pencarian “${query.trim()}”)` : ""}.
-          </p>
+        {customers && total > 0 && (
+          <Pager
+            total={total}
+            page={page}
+            pageCount={pageCount}
+            pageSize={pageSize}
+            unit="kontak"
+            onPage={setPage}
+            onPageSize={setPageSize}
+          />
         )}
       </div>
     </section>

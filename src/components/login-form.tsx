@@ -58,7 +58,7 @@ export function LoginForm() {
             required
             maxLength={254}
             placeholder="nama@perusahaan.com"
-            className="h-12 w-full rounded-xl border border-[#e1e7e4] bg-white pl-11 pr-4 text-sm outline-none transition placeholder:text-[#aab4b0] focus:border-[#7db8a7] focus:ring-4 focus:ring-[#176b5b]/[.08]"
+            className="h-12 w-full rounded-xl border border-[#e1e7e4] bg-white pl-11 pr-4 text-sm outline-none transition placeholder:text-[#aab4b0] focus:border-[#7db8a7] focus:ring-4 focus:ring-brand-700/[.08]"
           />
         </span>
       </label>
@@ -75,7 +75,7 @@ export function LoginForm() {
             required
             maxLength={128}
             placeholder="Masukkan kata sandi"
-            className="h-12 w-full rounded-xl border border-[#e1e7e4] bg-white pl-11 pr-12 text-sm outline-none transition placeholder:text-[#aab4b0] focus:border-[#7db8a7] focus:ring-4 focus:ring-[#176b5b]/[.08]"
+            className="h-12 w-full rounded-xl border border-[#e1e7e4] bg-white pl-11 pr-12 text-sm outline-none transition placeholder:text-[#aab4b0] focus:border-[#7db8a7] focus:ring-4 focus:ring-brand-700/[.08]"
           />
           <button
             type="button"
@@ -97,7 +97,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#176b5b] text-sm font-semibold text-white shadow-[0_5px_12px_rgba(23,107,91,.15)] transition hover:bg-[#125648] disabled:cursor-not-allowed disabled:opacity-70"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 text-sm font-semibold text-white shadow-[0_5px_12px_rgba(23,107,91,.15)] transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-70"
       >
         {loading ? (
           <>

@@ -1,10 +1,14 @@
 import { randomBytes } from "node:crypto";
+import { QueueStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
 import { requireFeature } from "@/modules/feature/feature-gate";
+import { getTheme } from "@/modules/tenancy/theme-service";
 import { clientAddress, enforceRateLimit } from "@/modules/shared/rate-limit";
 import { hashAccessToken } from "@/modules/queue/application/public-queue";
 import { dateForTimezone } from "@/modules/queue/domain/service-date";
+import { isEventVisibleOnDisplay } from "@/modules/display/domain/display-scope";
+import { WAITING_FETCH_LIMIT } from "@/modules/display/domain/waiting-pages";
 import { BusinessContext, requireRole } from "@/modules/tenancy/context";
 
 /**
@@ -278,22 +282,29 @@ export async function getDisplaySnapshot(token: string, request: Request) {
 
   // A lobby screen is more useful when it also answers "how long until my
   // number?" — so the waiting list is part of the snapshot, not a second call.
-  const waiting = await prisma.queue.findMany({
-    where: {
-      businessId: display.businessId,
-      branchId: display.branchId,
-      serviceDate: dateForTimezone(timezone),
-      status: "WAITING",
-      // Waiting tickets have no counter yet, so scope them by the services the
-      // display's counters actually serve instead.
-      ...(counterIds.length
-        ? { service: { counterServices: { some: { counterId: { in: counterIds } } } } }
-        : {}),
-    },
-    include: { service: { select: { name: true } } },
-    orderBy: [{ issuedAt: "asc" }, { id: "asc" }],
-    take: 12,
-  });
+  // Waiting tickets have no counter yet, so a scoped screen filters them by the
+  // services its counters actually serve instead.
+  const waitingWhere = {
+    businessId: display.businessId,
+    branchId: display.branchId,
+    serviceDate: dateForTimezone(timezone),
+    status: QueueStatus.WAITING,
+    ...(counterIds.length
+      ? { service: { counterServices: { some: { counterId: { in: counterIds } } } } }
+      : {}),
+  };
+  // On a busy day the queue is longer than one screenful, so the screen needs
+  // several pages of data plus the real total to stay honest about how many
+  // people are still waiting.
+  const [waitingTotal, waiting] = await Promise.all([
+    prisma.queue.count({ where: waitingWhere }),
+    prisma.queue.findMany({
+      where: waitingWhere,
+      include: { service: { select: { name: true } } },
+      orderBy: [{ issuedAt: "asc" }, { id: "asc" }],
+      take: WAITING_FETCH_LIMIT,
+    }),
+  ]);
   const features = await prisma.featureConfiguration.findMany({
     where: {
       businessId: display.businessId,
@@ -302,6 +313,7 @@ export async function getDisplaySnapshot(token: string, request: Request) {
     select: { featureKey: true, enabled: true },
   });
   return {
+    theme: await getTheme(display.businessId),
     display: {
       name: display.name,
       branch: display.branch.name,
@@ -319,6 +331,7 @@ export async function getDisplaySnapshot(token: string, request: Request) {
       counter: queue.counter?.name ?? "—",
       counterCode: queue.counter?.code ?? "",
     })),
+    waitingTotal,
     waiting: waiting.map((queue) => ({
       ticketNumber: queue.ticketNumber,
       service: queue.service.name,
@@ -341,7 +354,11 @@ export async function getDisplayEvents(
   after: string,
 ) {
   const display = await resolveDisplayToken(token);
-  return queryDisplayEvents(display.branchId, after);
+  const counterIds = display.counters.map((row) => row.counterId);
+  const events = await queryDisplayEvents(display.branchId, after);
+  // Snapshot is already scoped per counter; the event feed must be too, or a
+  // screen in front of counter 01 announces counter 02's tickets after load.
+  return events.filter((event) => isEventVisibleOnDisplay(event.payload, counterIds));
 }
 
 async function queryDisplayEvents(branchId: string, after: string) {
@@ -406,9 +423,21 @@ export async function getDisplayEventStream(
         try {
           while (!closed) {
             await requireFeature(display.business.id, "TV_DISPLAY");
+            // Re-read the scope every tick: an operator adding or removing a
+            // counter on a live screen must take effect immediately, and this
+            // stream stays open for hours.
+            const scopedCounterIds = (
+              await prisma.displayCounter.findMany({
+                where: { displayId: display.id },
+                select: { counterId: true },
+              })
+            ).map((row) => row.counterId);
             const events = await queryDisplayEvents(display.branchId, cursor);
             for (const event of events) {
+              // Always advance past every event, even a filtered one: the cursor
+              // is the only thing keeping old events from being re-read forever.
               cursor = event.id;
+              if (!isEventVisibleOnDisplay(event.payload, scopedCounterIds)) continue;
               controller.enqueue(
                 encoder.encode(`id: ${event.id}\ndata: ${JSON.stringify(event)}\n\n`),
               );

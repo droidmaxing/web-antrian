@@ -477,3 +477,99 @@ Setelah pengujian, semua data uji dihapus (`Counter`, `CounterMember`,
 Migrasi `20261021160000_counter_access_and_display_scope` bersifat aditif
 (`CREATE TABLE` + FK `ON DELETE CASCADE`) dan sudah diterapkan ke basis data hidup.
 
+### 6.4 Kebocoran panggilan antar loket lewat aliran SSE (2026-10-23)
+
+Keluhan pengguna: *"loket 01 dengan layanan A, loket 02 dengan layanan B — pelanggan
+layanan B di loket 02 ikut dipanggil/diumumkan di kedua loket, padahal layanan B
+hanya ada di loket 02."*
+
+**Akar masalah.** Snapshot layar (`getDisplaySnapshot`) sudah menyaring per cakupan
+loket, sehingga tampilan awal benar. Yang bocor adalah **aliran peristiwa SSE**:
+`getDisplayEvents` dan loop `publicDisplayStream` hanya menyaring `branchId`
+(`queryDisplayEvents(display.branchId, cursor)`), tidak menyaring cakupan loket.
+Akibatnya layar loket 01 tetap menerima `queue.called` loket 02 setelah halaman
+termuat dan **memutar audio pengumumannya**. Bukan nomor tiket ganda: query
+`Queue GROUP BY ticketNumber, serviceDate HAVING COUNT(*) > 1` mengembalikan 0 baris.
+
+**Perbaikan.** Modul domain baru `src/modules/display/domain/display-scope.ts`
+berisi `isEventVisibleOnDisplay(payload, counterIds)`:
+
+- `counterIds` kosong → `true` (layar lobi memang menampilkan semua loket);
+- peristiwa tanpa `counterId` → `true` (mis. `queue.issued` belum terikat loket;
+  kalau diblokir, panel "Menunggu" layar ber-scope jadi basi sampai polling 15 detik,
+  padahal snapshot-nya toh sudah tersaring);
+- selain itu → `counterIds.includes(counterId)`.
+
+`getDisplayEvents` memakai `display.counters` sebagai `counterIds`; loop SSE memakai
+`scopedCounterIds = display.counters.map(r => r.counterId)`.
+
+**Jebakan penting (cursor).** Di loop SSE, `cursor = event.id` **harus** maju untuk
+setiap peristiwa, *sebelum* `continue` akibat filter. Kalau cursor tidak maju,
+peristiwa yang tersaring dibaca ulang selamanya dan dapat menutupi peristiwa nyata.
+
+**Bukti (dijalankan pada basis data hidup, umpan dikembalikan sesudahnya).**
+
+`npx tsx scripts/verify-display-scope.ts` (lapisan layanan):
+
+```
+Loket diuji: 01 (Loket 01) vs 02 (Loket 02)
+Umpan loket sendiri (harus lolos): UMUM-002 dipanggil di 01.
+Umpan loket lain (harus diblokir): GIGI-006 dipanggil di 02.
+Event diterima layar 01: 1
+Event loket sendiri lolos: true
+Event loket lain bocor: 0
+PASS
+```
+
+`npx tsx scripts/verify-display-http.ts` (lewat HTTP, endpoint yang benar-benar
+dipakai TV: `GET /api/v1/public/displays/<token>/events` — SSE, dibaca 6 detik lalu
+koneksi ditutup):
+
+```
+GET /events -> HTTP 200, content-type=text/event-stream
+Event SSE terbaca: 1
+Event loket sendiri lolos via HTTP: true
+Event loket lain bocor via HTTP: 0
+GET /snapshot -> HTTP 200, scope=counter, counterCount=1, queues=1
+Snapshot memuat antrean loket lain: 0
+PASS
+```
+
+`tests/display-scope.test.ts` (4 uji regresi, ikut `npm test`): lobi tanpa cakupan
+melihat semua; layar ber-cakupan hanya melihat loketnya; satu layar dengan beberapa
+loket; peristiwa tanpa `counterId` tetap tampil.
+
+**Bukti browser sebagai pengguna.** Layar TV dibuka di
+`http://127.0.0.1:3000/display/<token>` dengan cakupan Loket 01, lalu:
+
+| Aksi | Hasil di layar TV |
+|---|---|
+| Panggil tiket di **Loket 02** (loket lain) | Blok "NOMOR DIPANGGIL" tetap **"Belum ada panggilan"** — tidak diumumkan |
+| Panggil tiket di **Loket 01** (loket sendiri) | Blok menampilkan `UMUM-002 → Loket 01` **dan** teks suara "Nomor antrean U M U M, nol nol dua, silakan menuju Loket 01." |
+
+### 6.5 Satu layar = satu tautan (2026-10-23)
+
+Pertanyaan pengguna: *"TV display itu hanya bisa 1 link ya? Misal ada 4 loket dengan
+4 display."* Jawabannya: **tidak** — tiap baris `Display` punya token sendiri
+(`Display.tokenHash`), dan halaman TV adalah `/display/<token>`. Yang kurang hanya
+**kejelasan di UI**: tombol ganti tautan pada kartu layar tadinya ikon tanpa label,
+sehingga tidak terlihat bahwa tiap layar punya tautannya sendiri. Sekarang tombol itu
+berlabel **"Tautan baru"** dan keterangan bagian berbunyi "Tiap layar punya tautannya
+sendiri, jadi tiap loket bisa punya layarnya masing-masing."
+
+**Bukti.** `npx tsx scripts/verify-display-multi.ts` membuat 4 layar (satu per loket):
+
+```
+Loket aktif: 4 (01, 02, 03, 04)
+Display dibuat: 4
+Token unik: 4 dari 4
+  01: HTTP 200, scope=counter, counterCount=1, antrean loket lain=0
+  02: HTTP 200, scope=counter, counterCount=1, antrean loket lain=0
+  03: HTTP 200, scope=counter, counterCount=1, antrean loket lain=0
+  04: HTTP 200, scope=counter, counterCount=1, antrean loket lain=0
+PASS: 4 loket -> 4 layar -> 4 tautan berbeda, masing-masing hanya menampilkan loketnya.
+```
+
+Layar uji dihapus setelah verifikasi; display operasional (`TV Loket 01`–`TV Loket 04`)
+tidak berubah.
+

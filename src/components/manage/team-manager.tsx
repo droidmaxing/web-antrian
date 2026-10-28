@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, CirclePlus, Copy, LoaderCircle, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CirclePlus, Copy, LoaderCircle, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { Pager, usePaged } from "@/components/pagination";
 import { InlineNotice } from "@/components/inline-notice";
 
 type Role = "OWNER" | "SUPER_ADMIN" | "ADMIN";
@@ -60,7 +62,6 @@ export function TeamManager({
     counterIds: string[];
   } | null>(null);
   const [query, setQuery] = useState("");
-  const [visibleCount, setVisibleCount] = useState(10);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [noticeVariant, setNoticeVariant] = useState<"error" | "success">("success");
@@ -68,6 +69,8 @@ export function TeamManager({
     email: string;
     temporaryPassword: string | null;
   } | null>(null);
+
+  const router = useRouter();
 
   async function load() {
     try {
@@ -95,6 +98,15 @@ export function TeamManager({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessSlug]);
+
+  /**
+   * Sesudah perubahan: muat ulang daftar di sini DAN render ulang server
+   * (select, metrik, kartu ringkasan) supaya tidak perlu refresh manual.
+   */
+  async function reload() {
+    await load();
+    router.refresh();
+  }
 
   async function submit() {
     if (!draft) return;
@@ -124,7 +136,7 @@ export function TeamManager({
         temporaryPassword: result.data.temporaryPassword ?? null,
       });
       setDraft(null);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menambah anggota.");
@@ -149,7 +161,7 @@ export function TeamManager({
       if (!response.ok) throw new Error(result.error?.message ?? "Gagal mengubah peran.");
       setNoticeVariant("success");
       setNotice(`Peran ${member.name} diubah menjadi ${roleLabels[role]}.`);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal mengubah peran.");
@@ -171,7 +183,7 @@ export function TeamManager({
       );
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message ?? "Gagal menyimpan akses cabang.");
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menyimpan akses cabang.");
@@ -201,7 +213,7 @@ export function TeamManager({
           : `${member.name} kini bisa menangani semua loket.`,
       );
       setCounterEdit(null);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menyimpan akses loket.");
@@ -223,7 +235,7 @@ export function TeamManager({
       if (!response.ok) throw new Error(result.error?.message ?? "Gagal mengeluarkan anggota.");
       setNoticeVariant("success");
       setNotice(`${member.name} dikeluarkan dari bisnis.`);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal mengeluarkan anggota.");
@@ -242,7 +254,7 @@ export function TeamManager({
       )
     : members;
 
-  const pagedMembers = visibleMembers?.slice(0, visibleCount) ?? members;
+  const paged = usePaged(visibleMembers);
 
   return (
     <section
@@ -272,7 +284,7 @@ export function TeamManager({
             onClick={() =>
               setDraft({ name: "", email: "", role: "ADMIN", branchIds: [], counterIds: [] })
             }
-            className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3 text-xs font-semibold text-white hover:bg-[#125648]"
+            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"
           >
             <CirclePlus className="size-4" /> Tambah anggota
           </button>
@@ -374,7 +386,7 @@ export function TeamManager({
                       }
                       className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
                         selected
-                          ? "border-[#176b5b] bg-[#eaf4ef] text-[#176b5b]"
+                          ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
                           : "border-[#e0e6e3] bg-white text-[#687570]"
                       }`}
                     >
@@ -417,7 +429,7 @@ export function TeamManager({
                         }
                         className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium disabled:opacity-50 ${
                           selected
-                            ? "border-[#176b5b] bg-[#eaf4ef] text-[#176b5b]"
+                            ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
                             : "border-[#e0e6e3] bg-white text-[#687570]"
                         }`}
                       >
@@ -435,7 +447,7 @@ export function TeamManager({
             <button
               type="submit"
               disabled={busy}
-              className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               {busy && <LoaderCircle className="size-3.5 animate-spin" />}
               Tambah
@@ -455,7 +467,7 @@ export function TeamManager({
         {members === null && (
           <p className="py-6 text-center text-xs text-[#a1aca8]">Memuat anggota…</p>
         )}
-        {pagedMembers?.map((member) => {
+        {paged.rows?.map((member) => {
           const isSelf = member.userId === currentUserId;
           const editing = counterEdit?.membershipId === member.membershipId;
           const memberCounters = counters.filter(
@@ -472,7 +484,7 @@ export function TeamManager({
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="truncate text-xs font-semibold text-[#344440]">{member.name}</p>
                   {isSelf && (
-                    <span className="rounded-full bg-[#eef5f2] px-2 py-0.5 text-[9px] font-medium text-[#47796a]">
+                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[9px] font-medium text-[#47796a]">
                       Anda
                     </span>
                   )}
@@ -543,7 +555,7 @@ export function TeamManager({
                       }
                       className={`h-8 rounded-lg border px-2 text-[10px] font-medium disabled:opacity-50 ${
                         member.counterIds.length
-                          ? "border-[#cfe0d8] bg-[#eef5f2] text-[#276b5b]"
+                          ? "border-[#cfe0d8] bg-brand-100 text-[#276b5b]"
                           : "border-[#e0e6e3] bg-white text-[#687570]"
                       }`}
                     >
@@ -601,7 +613,7 @@ export function TeamManager({
                             }
                             className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
                               selected
-                                ? "border-[#176b5b] bg-[#eaf4ef] text-[#176b5b]"
+                                ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
                                 : "border-[#e0e6e3] bg-white text-[#687570]"
                             }`}
                           >
@@ -624,7 +636,7 @@ export function TeamManager({
                       type="button"
                       disabled={busy}
                       onClick={() => void setCounterScopes(member, counterEdit.counterIds)}
-                      className="h-8 rounded-lg bg-[#176b5b] px-3 text-[11px] font-semibold text-white disabled:opacity-50"
+                      className="h-8 rounded-lg bg-brand-700 px-3 text-[11px] font-semibold text-white disabled:opacity-50"
                     >
                       Simpan akses loket
                     </button>
@@ -650,23 +662,15 @@ export function TeamManager({
           </p>
         )}
         {visibleMembers && visibleMembers.length > 0 && (
-          <p className="mt-4 text-center text-[10px] text-[#a1aca8]">
-            Menampilkan {pagedMembers?.length ?? 0} dari {visibleMembers.length} anggota
-            {visibleMembers.length !== members?.length
-              ? ` (total ${members?.length ?? 0})`
-              : ""}
-            .
-          </p>
-        )}
-        {visibleMembers && visibleMembers.length > visibleCount && (
-          <button
-            type="button"
-            onClick={() => setVisibleCount((value) => value + 10)}
-            className="mx-auto mt-3 flex h-9 items-center gap-2 rounded-lg border border-[#e2e9e5] px-3 text-xs font-semibold text-[#4d5c57] hover:bg-[#f4f7f5]"
-          >
-            <ChevronDown className="size-4" />
-            Muat {Math.min(10, visibleMembers.length - visibleCount)} anggota lagi
-          </button>
+          <Pager
+            total={paged.total}
+            page={paged.page}
+            pageCount={paged.pageCount}
+            pageSize={paged.pageSize}
+            unit="anggota"
+            onPage={paged.setPage}
+            onPageSize={paged.setPageSize}
+          />
         )}
       </div>
     </section>

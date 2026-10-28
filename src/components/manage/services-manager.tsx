@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CirclePlus, LoaderCircle, Pencil, Power, Trash2 } from "lucide-react";
+import { Pager, usePaged } from "@/components/pagination";
 import { InlineNotice } from "@/components/inline-notice";
 
 type ServiceRow = {
@@ -40,10 +42,13 @@ export function ServicesManager({
   canConfigure: boolean;
 }) {
   const [services, setServices] = useState<ServiceRow[] | null>(null);
+  const paged = usePaged(services);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [noticeVariant, setNoticeVariant] = useState<"error" | "success">("success");
+
+  const router = useRouter();
 
   async function load() {
     try {
@@ -72,6 +77,15 @@ export function ServicesManager({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessSlug]);
 
+  /**
+   * Sesudah perubahan: muat ulang daftar di sini DAN render ulang server
+   * (select, metrik, kartu ringkasan) supaya tidak perlu refresh manual.
+   */
+  async function reload() {
+    await load();
+    router.refresh();
+  }
+
   async function submit() {
     if (!draft) return;
     setBusy(true);
@@ -98,7 +112,7 @@ export function ServicesManager({
       setNoticeVariant("success");
       setNotice(draft.id ? "Layanan diperbarui." : `Layanan ${payload.name} ditambahkan.`);
       setDraft(null);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menyimpan layanan.");
@@ -126,7 +140,7 @@ export function ServicesManager({
           ? "Layanan diarsipkan karena sudah punya riwayat antrean."
           : "Layanan dihapus.",
       );
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menghapus layanan.");
@@ -148,7 +162,7 @@ export function ServicesManager({
       );
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message ?? "Gagal mengubah status.");
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal mengubah status.");
@@ -172,7 +186,7 @@ export function ServicesManager({
         {canConfigure && !draft && (
           <button
             onClick={() => setDraft(emptyDraft)}
-            className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3 text-xs font-semibold text-white hover:bg-[#125648]"
+            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"
           >
             <CirclePlus className="size-4" /> Tambah layanan
           </button>
@@ -242,7 +256,7 @@ export function ServicesManager({
             <button
               type="submit"
               disabled={busy}
-              className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               {busy && <LoaderCircle className="size-3.5 animate-spin" />}
               Simpan
@@ -262,12 +276,12 @@ export function ServicesManager({
         {services === null && (
           <p className="py-6 text-center text-xs text-[#a1aca8]">Memuat layanan…</p>
         )}
-        {services?.map((service) => (
+        {paged.rows?.map((service) => (
           <div
             key={service.id}
             className="flex flex-wrap items-center gap-3 rounded-xl border border-[#eff2f0] p-3"
           >
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#edf5f1] font-mono text-[10px] font-bold text-[#377861]">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-brand-50 font-mono text-[10px] font-bold text-[#377861]">
               {service.code}
             </span>
             <div className="min-w-0 flex-1">
@@ -327,6 +341,15 @@ export function ServicesManager({
             Belum ada layanan. Tambahkan layanan pertama untuk mulai menerbitkan antrean.
           </p>
         )}
+        <Pager
+          total={paged.total}
+          page={paged.page}
+          pageCount={paged.pageCount}
+          pageSize={paged.pageSize}
+          unit="layanan"
+          onPage={paged.setPage}
+          onPageSize={paged.setPageSize}
+        />
       </div>
     </section>
   );

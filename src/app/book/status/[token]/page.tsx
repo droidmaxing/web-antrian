@@ -9,7 +9,7 @@ export default async function BookingStatusPage({ params }: PageProps) {
     <main className="min-h-screen bg-[#f3f7f5] px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-lg">
         <div className="mb-6 flex items-center justify-center gap-2 text-sm font-semibold tracking-tight text-[#24483c]">
-          <span className="flex size-8 items-center justify-center rounded-[10px] bg-[#176b5b] text-sm font-black text-white">
+          <span className="flex size-8 items-center justify-center rounded-[10px] bg-brand-700 text-sm font-black text-white">
             a.
           </span>
           konfirmasi booking

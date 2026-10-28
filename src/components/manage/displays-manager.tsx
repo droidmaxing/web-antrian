@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   CirclePlus,
   Copy,
@@ -12,6 +13,7 @@ import {
   Tv,
 } from "lucide-react";
 import { InlineNotice } from "@/components/inline-notice";
+import { Pager, usePaged } from "@/components/pagination";
 
 type DisplayRow = {
   id: string;
@@ -42,6 +44,7 @@ export function DisplaysManager({
   canManage: boolean;
 }) {
   const [displays, setDisplays] = useState<DisplayRow[] | null>(null);
+  const paged = usePaged(displays);
   const [branches, setBranches] = useState<BranchRow[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [scopeEdit, setScopeEdit] = useState<{
@@ -60,6 +63,8 @@ export function DisplaysManager({
   const [origin] = useState(() =>
     typeof window === "undefined" ? "" : window.location.origin,
   );
+
+  const router = useRouter();
 
   const load = useCallback(async () => {
     const ticket = ++requestRef.current;
@@ -102,6 +107,15 @@ export function DisplaysManager({
     };
   }, [load]);
 
+  /**
+   * Sesudah perubahan: muat ulang daftar di sini DAN render ulang server
+   * (select, metrik, kartu ringkasan) supaya tidak perlu refresh manual.
+   */
+  async function reload() {
+    await load();
+    router.refresh();
+  }
+
   async function submit() {
     if (!draft) return;
     if (draft.name.trim().length < 2) {
@@ -143,7 +157,7 @@ export function DisplaysManager({
       setNoticeVariant("success");
       setNotice(draft.id ? "Display diperbarui." : "Display baru dibuat.");
       setDraft(null);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menyimpan display.");
@@ -177,7 +191,7 @@ export function DisplaysManager({
       setFreshToken({ name: display.name, token: result.data.token });
       setNoticeVariant("success");
       setNotice("Tautan baru dibuat. Salin sekarang — tidak akan ditampilkan lagi.");
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal mengganti tautan.");
@@ -202,7 +216,7 @@ export function DisplaysManager({
       if (!response.ok) throw new Error(result.error?.message ?? "Gagal mengubah status.");
       setNoticeVariant("success");
       setNotice(display.active ? "Display dinonaktifkan." : "Display diaktifkan.");
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal mengubah status.");
@@ -231,7 +245,7 @@ export function DisplaysManager({
       }
       setNoticeVariant("success");
       setNotice(`Display ${display.name} dihapus.`);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menghapus display.");
@@ -261,7 +275,7 @@ export function DisplaysManager({
           : `Display ${display.name} kembali menampilkan semua loket.`,
       );
       setScopeEdit(null);
-      await load();
+      await reload();
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal menyimpan cakupan loket.");
@@ -292,7 +306,8 @@ export function DisplaysManager({
           <h2 className="text-[15px] font-semibold tracking-[-.02em]">Layar display</h2>
           <p className="mt-1 text-xs text-[#929e99]">
             Layar TV yang menampilkan antrean dan memutar suara panggilan
-            {displays ? ` · ${displays.length} layar` : ""}.
+            {displays ? ` · ${displays.length} layar` : ""}. Tiap layar punya
+            tautannya sendiri, jadi tiap loket bisa punya layarnya masing-masing.
           </p>
         </div>
         {canManage && branches.length > 0 && (
@@ -300,7 +315,7 @@ export function DisplaysManager({
             onClick={() =>
               setDraft({ id: null, name: "", branchId: branches[0].id, counterIds: [] })
             }
-            className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3 text-xs font-semibold text-white hover:bg-[#125648]"
+            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"
           >
             <CirclePlus className="size-4" /> Tambah display
           </button>
@@ -323,7 +338,7 @@ export function DisplaysManager({
             </code>
             <button
               onClick={() => void copyLink(freshToken.token)}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-[#176b5b] px-3 text-[11px] font-semibold text-white"
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-brand-700 px-3 text-[11px] font-semibold text-white"
             >
               <Copy className="size-3.5" /> Salin
             </button>
@@ -385,7 +400,7 @@ export function DisplaysManager({
                 onClick={() => setDraft({ ...draft, counterIds: [] })}
                 className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
                   draft.counterIds.length === 0
-                    ? "border-[#176b5b] bg-[#eaf4ef] text-[#176b5b]"
+                    ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
                     : "border-[#e0e6e3] bg-white text-[#687570]"
                 }`}
               >
@@ -410,7 +425,7 @@ export function DisplaysManager({
                       }
                       className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
                         selected
-                          ? "border-[#176b5b] bg-[#eaf4ef] text-[#176b5b]"
+                          ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
                           : "border-[#e0e6e3] bg-white text-[#687570]"
                       }`}
                     >
@@ -428,7 +443,7 @@ export function DisplaysManager({
             <button
               type="submit"
               disabled={busy}
-              className="flex h-9 items-center gap-2 rounded-lg bg-[#176b5b] px-3.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               {busy && <LoaderCircle className="size-3.5 animate-spin" />}
               Simpan
@@ -448,7 +463,7 @@ export function DisplaysManager({
         {displays === null && (
           <p className="py-6 text-center text-xs text-[#a1aca8]">Memuat display…</p>
         )}
-        {displays?.map((display) => {
+        {paged.rows?.map((display) => {
           const scopeCounters = counters.filter(
             (counter) =>
               counter.branchId === display.branchId && display.counterIds.includes(counter.id),
@@ -462,7 +477,7 @@ export function DisplaysManager({
             <div className="flex flex-wrap items-center gap-3">
             <span
               className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
-                display.active ? "bg-[#edf5f1] text-[#377861]" : "bg-[#f4f2f1] text-[#a3928c]"
+                display.active ? "bg-brand-50 text-[#377861]" : "bg-[#f4f2f1] text-[#a3928c]"
               }`}
             >
               <Monitor className="size-4" />
@@ -496,7 +511,7 @@ export function DisplaysManager({
                   aria-expanded={editingScope}
                   className={`h-8 rounded-lg border px-2 text-[10px] font-medium disabled:opacity-40 ${
                     display.counterIds.length
-                      ? "border-[#cfe0d8] bg-[#eef5f2] text-[#276b5b]"
+                      ? "border-[#cfe0d8] bg-brand-100 text-[#276b5b]"
                       : "border-[#e0e6e3] bg-white text-[#687570]"
                   }`}
                 >
@@ -506,10 +521,10 @@ export function DisplaysManager({
                   onClick={() => void rotate(display)}
                   disabled={busy}
                   aria-label={`Ganti tautan ${display.name}`}
-                  title="Ganti tautan layar"
-                  className="rounded-lg p-2 text-[#889590] hover:bg-[#f4f7f5] disabled:opacity-40"
+                  title="Terbitkan tautan baru untuk layar ini"
+                  className="flex h-8 items-center gap-1 rounded-lg border border-[#e0e6e3] bg-white px-2 text-[10px] font-medium text-[#687570] hover:bg-[#f4f7f5] disabled:opacity-40"
                 >
-                  <RefreshCw className="size-3.5" />
+                  <RefreshCw className="size-3.5" /> Tautan baru
                 </button>
                 <button
                   onClick={() => void toggleActive(display)}
@@ -556,7 +571,7 @@ export function DisplaysManager({
                     onClick={() => setScopeEdit({ ...scopeEdit, counterIds: [] })}
                     className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
                       scopeEdit.counterIds.length === 0
-                        ? "border-[#176b5b] bg-[#eaf4ef] text-[#176b5b]"
+                        ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
                         : "border-[#e0e6e3] bg-white text-[#687570]"
                     }`}
                   >
@@ -579,7 +594,7 @@ export function DisplaysManager({
                         }
                         className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
                           selected
-                            ? "border-[#176b5b] bg-[#eaf4ef] text-[#176b5b]"
+                            ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
                             : "border-[#e0e6e3] bg-white text-[#687570]"
                         }`}
                       >
@@ -597,7 +612,7 @@ export function DisplaysManager({
                     type="button"
                     disabled={busy}
                     onClick={() => void setScope(display, scopeEdit.counterIds)}
-                    className="h-8 rounded-lg bg-[#176b5b] px-3 text-[11px] font-semibold text-white disabled:opacity-50"
+                    className="h-8 rounded-lg bg-brand-700 px-3 text-[11px] font-semibold text-white disabled:opacity-50"
                   >
                     Simpan cakupan
                   </button>
@@ -621,6 +636,15 @@ export function DisplaysManager({
               : "Belum ada layar display. Tambahkan untuk menampilkan antrean di ruang tunggu."}
           </p>
         )}
+        <Pager
+          total={paged.total}
+          page={paged.page}
+          pageCount={paged.pageCount}
+          pageSize={paged.pageSize}
+          unit="layar"
+          onPage={paged.setPage}
+          onPageSize={paged.setPageSize}
+        />
       </div>
     </section>
   );
