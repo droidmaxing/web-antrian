@@ -17,7 +17,7 @@ export default function GlobalError({
 
   return (
     <html lang="id">
-      <body className="min-h-screen bg-[#f4f7f5] font-sans text-[#182321]">
+      <body className="bubble-flow min-h-screen font-sans text-brand-900">
         <ErrorState
           code="500"
           title="Aplikasi sedang mengalami gangguan"

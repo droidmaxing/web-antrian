@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   DEFAULT_PRIMARY_COLOR,
+  DEFAULT_SECONDARY_COLOR,
   LOGO_MAX_LENGTH,
+  PALETTE_STEPS,
   TITLE_MAX_LENGTH,
   brandPalette,
   brandTitle,
@@ -43,22 +45,39 @@ test("the primary colour is validated and expanded", () => {
   assert.equal(normalizeHexColor("#176b5b"), "#176b5b");
 });
 
-test("every brand shade is derived and emitted as a CSS variable", () => {
+test("both brand colours are derived into CSS variables", () => {
   const palette = brandPalette("#1d5f9c");
   for (const value of Object.values(palette)) assert.ok(isHexColor(value), value);
   // 50/100/200 are tints, 700/800 shades of the same hue.
   assert.ok(palette["50"].localeCompare(palette["700"]) > 0);
-  const vars = (primaryColor: string | null) =>
-    brandVars(primaryColor) as unknown as Record<string, string>;
-  assert.deepEqual(Object.keys(vars("#1d5f9c")), [
-    "--brand-50",
-    "--brand-100",
-    "--brand-200",
-    "--brand-700",
-    "--brand-800",
-  ]);
+  const vars = (
+    theme: { primaryColor?: string; secondaryColor?: string } | null,
+  ): Record<string, string> => brandVars(theme) as unknown as Record<string, string>;
+  const names = Object.keys(vars({ primaryColor: "#1d5f9c" }));
+  assert.deepEqual(
+    names.filter((name) => name.startsWith("--brand-")),
+    PALETTE_STEPS.map((step) => `--brand-${step}`),
+  );
+  assert.deepEqual(
+    names.filter((name) => name.startsWith("--accent-")),
+    PALETTE_STEPS.map((step) => `--accent-${step}`),
+  );
   assert.equal(vars(null)["--brand-700"], DEFAULT_PRIMARY_COLOR);
-  assert.equal(vars("nonsense")["--brand-700"], DEFAULT_PRIMARY_COLOR);
+  assert.equal(vars({ primaryColor: "nonsense" })["--brand-700"], DEFAULT_PRIMARY_COLOR);
+  // The secondary colour is its own scale, not a shade of the primary one.
+  assert.equal(vars(null)["--accent-700"], DEFAULT_SECONDARY_COLOR);
+  assert.equal(
+    vars({ primaryColor: "#1d5f9c", secondaryColor: "#f0716a" })["--accent-700"],
+    "#f0716a",
+  );
+  assert.equal(
+    vars({ primaryColor: "#1d5f9c", secondaryColor: "#F07" })["--accent-700"],
+    "#ff0077",
+  );
+  assert.equal(
+    vars({ primaryColor: "#1d5f9c", secondaryColor: "nonsense" })["--accent-700"],
+    DEFAULT_SECONDARY_COLOR,
+  );
 });
 
 test("the app title is trimmed, collapsed, capped, and falls back to the business name", () => {

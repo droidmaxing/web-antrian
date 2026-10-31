@@ -1,3 +1,4 @@
+import { timezoneOr } from "@/modules/shared/timezone";
 import { createHash, randomBytes } from "node:crypto";
 import { AccessTokenType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -101,7 +102,7 @@ export async function issuePublicQueue(
   });
   if (!service) throw new AppError("Layanan tidak ditemukan.", 404, "SERVICE_NOT_FOUND");
 
-  const timezone = access.branch.timezone ?? access.business.timezone;
+  const timezone = timezoneOr(access.branch.timezone ?? access.business.timezone);
   const now = new Date();
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
@@ -252,7 +253,7 @@ export async function getPublicQueueStatus(token: string, request: Request) {
         include: {
           service: { select: { name: true, averageMinutes: true } },
           branch: { select: { name: true, timezone: true } },
-          business: { select: { name: true } },
+          business: { select: { name: true, timezone: true } },
         },
       },
     },
@@ -313,7 +314,7 @@ export async function getPublicQueueStatus(token: string, request: Request) {
           access.queue.service.averageMinutes
         : 0,
     issuedAt: access.queue.issuedAt,
-    timezone: access.queue.branch.timezone,
+    timezone: timezoneOr(access.queue.branch.timezone ?? access.queue.business.timezone),
   };
 }
 

@@ -74,20 +74,20 @@ export function FeatureSettings({
   }
 
   return (
-    <section id="settings" className="rounded-2xl border border-[#e9edeb] bg-white p-5 shadow-[0_2px_8px_rgba(25,48,40,.025)] md:p-6">
+    <section id="settings" className="bubble-card p-5 shadow-bubble-sm md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-[15px] font-semibold tracking-[-.02em]">Pengaturan fitur</h2>
-            <span className="flex items-center gap-1 rounded-full bg-[#eff5f2] px-2 py-1 text-[9px] font-medium text-[#397b68]">
+            <span className="flex items-center gap-1 rounded-full bg-brand-50 px-2 py-1 text-[9px] font-medium text-brand-600">
               <LockKeyhole className="size-3" /> Super Admin
             </span>
           </div>
-          <p className="mt-1 text-xs text-[#929e99]">
+          <p className="mt-1 text-xs text-[#66736e]">
             Pilih kemampuan yang tersedia untuk bisnis ini.
           </p>
         </div>
-        <ToggleLeft className="size-5 text-[#889590]" />
+        <ToggleLeft className="size-5 text-[#5c6a65]" />
       </div>
       {notice && (
         <InlineNotice message={notice} variant={noticeVariant} className="mt-4" />
@@ -98,14 +98,14 @@ export function FeatureSettings({
           return (
             <div
               key={feature.key}
-              className="flex items-center gap-3 rounded-xl border border-[#eff2f0] p-3"
+              className="flex items-center gap-3 bubble-panel p-3"
             >
-              <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${active ? "bg-brand-50 text-[#43886d]" : "bg-[#f3f5f4] text-[#98a39f]"}`}>
+              <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${active ? "bg-brand-50 text-brand-600" : "bg-brand-50 text-[#5d6b67]"}`}>
                 {active ? <Check className="size-4" /> : <ToggleLeft className="size-4" />}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-[#42504b]">{feature.title}</p>
-                <p className="mt-0.5 text-[10px] leading-4 text-[#98a39f]">
+                <p className="mt-0.5 text-[11px] leading-4 text-[#5d6b67]">
                   {feature.description}
                 </p>
               </div>
@@ -116,12 +116,12 @@ export function FeatureSettings({
                 aria-label={`${active ? "Nonaktifkan" : "Aktifkan"} ${feature.title}`}
                 disabled={saving !== null}
                 onClick={() => void toggle(feature.key)}
-                className={`relative h-5 w-9 shrink-0 rounded-full transition disabled:opacity-50 ${active ? "bg-brand-700" : "bg-[#dfe5e2]"}`}
+                className={`relative h-5 w-9 shrink-0 rounded-full transition disabled:opacity-50 ${active ? "bg-brand-700" : "bg-brand-200"}`}
               >
                 {saving === feature.key ? (
                   <LoaderCircle className="absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 animate-spin text-white" />
                 ) : (
-                  <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-all ${active ? "left-[18px]" : "left-0.5"}`} />
+                  <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow-bubble-sm transition-all ${active ? "left-[18px]" : "left-0.5"}`} />
                 )}
               </button>
             </div>

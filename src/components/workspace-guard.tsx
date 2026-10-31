@@ -18,11 +18,12 @@ export type GuardedWorkspace =
 export async function guardWorkspace(
   businessSlug: string,
   branchId?: string,
+  options: { allowInactiveSubscription?: boolean } = {},
 ): Promise<GuardedWorkspace> {
   const session = await auth();
   if (!session?.user) redirect("/login");
   try {
-    const context = await requireBusinessContext(businessSlug, branchId);
+    const context = await requireBusinessContext(businessSlug, branchId, options);
     return { ok: true, context, userName: session.user.name ?? "Pengguna" };
   } catch (error) {
     if (error instanceof AppError) {

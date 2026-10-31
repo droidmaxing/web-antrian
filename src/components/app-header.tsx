@@ -21,11 +21,17 @@ export function AppHeader({
   theme: BrandTheme;
   role: MembershipRole;
   userName: string;
-  active: "pengaturan" | "panduan";
+  active: "pengaturan" | "panduan" | "langganan";
 }) {
   const capabilities = capabilitiesFor(role);
   const links = [
     { href: `/dashboard/${businessSlug}`, label: "Dashboard", id: "dashboard", show: true },
+    {
+      href: `/dashboard/${businessSlug}/langganan`,
+      label: "Langganan",
+      id: "langganan",
+      show: role === "OWNER",
+    },
     {
       href: `/dashboard/${businessSlug}/panduan`,
       label: "Panduan",
@@ -42,8 +48,8 @@ export function AppHeader({
 
   return (
     <header
-      style={brandVars(theme.primaryColor)}
-      className="sticky top-0 z-20 border-b border-[#e9edeb] bg-white/95 backdrop-blur"
+      style={brandVars(theme)}
+      className="sticky top-0 z-20 border-b border-transparent bg-white/90 shadow-bubble-sm backdrop-blur"
     >
       <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-x-4 gap-y-3 px-5 py-3 md:px-8">
         <a href={`/dashboard/${businessSlug}`} className="flex min-w-0 items-center gap-2.5">
@@ -54,7 +60,7 @@ export function AppHeader({
             <span className="block truncate text-sm font-semibold text-[#182321]">
               {brandTitle(theme, businessName)}
             </span>
-            <span className="block text-[11px] text-[#889590]">Kembali ke dashboard</span>
+            <span className="block text-[11px] text-[#5c6a65]">Kembali ke dashboard</span>
           </span>
         </a>
 
@@ -67,7 +73,7 @@ export function AppHeader({
               className={`rounded-lg px-3 py-1.5 transition ${
                 link.id === active
                   ? "bg-brand-50 font-semibold text-brand-700"
-                  : "text-[#5c6a65] hover:bg-[#f5f7f6]"
+                  : "text-[#5c6a65] hover:bg-brand-50"
               }`}
             >
               {link.label}
@@ -78,7 +84,7 @@ export function AppHeader({
         <div className="ml-auto flex items-center gap-2.5">
           <span className="hidden text-right sm:block">
             <span className="block text-xs font-semibold text-[#182321]">{userName}</span>
-            <span className="block text-[10px] text-[#929e99]">{roleLabel(role)}</span>
+            <span className="block text-[11px] text-[#66736e]">{roleLabel(role)}</span>
           </span>
           <SignOutButton />
         </div>

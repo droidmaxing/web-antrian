@@ -1,5 +1,6 @@
 "use client";
 
+import { timezoneOr } from "@/modules/shared/timezone";
 import {
   Activity,
   ArrowUpRight,
@@ -14,6 +15,7 @@ import {
   CircleHelp,
   Clock3,
   Contact2,
+  CreditCard,
   Layers,
   LayoutDashboard,
   LogOut,
@@ -444,12 +446,12 @@ export function Dashboard({
 
   return (
     <main
-      className="min-h-screen bg-[#f6f8f7] text-[#182321]"
-      style={brandVars(theme.primaryColor)}
+      className="min-h-screen bubble-flow text-[#182321]"
+      style={brandVars(theme)}
     >
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[250px] flex-col border-r border-[#e9edeb] bg-white xl:flex">
-        <div className="flex shrink-0 items-center gap-3 border-b border-[#f0f3f1] px-4 py-5">
-          <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[13px] bg-brand-700 text-white shadow-[0_4px_10px_rgba(23,107,91,.2)]">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-[250px] flex-col border-r border-transparent bg-white shadow-bubble-sm xl:flex">
+        <div className="flex shrink-0 items-center gap-3 border-b border-brand-100 px-4 py-5">
+          <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[13px] bg-brand-700 text-white shadow-bubble-lift">
             <BrandLogo theme={theme} />
           </div>
           <span className="min-w-0 flex-1 truncate text-lg font-semibold tracking-[-.04em]">
@@ -461,18 +463,18 @@ export function Dashboard({
             leaves the viewport on short laptop screens. */}
         <div className="dashboard-sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-5">
         <details className="group">
-          <summary className="flex w-full cursor-pointer list-none items-center gap-3 rounded-xl border border-[#e9edeb] p-3 text-left transition hover:border-[#cddbd5] [&::-webkit-details-marker]:hidden">
+          <summary className="flex w-full cursor-pointer list-none items-center gap-3 bubble-panel p-3 text-left transition [&::-webkit-details-marker]:hidden">
             <div className="flex size-9 items-center justify-center rounded-[10px] bg-brand-50 text-brand-700">
               <span className="text-xs font-bold">{shortName(businessName)}</span>
             </div>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold">{businessName}</span>
-              <span className="mt-0.5 block text-xs text-[#889590]">{branch.name}</span>
+              <span className="mt-0.5 block text-xs text-[#5c6a65]">{branch.name}</span>
             </span>
-            <ChevronDown className="size-4 text-[#9ba6a2]" />
+            <ChevronDown className="size-4 text-[#626966]" />
           </summary>
-          <div className="mt-1.5 rounded-xl border border-[#e9edeb] bg-white p-1.5 shadow-[0_12px_32px_rgba(25,48,40,.12)]">
-            <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[.1em] text-[#a1aca8]">
+          <div className="mt-1.5 bubble-card bg-white p-1.5">
+            <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[.1em] text-[#5d6b67]">
               Cabang
             </p>
             {branches.map((option) => (
@@ -482,7 +484,7 @@ export function Dashboard({
                 className={`block rounded-lg px-2 py-1.5 text-xs ${
                   option.id === branch.id
                     ? "bg-brand-50 font-semibold text-brand-700"
-                    : "font-medium text-[#56635f] hover:bg-[#f6f8f7]"
+                    : "font-medium text-[#56635f] hover:bg-brand-50"
                 }`}
               >
                 {option.name}
@@ -491,7 +493,7 @@ export function Dashboard({
             {canConfigure && (
               <a
                 href="#branches"
-                className="mt-1 block rounded-lg border-t border-[#eff2f0] px-2 py-1.5 text-xs font-semibold text-brand-700 hover:bg-[#f6f8f7]"
+                className="mt-1 block rounded-lg border-t border-brand-100 px-2 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50"
               >
                 Kelola cabang
               </a>
@@ -499,7 +501,7 @@ export function Dashboard({
           </div>
         </details>
 
-        <p className="mb-2 mt-8 px-3 text-[10px] font-semibold uppercase tracking-[.16em] text-[#9aa5a1]">
+        <p className="mb-2 mt-8 px-3 text-[11px] font-semibold uppercase tracking-[.16em] text-[#5d6b67]">
           Operasional
         </p>
         <nav className="space-y-1">
@@ -511,7 +513,7 @@ export function Dashboard({
           )}
         </nav>
 
-        <p className="mb-2 mt-8 px-3 text-[10px] font-semibold uppercase tracking-[.16em] text-[#9aa5a1]">
+        <p className="mb-2 mt-8 px-3 text-[11px] font-semibold uppercase tracking-[.16em] text-[#5d6b67]">
           Pengelolaan
         </p>
         <nav className="space-y-1">
@@ -524,10 +526,17 @@ export function Dashboard({
           {canViewReports && <NavLink href="#reports" label="Laporan" icon={BarChart3} />}
         </nav>
 
-        <p className="mb-2 mt-8 px-3 text-[10px] font-semibold uppercase tracking-[.16em] text-[#9aa5a1]">
+        <p className="mb-2 mt-8 px-3 text-[11px] font-semibold uppercase tracking-[.16em] text-[#5d6b67]">
           Bantuan & pengaturan
         </p>
         <nav className="space-y-1">
+          {isOwner && (
+            <NavLink
+              href={`/dashboard/${businessSlug}/langganan`}
+              label="Langganan"
+              icon={CreditCard}
+            />
+          )}
           <NavLink
             href={`/dashboard/${businessSlug}/panduan`}
             label="Panduan"
@@ -546,18 +555,18 @@ export function Dashboard({
         {/* Pinned footer: always visible, never inside the scroll container. */}
         <div className="shrink-0 border-t border-[#eef1f0] bg-white p-3">
           <div className="flex items-center gap-2.5 px-2 pb-2.5">
-            <div className="flex size-8 items-center justify-center rounded-full bg-[#e7f1ed] text-[11px] font-bold text-[#276b5b]">
+            <div className="flex size-8 items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-700">
               {shortName(userName)}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold">{userName}</p>
-              <p className="truncate text-[10px] text-[#929e99]">{roleLabel(role)}</p>
+              <p className="truncate text-[11px] text-[#66736e]">{roleLabel(role)}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => void handleSignOut()}
-            className="flex w-full items-center gap-3 rounded-xl border border-[#e9edeb] px-3 py-2.5 text-left text-sm font-medium text-[#4d5a56] transition hover:border-[#e0a99f] hover:bg-[#fdf4f2] hover:text-[#b4553f]"
+            className="flex w-full items-center gap-3 bubble-panel px-3 py-2.5 text-left text-sm font-medium text-[#4d5a56] transition hover:bg-[#fdf4f2] hover:text-[#b4553f]"
           >
             <LogOut className="size-4" /> Keluar
           </button>
@@ -565,34 +574,34 @@ export function Dashboard({
       </aside>
 
       <section className="xl:pl-[250px]">
-        <header className="sticky top-0 z-10 border-b border-[#e9edeb] bg-white/95 backdrop-blur">
+        <header className="sticky top-0 z-10 border-b border-transparent bg-white/90 shadow-bubble-sm backdrop-blur">
           <div className="flex h-[72px] items-center justify-between gap-3 px-5 md:px-9">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-700 text-white xl:hidden">
+              <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-700 text-white xl:hidden">
                 <BrandLogo theme={theme} />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-[11px] text-[#889590]">{businessName}</p>
+                <p className="truncate text-[11px] text-[#5c6a65]">{businessName}</p>
                 <p className="truncate text-sm font-semibold">{branch.name}</p>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <div className="hidden h-9 w-[210px] items-center gap-2 rounded-lg border border-[#edf0ef] bg-[#fafbfa] px-3 md:flex">
-                <Search className="size-4 text-[#a1aca8]" />
+              <div className="hidden h-9 w-[210px] items-center gap-2 rounded-lg bg-brand-50 px-3 md:flex bubble-btn">
+                <Search className="size-4 text-[#5d6b67]" />
                 <input
                   ref={searchRef}
                   value={queueQuery}
                   onChange={(event) => setQueueQuery(event.target.value)}
                   placeholder="Cari nomor, pelanggan, layanan..."
                   aria-label="Cari antrean"
-                  className="min-w-0 flex-1 bg-transparent text-xs text-[#344440] outline-none placeholder:text-[#a1aca8]"
+                  className="min-w-0 flex-1 bg-transparent text-xs text-[#344440] outline-none placeholder:text-[#5d6b67]"
                 />
                 {queueQuery && (
                   <button
                     type="button"
                     onClick={() => setQueueQuery("")}
                     aria-label="Hapus pencarian"
-                    className="text-[10px] text-[#a1aca8] hover:text-[#687570]"
+                    className="text-[11px] text-[#5d6b67] hover:text-[#687570]"
                   >
                     Reset
                   </button>
@@ -604,7 +613,7 @@ export function Dashboard({
                 onClick={() => setNoticeOpen((current) => !current)}
                 aria-expanded={noticeOpen}
                 aria-label="Notifikasi operasional"
-                className="relative flex size-9 items-center justify-center rounded-lg text-[#75827f] hover:bg-[#f5f7f6]"
+                className="relative flex size-9 items-center justify-center rounded-lg text-[#53615b] hover:bg-brand-50"
               >
                 <Bell className="size-[18px]" />
                 {alerts.length > 0 && (
@@ -612,8 +621,8 @@ export function Dashboard({
                 )}
               </button>
               {noticeOpen && (
-                <div className="absolute right-0 top-11 z-40 w-[290px] rounded-xl border border-[#e9edeb] bg-white p-3 shadow-[0_12px_32px_rgba(25,48,40,.12)]">
-                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[.1em] text-[#a1aca8]">
+                <div className="absolute right-0 top-11 z-40 w-[290px] bubble-card bg-white p-3">
+                  <p className="px-1 text-[11px] font-semibold uppercase tracking-[.1em] text-[#5d6b67]">
                     Notifikasi
                   </p>
                   <div className="mt-2 space-y-1.5">
@@ -621,14 +630,14 @@ export function Dashboard({
                       alerts.map((alert) => (
                         <div
                           key={alert.id}
-                          className="rounded-lg border border-[#eff2f0] px-2.5 py-2"
+                          className="rounded-lg bubble-panel px-2.5 py-2"
                         >
                           <p className="text-[11px] font-medium text-[#344440]">{alert.title}</p>
-                          <p className="mt-0.5 text-[10px] text-[#929e99]">{alert.detail}</p>
+                          <p className="mt-0.5 text-[11px] text-[#66736e]">{alert.detail}</p>
                         </div>
                       ))
                     ) : (
-                      <p className="px-1 py-3 text-[11px] text-[#a1aca8]">
+                      <p className="px-1 py-3 text-[11px] text-[#5d6b67]">
                         Tidak ada notifikasi. Semua operasional normal.
                       </p>
                     )}
@@ -636,27 +645,27 @@ export function Dashboard({
                 </div>
               )}
             </div>
-            <span className="mx-1 hidden h-9 w-px bg-[#e9edeb] sm:block" />
+            <span className="mx-1 hidden h-9 w-px bg-brand-200 sm:block" />
             <details className="relative">
               <summary
                 aria-label={`Menu akun ${userName}`}
-                className="flex cursor-pointer list-none items-center gap-2.5 rounded-xl px-1 py-1 transition hover:bg-[#f5f7f6] [&::-webkit-details-marker]:hidden"
+                className="flex cursor-pointer list-none items-center gap-2.5 rounded-xl px-1 py-1 transition hover:bg-brand-50 [&::-webkit-details-marker]:hidden"
               >
                 <div className="hidden text-right sm:block">
                   <p className="text-xs font-semibold">{userName}</p>
-                  <p className="mt-0.5 text-[10px] text-[#929e99]">
+                  <p className="mt-0.5 text-[11px] text-[#66736e]">
                     {roleLabel(role)}
                   </p>
                 </div>
-                <div className="flex size-9 items-center justify-center rounded-full bg-[#e7f1ed] text-xs font-bold text-[#276b5b]">
+                <div className="flex size-9 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
                   {shortName(userName)}
                 </div>
-                <ChevronDown className="size-4 text-[#9ba6a2]" />
+                <ChevronDown className="size-4 text-[#626966]" />
               </summary>
-              <div className="absolute right-0 top-12 z-40 w-[230px] rounded-xl border border-[#e9edeb] bg-white p-1.5 shadow-[0_12px_32px_rgba(25,48,40,.12)]">
+              <div className="absolute right-0 top-12 z-40 w-[230px] bubble-card bg-white p-1.5">
                 <div className="px-2.5 py-2">
                   <p className="truncate text-sm font-semibold">{userName}</p>
-                  <p className="mt-0.5 truncate text-[11px] text-[#929e99]">
+                  <p className="mt-0.5 truncate text-[11px] text-[#66736e]">
                     {roleLabel(role)} · {businessName}
                   </p>
                 </div>
@@ -674,20 +683,20 @@ export function Dashboard({
           </div>
           {/* Pencarian selalu tersedia; di layar sempit ia turun ke baris kedua. */}
           <div className="px-5 pb-3 md:hidden">
-            <label className="flex h-9 items-center gap-2 rounded-lg border border-[#edf0ef] bg-[#fafbfa] px-3">
+            <label className="flex h-9 items-center gap-2 rounded-lg bg-brand-50 px-3 bubble-btn">
               <span className="sr-only">Cari antrean</span>
-              <Search className="size-4 shrink-0 text-[#a1aca8]" />
+              <Search className="size-4 shrink-0 text-[#5d6b67]" />
               <input
                 value={queueQuery}
                 onChange={(event) => setQueueQuery(event.target.value)}
                 placeholder="Cari nomor, pelanggan, layanan..."
-                className="min-w-0 flex-1 bg-transparent text-xs text-[#344440] outline-none placeholder:text-[#a1aca8]"
+                className="min-w-0 flex-1 bg-transparent text-xs text-[#344440] outline-none placeholder:text-[#5d6b67]"
               />
               {queueQuery && (
                 <button
                   type="button"
                   onClick={() => setQueueQuery("")}
-                  className="shrink-0 text-[10px] text-[#a1aca8] hover:text-[#687570]"
+                  className="shrink-0 text-[11px] text-[#5d6b67] hover:text-[#687570]"
                 >
                   Reset
                 </button>
@@ -698,7 +707,7 @@ export function Dashboard({
 
         <nav
           aria-label="Navigasi dashboard"
-          className="dashboard-mobile-nav sticky top-[120px] z-[9] flex gap-1 overflow-x-auto border-b border-[#e9edeb] bg-white px-3 py-2 md:top-[72px] xl:hidden"
+          className="dashboard-mobile-nav sticky top-[120px] z-[9] flex gap-1 overflow-x-auto border-b border-transparent bg-white shadow-bubble-sm px-3 py-2 md:top-[72px] xl:hidden"
         >
           <MobileNavLink href="#overview" label="Ringkasan" />
           <MobileNavLink href="#queue" label="Antrean" />
@@ -712,6 +721,9 @@ export function Dashboard({
           <MobileNavLink href="#branches" label="Cabang" />
           {canManageTeam && <MobileNavLink href="#team" label="Tim" />}
           {canViewReports && <MobileNavLink href="#reports" label="Laporan" />}
+          {isOwner && (
+            <MobileNavLink href={`/dashboard/${businessSlug}/langganan`} label="Langganan" />
+          )}
           <MobileNavLink href={`/dashboard/${businessSlug}/panduan`} label="Panduan" />
           {canConfigure && (
             <MobileNavLink href={`/dashboard/${businessSlug}/pengaturan`} label="Pengaturan" />
@@ -722,7 +734,7 @@ export function Dashboard({
           <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-brand-700">
-                <span className="size-1.5 rounded-full bg-[#42a184]" />
+                <span className="size-1.5 rounded-full bg-brand-500" />
                 {branches.length > 1 ? (
                   <label className="relative flex items-center">
                     <span className="sr-only">Pilih cabang</span>
@@ -746,46 +758,46 @@ export function Dashboard({
                 ) : (
                   <span>{branch.name}</span>
                 )}
-                <span className="text-[#c0c9c5]">·</span>
+                <span className="text-[#626764]">·</span>
                 {new Intl.DateTimeFormat("id-ID", {
                   weekday: "long",
                   day: "numeric",
                   month: "long",
                   year: "numeric",
-                  timeZone: branch.timezone,
+                  timeZone: timezoneOr(branch.timezone),
                 }).format(new Date(serverNow))}
               </div>
               <h1 className="text-[26px] font-semibold tracking-[-.04em] sm:text-[30px]">
-                {greetingFor(branch.timezone, serverNow)}, {userName.split(" ")[0]}{" "}
+                {greetingFor(timezoneOr(branch.timezone), serverNow)}, {userName.split(" ")[0]}{" "}
                 <span aria-hidden="true">👋</span>
               </h1>
-              <p className="mt-1.5 text-sm text-[#889590]">
+              <p className="mt-1.5 text-sm text-[#5c6a65]">
                 Pantau operasional dan antrean hari ini.
               </p>
             </div>
             <div className="flex items-center gap-2">
               <label className="relative flex items-center">
                 <span className="sr-only">Rentang waktu antrean</span>
-                <CalendarDays className="pointer-events-none absolute left-3 size-4 text-[#889590]" />
+                <CalendarDays className="pointer-events-none absolute left-3 size-4 text-[#5c6a65]" />
                 <select
                   value={timeWindow}
                   onChange={(event) => {
                     setTimeWindow(event.target.value as TimeWindow);
                     setWindowAnchor(Date.now());
                   }}
-                  className="h-10 cursor-pointer appearance-none rounded-lg border border-[#e4e9e6] bg-white pl-9 pr-8 text-xs font-medium text-[#56635f] shadow-sm outline-none hover:border-[#cddbd5]"
+                  className="h-10 cursor-pointer appearance-none rounded-lg bubble-field bg-white pl-9 pr-8 text-xs font-medium text-[#56635f] shadow-bubble-sm outline-none"
                 >
                   <option value="today">Hari ini</option>
                   <option value="1h">1 jam terakhir</option>
                   <option value="3h">3 jam terakhir</option>
                   <option value="8h">8 jam terakhir</option>
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5 text-[#9aa5a1]" />
+                <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5 text-[#5d6b67]" />
               </label>
               {canOperate && (
                 <a
                   href="#queue"
-                  className="flex h-10 items-center gap-2 rounded-lg bg-brand-700 px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-800"
+                  className="flex h-10 items-center gap-2 rounded-full bg-brand-700 px-3.5 text-xs font-semibold text-white shadow-bubble-sm transition hover:bg-brand-800"
                 >
                   <Plus className="size-4" />
                   <span className="hidden sm:inline">Kelola antrean</span>
@@ -802,7 +814,7 @@ export function Dashboard({
                 type="button"
                 onClick={() => setNotice("")}
                 aria-label="Tutup pemberitahuan"
-                className="rounded-lg p-2 text-[#889590] hover:bg-white"
+                className="rounded-lg p-2 text-[#5c6a65] hover:bg-white"
               >
                 ×
               </button>
@@ -815,42 +827,42 @@ export function Dashboard({
               value={metrics.total}
               note="nomor diterbitkan hari ini"
               icon={Users2}
-              tone="green"
+              tone="brand"
             />
             <MetricCard
               title="Menunggu"
               value={metrics.waiting}
               note="pelanggan dalam antrean"
               icon={Clock3}
-              tone="amber"
+              tone="accent"
             />
             <MetricCard
               title="Sedang dilayani"
               value={metrics.active}
               note="antrean di loket"
               icon={Activity}
-              tone="blue"
+              tone="brandSoft"
             />
             <MetricCard
               title="Selesai"
               value={metrics.completed}
               note="pelayanan dituntaskan"
               icon={CheckCheck}
-              tone="violet"
+              tone="accentSoft"
             />
           </div>
 
           <div className="mt-5 grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,.9fr)]">
             <section
               id="overview"
-              className="rounded-2xl border border-[#e9edeb] bg-white p-5 shadow-[0_2px_8px_rgba(25,48,40,.025)] md:p-6"
+              className="bubble-card p-5 shadow-bubble-sm md:p-6"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="text-[15px] font-semibold tracking-[-.02em]">
                     Aktivitas antrean
                   </h2>
-                  <p className="mt-1 text-xs text-[#929e99]">
+                  <p className="mt-1 text-xs text-[#66736e]">
                     Distribusi tiket berdasarkan rentang waktu di atas
                   </p>
                 </div>
@@ -859,10 +871,10 @@ export function Dashboard({
                 <>
                   <QueueActivityChart
                     queues={queuesInWindow}
-                    timezone={branch.timezone}
+                    timezone={timezoneOr(branch.timezone)}
                     nowIso={serverNow}
                   />
-                  <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[#eff2f0] pt-4 sm:grid-cols-4">
+                  <div className="mt-5 grid grid-cols-2 gap-3 border-t border-brand-100 pt-4 sm:grid-cols-4">
                     <TinyMetric label="Rata-rata waktu tunggu" value={`${metrics.averageWaitMinutes} mnt`} icon={Clock3} />
                     <TinyMetric label="Rata-rata pelayanan" value={`${metrics.averageServiceMinutes} mnt`} icon={Activity} />
                     <TinyMetric label="Layanan tersedia" value={branch.services.length.toString()} icon={Sparkles} />
@@ -879,21 +891,21 @@ export function Dashboard({
               )}
             </section>
 
-            <section id="counters" className="rounded-2xl border border-[#e9edeb] bg-white p-5 shadow-[0_2px_8px_rgba(25,48,40,.025)] md:p-6">
+            <section id="counters" className="bubble-card p-5 shadow-bubble-sm md:p-6">
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-[15px] font-semibold tracking-[-.02em]">
                     Status loket
                   </h2>
-                  <p className="mt-1 text-xs text-[#929e99]">
+                  <p className="mt-1 text-xs text-[#66736e]">
                     Kondisi pelayanan saat ini
                   </p>
                 </div>
               </div>
               {voiceEnabled && canOperate && (
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#eaf1ed] bg-[#f8fbf9] px-3 py-2.5">
-                  <p className="flex min-w-0 items-center gap-2 text-[10px] text-[#6c7a74]">
-                    <Volume2 className="size-3.5 shrink-0 text-[#4a8b73]" />
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 bubble-panel bg-brand-50 px-3 py-2.5">
+                  <p className="flex min-w-0 items-center gap-2 text-[11px] text-[#6c7a74]">
+                    <Volume2 className="size-3.5 shrink-0 text-brand-600" />
                     <span className="truncate">
                       {!voiceReady
                         ? "Aktifkan suara sekali untuk mengizinkan pemanggilan otomatis."
@@ -907,7 +919,7 @@ export function Dashboard({
                   <button
                     type="button"
                     onClick={() => (voiceReady ? setVoiceMuted((current) => !current) : enableVoice())}
-                    className="shrink-0 rounded-lg border border-[#dbe7e1] bg-white px-2.5 py-1 text-[10px] font-semibold text-[#3c6b58] hover:bg-[#f2f7f4]"
+                    className="shrink-0 rounded-lg bubble-card bg-white px-2.5 py-1 text-[11px] font-semibold text-brand-700 hover:bg-brand-50"
                   >
                     {!voiceReady ? "Aktifkan suara" : voiceMuted ? "Nyalakan suara" : "Matikan suara"}
                   </button>
@@ -917,24 +929,24 @@ export function Dashboard({
                 {branch.counters.map((counter) => (
                   <div
                     key={counter.id}
-                    className="flex items-center gap-3 rounded-xl border border-[#eff2f0] p-3"
+                    className="flex items-center gap-3 bubble-panel p-3"
                   >
-                    <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${counter.currentTicket ? "bg-[#eaf4ef] text-[#277660]" : "bg-[#f2f4f3] text-[#7c8883]"}`}>
+                    <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${counter.currentTicket ? "bg-brand-100 text-brand-700" : "bg-[#f2f4f3] text-[#5f6965]"}`}>
                       {counter.code}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold">{counter.name}</p>
-                        <span className={`size-1.5 rounded-full ${counter.currentTicket ? "bg-[#4aa782]" : "bg-[#c9d0cd]"}`} />
+                        <span className={`size-1.5 rounded-full ${counter.currentTicket ? "bg-brand-500" : "bg-[#c9d0cd]"}`} />
                       </div>
-                      <p className="mt-1 truncate text-xs text-[#929e99]">
+                      <p className="mt-1 truncate text-xs text-[#66736e]">
                         {counter.currentTicket
                           ? `${counter.currentTicket} · ${counter.currentService}`
                           : "Belum ada pelanggan"}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-[11px] font-medium ${counter.currentTicket ? "text-[#277660]" : "text-[#9aa5a1]"}`}>
+                      <p className={`text-[11px] font-medium ${counter.currentTicket ? "text-brand-700" : "text-[#5d6b67]"}`}>
                         {counter.currentTicket
                           ? counter.queueStatus === "SERVING"
                             ? "Melayani"
@@ -953,7 +965,7 @@ export function Dashboard({
                               ? "Tidak ada antrean menunggu untuk layanan loket ini."
                               : `Panggil antrean berikutnya (${counter.waitingForCounter} menunggu).`
                           }
-                          className="mt-1 text-[10px] font-semibold text-brand-700 hover:underline disabled:opacity-40"
+                          className="mt-1 text-[11px] font-semibold text-brand-700 hover:underline disabled:opacity-40"
                         >
                           {busyAction === `call-${counter.id}`
                             ? "Memanggil..."
@@ -969,33 +981,33 @@ export function Dashboard({
                   <EmptyState title="Belum ada loket" description="Tambahkan loket untuk mulai melayani antrean." />
                 )}
               </div>
-              <a href="#counters-manage" className="mt-4 flex items-center justify-center gap-2 rounded-lg border border-[#edf0ef] py-2.5 text-xs font-semibold text-[#596661] hover:bg-[#fafbfa]">
+              <a href="#counters-manage" className="mt-4 flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-semibold text-[#596661] hover:bg-brand-50 bubble-btn">
                 Kelola semua loket <ArrowUpRight className="size-3.5" />
               </a>
             </section>
           </div>
 
           <div className="mt-5 grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,.9fr)]">
-            <section id="queue" className="overflow-hidden rounded-2xl border border-[#e9edeb] bg-white shadow-[0_2px_8px_rgba(25,48,40,.025)]">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eff2f0] px-5 py-5 md:px-6">
+            <section id="queue" className="overflow-hidden bubble-card">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-100 px-5 py-5 md:px-6">
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-[15px] font-semibold tracking-[-.02em]">Antrean hari ini</h2>
-                    <span className="rounded-full bg-[#eff5f2] px-2 py-0.5 text-[10px] font-semibold text-[#397b68]">
+                    <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-600">
                       {queues.length}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-[#929e99]">Pantau dan kelola setiap pelanggan</p>
+                  <p className="mt-1 text-xs text-[#66736e]">Pantau dan kelola setiap pelanggan</p>
                 </div>
                   <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => router.refresh()}
-                    className="flex size-9 items-center justify-center rounded-lg border border-[#edf0ef] text-[#76827d] hover:bg-[#f8faf9]"
+                    className="flex size-9 items-center justify-center rounded-lg text-[#606965] hover:bg-brand-50 bubble-btn"
                     aria-label="Muat ulang antrean"
                   >
                     <RefreshCw className="size-4" />
                   </button>
-                  <label className="relative flex h-9 items-center gap-2 rounded-lg border border-[#edf0ef] px-3 text-xs font-medium text-[#687570]">
+                  <label className="relative flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium text-[#687570] bubble-btn">
                     <span className="sr-only">Filter loket</span>
                     <select
                       value={counterFilter}
@@ -1012,7 +1024,7 @@ export function Dashboard({
                     </select>
                     <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" />
                   </label>
-                  <label className="relative flex h-9 items-center gap-2 rounded-lg border border-[#edf0ef] px-3 text-xs font-medium text-[#687570]">
+                  <label className="relative flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium text-[#687570] bubble-btn">
                     <span className="sr-only">Filter status antrean</span>
                     <select
                       value={statusFilter}
@@ -1034,14 +1046,14 @@ export function Dashboard({
               </div>
               {queues.length ? (
                 <>
-                  <div className="hidden grid-cols-[1.2fr_1fr_1.1fr_.8fr_1fr] gap-4 bg-[#fafbfa] px-6 py-3 text-[10px] font-semibold uppercase tracking-[.1em] text-[#a1aca8] md:grid">
+                  <div className="hidden grid-cols-[1.2fr_1fr_1.1fr_.8fr_1fr] gap-4 bg-brand-50 px-6 py-3 text-[11px] font-semibold uppercase tracking-[.1em] text-[#5d6b67] md:grid">
                     <span>Nomor antrean</span>
                     <span>Pelanggan</span>
                     <span>Layanan</span>
                     <span>Status</span>
                     <span className="text-right">Aksi</span>
                   </div>
-                  <div className="divide-y divide-[#eff2f0]">
+                  <div className="divide-y divide-brand-100">
                     {displayedQueues.map((queue) => (
                       <QueueItem
                         key={queue.id}
@@ -1087,22 +1099,22 @@ export function Dashboard({
 
             <div className="space-y-5">
               {analyticsEnabled && (
-              <section id="services" className="rounded-2xl border border-[#e9edeb] bg-white p-5 shadow-[0_2px_8px_rgba(25,48,40,.025)] md:p-6">
+              <section id="services" className="bubble-card p-5 shadow-bubble-sm md:p-6">
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-[15px] font-semibold tracking-[-.02em]">Layanan populer</h2>
-                    <p className="mt-1 text-xs text-[#929e99]">Berdasarkan antrean hari ini</p>
+                    <p className="mt-1 text-xs text-[#66736e]">Berdasarkan antrean hari ini</p>
                   </div>
                   <details className="relative">
                     <summary
                       aria-label="Bantuan layanan populer"
-                      className="cursor-pointer list-none text-[#a3ada9] hover:text-[#75827f] [&::-webkit-details-marker]:hidden"
+                      className="cursor-pointer list-none text-[#636a67] hover:text-[#53615b] [&::-webkit-details-marker]:hidden"
                     >
                       <CircleHelp className="size-4" />
                     </summary>
-                    <div className="absolute right-0 top-6 z-40 w-64 rounded-xl border border-[#e9edeb] bg-white p-3 text-left shadow-[0_12px_32px_rgba(25,48,40,.12)]">
-                      <p className="text-[11px] font-semibold text-[#40504a]">Cara membaca</p>
-                      <p className="mt-1 text-[11px] leading-5 text-[#889590]">
+                    <div className="absolute right-0 top-6 z-40 w-64 bubble-card bg-white p-3 text-left">
+                      <p className="text-[11px] font-semibold text-brand-800">Cara membaca</p>
+                      <p className="mt-1 text-[11px] leading-5 text-[#5c6a65]">
                         Persentase dihitung dari jumlah antrean hari ini per layanan.
                         Kosong berarti layanan belum menerima antrean.
                       </p>
@@ -1123,11 +1135,11 @@ export function Dashboard({
                       <div key={service.id}>
                         <div className="mb-2 flex items-center justify-between text-xs">
                           <span className="font-medium text-[#475550]">{service.name}</span>
-                          <span className="text-[#929e99]">{count} antrean</span>
+                          <span className="text-[#66736e]">{count} antrean</span>
                         </div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-[#f0f3f2]">
+                        <div className="h-1.5 overflow-hidden rounded-full bg-brand-50">
                           <div
-                            className={`h-full rounded-full ${["bg-[#4c9c80]", "bg-[#89bfa9]", "bg-[#b8d9c9]"][index % 3]}`}
+                            className={`h-full rounded-full ${["bg-brand-500", "bg-brand-400", "bg-brand-300"][index % 3]}`}
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
@@ -1141,12 +1153,12 @@ export function Dashboard({
               </section>
               )}
               {analyticsEnabled && (
-              <section id="analytics" className="rounded-2xl bg-brand-700 p-5 text-white shadow-[0_8px_20px_rgba(23,107,91,.12)] md:p-6">
+              <section id="analytics" className="rounded-bubble bg-brand-700 p-5 text-white shadow-bubble-lift md:p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex size-9 items-center justify-center rounded-xl bg-white/15">
                     <Sparkles className="size-[17px]" />
                   </div>
-                  <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-medium text-white/80">
+                  <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white/80">
                     {enabledFeatures.includes("ANALYTICS") ? "Analytics aktif" : "Analytics nonaktif"}
                   </span>
                 </div>
@@ -1156,15 +1168,15 @@ export function Dashboard({
                 </p>
                 <div className="mt-5 grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-white/10 p-3">
-                    <p className="text-[10px] text-white/65">Rata-rata waktu tunggu</p>
+                    <p className="text-[11px] text-white/65">Rata-rata waktu tunggu</p>
                     <p className="mt-1 text-xl font-semibold">{metrics.averageWaitMinutes} mnt</p>
                   </div>
                   <div className="rounded-xl bg-white/10 p-3">
-                    <p className="text-[10px] text-white/65">Selesai dilayani</p>
+                    <p className="text-[11px] text-white/65">Selesai dilayani</p>
                     <p className="mt-1 text-xl font-semibold">{metrics.completed}</p>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center gap-2 text-[10px] text-white/60">
+                <div className="mt-4 flex items-center gap-2 text-[11px] text-white/60">
                   <Check className="size-3.5" />
                   Berdasarkan aktivitas antrean aktual
                 </div>
@@ -1225,7 +1237,7 @@ export function Dashboard({
             <div className="mt-5">
               <BookingManagement
                 businessSlug={businessSlug}
-                timezone={branch.timezone}
+                timezone={timezoneOr(branch.timezone)}
                 bookings={bookings}
                 readOnly={!canOperate}
               />
@@ -1239,12 +1251,12 @@ export function Dashboard({
               <Settings2 className="size-4" /> Pengaturan workspace
             </a>
           )}
-          <footer className="mt-8 flex flex-col justify-between gap-2 border-t border-[#e8ecea] py-5 text-[11px] text-[#a0aaa6] sm:flex-row">
+          <footer className="mt-8 flex flex-col justify-between gap-2 border-t border-[#e8ecea] py-5 text-[11px] text-[#5d6b67] sm:flex-row">
             <span>
               © {serverNow.slice(0, 4)} {brandTitle(theme, businessName)}
             </span>
             <span className="flex items-center gap-2">
-              <span className="size-1.5 rounded-full bg-[#55ad86]" />
+              <span className="size-1.5 rounded-full bg-brand-500" />
               Data tersimpan dengan aman
             </span>
           </footer>
@@ -1279,12 +1291,12 @@ function NavLink({
   return (
     <a
       href={href}
-      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] text-[#75827f] transition hover:bg-[#f7f9f8] hover:text-[#344440]"
+      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] text-[#53615b] transition hover:bg-brand-50 hover:text-[#344440]"
     >
       <Icon className="size-[17px]" />
       <span className="flex-1">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="rounded-md bg-white px-1.5 py-0.5 text-[10px] font-semibold text-[#687570] shadow-sm">
+        <span className="rounded-md bg-white px-1.5 py-0.5 text-[11px] font-semibold text-[#687570] shadow-bubble-sm">
           {badge}
         </span>
       )}
@@ -1303,25 +1315,25 @@ function MetricCard({
   value: number;
   note: string;
   icon: LucideIcon;
-  tone: "green" | "amber" | "blue" | "violet";
+  tone: "brand" | "accent" | "brandSoft" | "accentSoft";
 }) {
   const tones = {
-    green: "bg-brand-50 text-[#43886d]",
-    amber: "bg-[#fff5e7] text-[#c68a33]",
-    blue: "bg-[#edf2fc] text-[#6889c5]",
-    violet: "bg-[#f3effb] text-[#8f72be]",
+    brand: "bg-brand-50 text-brand-600",
+    accent: "bg-accent-100 text-accent-800",
+    brandSoft: "bg-brand-100 text-brand-700",
+    accentSoft: "bg-accent-200 text-accent-900",
   };
   return (
-    <article className="rounded-2xl border border-[#e9edeb] bg-white p-4 shadow-[0_2px_8px_rgba(25,48,40,.025)] md:p-5">
+    <article className="bubble-card p-4 shadow-bubble-sm md:p-5">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-[#75827f]">{title}</p>
+        <p className="text-xs font-medium text-[#53615b]">{title}</p>
         <span className={`flex size-8 items-center justify-center rounded-[10px] ${tones[tone]}`}>
           <Icon className="size-4" />
         </span>
       </div>
       <div className="mt-3">
         <p className="text-[28px] font-semibold leading-none tracking-[-.04em]">{value}</p>
-        <p className="mt-2 text-[11px] text-[#929e99]">{note}</p>
+        <p className="mt-2 text-[11px] text-[#66736e]">{note}</p>
       </div>
     </article>
   );
@@ -1338,12 +1350,12 @@ function TinyMetric({
 }) {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#f4f7f5] text-[#6f8c80]">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-[#6f8c80]">
         <Icon className="size-4" />
       </div>
       <div>
-        <p className="text-[9px] text-[#9aa5a1]">{label}</p>
-        <p className="mt-0.5 text-xs font-semibold text-[#41514b]">{value}</p>
+        <p className="text-[9px] text-[#5d6b67]">{label}</p>
+        <p className="mt-0.5 text-xs font-semibold text-brand-800">{value}</p>
       </div>
     </div>
   );
@@ -1376,7 +1388,7 @@ function QueueActivityChart({
     <div className="mt-5">
       <div className="mb-2 flex items-center gap-2">
         <span className="text-2xl font-semibold tracking-[-.04em]">{queues.length}</span>
-        <span className="rounded-full bg-brand-50 px-2 py-1 text-[10px] font-medium text-[#43886d]">
+        <span className="rounded-full bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-600">
           <ArrowUpRight className="mr-0.5 inline size-3" /> antrean
         </span>
       </div>
@@ -1395,7 +1407,7 @@ function QueueActivityChart({
                   <span className="mb-1.5 text-[9px] font-medium text-[#78857f]">{count}</span>
                 )}
                 <div
-                  className={`w-full max-w-[34px] rounded-t-[5px] transition-all ${hours[index] === currentHour ? "bg-brand-700" : count ? "bg-[#9dccb5]" : "bg-[#ecf1ee]"}`}
+                  className={`w-full max-w-[34px] rounded-t-[5px] transition-all ${hours[index] === currentHour ? "bg-brand-700" : count ? "bg-brand-400" : "bg-brand-100"}`}
                   style={{ height: `${height}px` }}
                 />
               </div>
@@ -1404,7 +1416,7 @@ function QueueActivityChart({
         </div>
         <div className="absolute inset-x-0 bottom-0 flex justify-around">
           {hours.map((hour) => (
-            <span key={hour} className="flex-1 text-center text-[9px] text-[#a1aca8]">
+            <span key={hour} className="flex-1 text-center text-[9px] text-[#5d6b67]">
               {String(hour).padStart(2, "0")}:00
             </span>
           ))}
@@ -1435,10 +1447,10 @@ function QueueItem({
     NO_SHOW: "Tidak hadir",
   };
   const statusStyles: Record<QueueStatus, string> = {
-    WAITING: "bg-[#fff6e8] text-[#ae7723]",
+    WAITING: "bg-accent-100 text-accent-900",
     CALLED: "bg-[#edf2fc] text-[#5b78b0]",
-    SERVING: "bg-[#e9f5ef] text-[#31795d]",
-    COMPLETED: "bg-[#f0f3f2] text-[#74817c]",
+    SERVING: "bg-brand-100 text-brand-700",
+    COMPLETED: "bg-brand-50 text-[#74817c]",
     SKIPPED: "bg-[#f7f0e9] text-[#9a7150]",
     CANCELLED: "bg-[#fbefef] text-[#bd6e6e]",
     NO_SHOW: "bg-[#f4effb] text-[#856ca9]",
@@ -1454,29 +1466,29 @@ function QueueItem({
   };
 
   return (
-    <article className="flex flex-col gap-3 px-5 py-3.5 transition hover:bg-[#fcfdfc] md:grid md:grid-cols-[1.2fr_1fr_1.1fr_.8fr_1fr] md:items-center md:gap-4 md:px-6">
+    <article className="flex flex-col gap-3 px-5 py-3.5 transition hover:bg-brand-50 md:grid md:grid-cols-[1.2fr_1fr_1.1fr_.8fr_1fr] md:items-center md:gap-4 md:px-6">
       <div className="flex items-center justify-between md:justify-start md:gap-2.5">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-9 items-center justify-center rounded-[10px] bg-brand-50 text-[10px] font-bold text-[#377861]">
+          <div className="flex size-9 items-center justify-center rounded-[10px] bg-brand-50 text-[11px] font-bold text-brand-700">
             {shortName(queue.customerName)}
           </div>
           <div>
             <p className="text-xs font-semibold text-[#344440]">{queue.ticketNumber}</p>
-            <p className="mt-0.5 text-[10px] text-[#a0aaa6]">{formatTime(queue.issuedAt)}</p>
+            <p className="mt-0.5 text-[11px] text-[#5d6b67]">{formatTime(queue.issuedAt)}</p>
           </div>
         </div>
-        <span className={`rounded-full px-2 py-1 text-[10px] font-medium md:hidden ${statusStyles[queue.status]}`}>
+        <span className={`rounded-full px-2 py-1 text-[11px] font-medium md:hidden ${statusStyles[queue.status]}`}>
           {statusLabel[queue.status]}
         </span>
       </div>
       <div className="pl-[46px] text-xs text-[#687570] md:pl-0">{queue.customerName}</div>
       <div className="flex items-center justify-between pl-[46px] md:pl-0">
         <span className="text-xs text-[#687570]">{queue.serviceName}</span>
-        <span className={`hidden w-fit rounded-full px-2 py-1 text-[10px] font-medium md:inline-flex ${statusStyles[queue.status]}`}>
+        <span className={`hidden w-fit rounded-full px-2 py-1 text-[11px] font-medium md:inline-flex ${statusStyles[queue.status]}`}>
           {statusLabel[queue.status]}
         </span>
       </div>
-      <div className="pl-[46px] text-[10px] text-[#a0aaa6] md:pl-0">
+      <div className="pl-[46px] text-[11px] text-[#5d6b67] md:pl-0">
         {queue.counterName ?? "—"}
       </div>
       <div className="flex items-center gap-1.5 pl-[46px] md:justify-end md:pl-0">
@@ -1486,7 +1498,7 @@ function QueueItem({
               key={action}
               onClick={() => onAction(queue.id, action)}
               disabled={busyAction === `${action}-${queue.id}`}
-              className={`rounded-lg px-2 py-1.5 text-[10px] font-semibold transition disabled:opacity-50 ${action === "complete" || action === "start" ? "bg-brand-700 text-white hover:bg-brand-800" : "bg-[#f4f7f5] text-[#687570] hover:bg-[#eaf0ed]"}`}
+              className={`rounded-lg px-2 py-1.5 text-[11px] font-semibold transition disabled:opacity-50 ${action === "complete" || action === "start" ? "bg-brand-700 text-white hover:bg-brand-800" : "bg-brand-50 text-[#687570] hover:bg-brand-100"}`}
             >
               {busyAction === `${action}-${queue.id}`
                 ? "..."
@@ -1507,7 +1519,7 @@ function QueueItem({
                 event.target.value = "";
               }
             }}
-            className="max-w-24 rounded-lg border border-[#edf0ef] bg-white px-2 py-1.5 text-[10px] text-[#687570]"
+            className="max-w-24 rounded-lg bg-white px-2 py-1.5 text-[11px] text-[#687570] bubble-btn"
           >
             <option value="">Lainnya</option>
             {availableActions[queue.status].slice(2).map((action) => (
@@ -1517,8 +1529,8 @@ function QueueItem({
             ))}
           </select>
         )}
-        {!canOperate && <span className="text-[10px] text-[#a0aaa6]">Read-only</span>}
-        {queue.status === "COMPLETED" && <Check className="ml-auto size-4 text-[#4d9b79] md:ml-0" />}
+        {!canOperate && <span className="text-[11px] text-[#5d6b67]">Read-only</span>}
+        {queue.status === "COMPLETED" && <Check className="ml-auto size-4 text-brand-500 md:ml-0" />}
       </div>
     </article>
   );
@@ -1532,12 +1544,12 @@ function EmptyState({
   description: string;
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-[#e2e9e5] bg-[#fbfcfb] px-4 py-7 text-center">
+    <div className="rounded-xl bg-brand-50 px-4 py-7 text-center bubble-panel">
       <div className="mx-auto flex size-9 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
         <Users2 className="size-4" />
       </div>
       <p className="mt-3 text-xs font-semibold text-[#46544f]">{title}</p>
-      <p className="mt-1 text-[11px] text-[#98a39f]">{description}</p>
+      <p className="mt-1 text-[11px] text-[#5d6b67]">{description}</p>
     </div>
   );
 }

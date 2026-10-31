@@ -133,7 +133,7 @@ export function SearchableSelect({
           id={listboxId}
           role="listbox"
           aria-label={ariaLabel}
-          className="absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-[#e1e8e4] bg-white p-1.5 shadow-[0_12px_32px_rgba(25,48,40,.14)]"
+          className="absolute z-30 mt-2 max-h-64 w-full overflow-y-auto bubble-card bg-white p-1.5"
         >
           {filteredOptions.length ? (
             filteredOptions.map((option, index) => (
@@ -148,8 +148,8 @@ export function SearchableSelect({
                 onClick={() => choose(option)}
                 className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left transition ${
                   index === activeIndex
-                    ? "bg-[#f1f7f4]"
-                    : "hover:bg-[#f8faf9]"
+                    ? "bg-brand-50"
+                    : "hover:bg-brand-50"
                 }`}
               >
                 <span className="min-w-0">
@@ -157,7 +157,7 @@ export function SearchableSelect({
                     {option.label}
                   </span>
                   {option.description && (
-                    <span className="mt-0.5 block text-[11px] text-[#899591]">
+                    <span className="mt-0.5 block text-[11px] text-[#616a67]">
                       {option.description}
                     </span>
                   )}
@@ -168,7 +168,7 @@ export function SearchableSelect({
               </button>
             ))
           ) : (
-            <p className="px-3 py-5 text-center text-xs text-[#899591]">
+            <p className="px-3 py-5 text-center text-xs text-[#616a67]">
               Tidak ada pilihan yang cocok.
             </p>
           )}

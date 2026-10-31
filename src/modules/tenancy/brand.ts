@@ -1,7 +1,8 @@
 /**
- * Workspace branding: one primary colour plus an optional logo, both stored per
- * business. Everything else (background tints, hover shades) is derived from the
- * primary colour so a Super Admin only has to pick one value.
+ * Workspace branding: a primary colour (surfaces, buttons, navigation) and a
+ * secondary colour (highlights, chips, playful accents), plus an optional logo,
+ * all stored per business. Every shade the interface uses is derived from those
+ * two values so a Super Admin only has to pick two colours.
  */
 import type { CSSProperties } from "react";
 
@@ -9,18 +10,13 @@ export type BrandTheme = {
   /** Optional app title: browser tab, and the fallback is the business name. */
   title: string | null;
   primaryColor: string;
+  secondaryColor: string;
   logoMimeType: string | null;
   logoData: string | null;
 };
 
 export const DEFAULT_PRIMARY_COLOR = "#176b5b";
-
-export const DEFAULT_THEME: BrandTheme = {
-  title: null,
-  primaryColor: DEFAULT_PRIMARY_COLOR,
-  logoMimeType: null,
-  logoData: null,
-};
+export const DEFAULT_SECONDARY_COLOR = "#f2a93b";
 
 /** Long enough for a brand name, short enough to stay readable in a tab. */
 export const TITLE_MAX_LENGTH = 60;
@@ -42,20 +38,37 @@ export type LogoMimeType = (typeof LOGO_MIME_TYPES)[number];
 /** ~400 KB of base64 payload, i.e. a logo of at most 300 KB on disk. */
 export const LOGO_MAX_LENGTH = 400_000;
 
-export const PALETTE_STEPS = ["50", "100", "200", "700", "800"] as const;
+export const PALETTE_STEPS = [
+  "50",
+  "100",
+  "200",
+  "300",
+  "400",
+  "500",
+  "600",
+  "700",
+  "800",
+  "900",
+] as const;
 export type PaletteStep = (typeof PALETTE_STEPS)[number];
 
-/** The `:root` defaults in globals.css; used as the fallback when no theme row exists. */
-const FALLBACK_PALETTE: Record<PaletteStep, string> = {
-  "50": "#edf5f1",
-  "100": "#eef5f2",
-  "200": "#e5f2ee",
-  "700": "#176b5b",
-  "800": "#125648",
+/**
+ * How far each step is mixed towards white (positive) or black (negative).
+ * 50/100/200/700/800 keep the ratios the shipped design was built on; the rest
+ * fill the gaps so hard-coded design values could be replaced by tokens.
+ */
+const STEP_MIX: Record<PaletteStep, number> = {
+  "50": 0.94,
+  "100": 0.92,
+  "200": 0.88,
+  "300": 0.8,
+  "400": 0.68,
+  "500": 0.52,
+  "600": 0.32,
+  "700": 0,
+  "800": -0.16,
+  "900": -0.3,
 };
-
-/** Keys are `--brand-*` names so they can be spread into a React `style` prop. */
-export type BrandVars = Record<`--brand-${PaletteStep}`, string>;
 
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
@@ -69,6 +82,11 @@ export function normalizeHexColor(value: string): string {
   const expanded =
     hex.length === 4 ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}` : hex;
   return expanded;
+}
+
+/** Same validation as the primary colour, but falls back to the secondary default. */
+export function normalizeSecondaryColor(value: string): string {
+  return isHexColor(value) ? normalizeHexColor(value) : DEFAULT_SECONDARY_COLOR;
 }
 
 function channels(hex: string): [number, number, number] {
@@ -99,35 +117,52 @@ function mix(hex: string, target: [number, number, number], ratio: number): stri
 const WHITE: [number, number, number] = [255, 255, 255];
 const BLACK: [number, number, number] = [0, 0, 0];
 
-/**
- * Derives the shades the interface uses from a single primary colour. Ratios are
- * tuned so the default `#176b5b` lands on the palette the design already ships.
- */
-export function brandPalette(primaryColor: string): Record<PaletteStep, string> {
-  if (!isHexColor(primaryColor)) return { ...FALLBACK_PALETTE };
-  return {
-    "50": mix(primaryColor, WHITE, 0.94),
-    "100": mix(primaryColor, WHITE, 0.92),
-    "200": mix(primaryColor, WHITE, 0.88),
-    "700": normalizeHexColor(primaryColor),
-    "800": mix(primaryColor, BLACK, 0.16),
-  };
+/** Derives the full tint/shade ramp the interface uses from one base colour. */
+export function brandPalette(baseColor: string): Record<PaletteStep, string> {
+  const base = normalizeHexColor(baseColor);
+  const palette = {} as Record<PaletteStep, string>;
+  for (const step of PALETTE_STEPS) {
+    const ratio = STEP_MIX[step];
+    palette[step] =
+      ratio === 0 ? base : mix(base, ratio > 0 ? WHITE : BLACK, Math.abs(ratio));
+  }
+  return palette;
 }
 
+/** The `:root` defaults in globals.css; used as the fallback when no theme row exists. */
+export const DEFAULT_THEME: BrandTheme = {
+  title: null,
+  primaryColor: DEFAULT_PRIMARY_COLOR,
+  secondaryColor: DEFAULT_SECONDARY_COLOR,
+  logoMimeType: null,
+  logoData: null,
+};
+
+const FALLBACK_PRIMARY = brandPalette(DEFAULT_PRIMARY_COLOR);
+const FALLBACK_SECONDARY = brandPalette(DEFAULT_SECONDARY_COLOR);
+
+/** Keys are `--brand-*` / `--accent-*` names so they can be spread into a React `style` prop. */
+export type BrandVars = Record<`--brand-${PaletteStep}` | `--accent-${PaletteStep}`, string>;
+
 /**
- * CSS custom properties to put on the page root; falls back to the shipped
- * palette. React's `CSSProperties` does not model custom properties, hence the
- * cast at the one place that builds them.
+ * CSS custom properties to put on the page root; every `brand-*` and `accent-*`
+ * utility resolves through them, so one style prop re-skins the whole subtree.
+ * React's `CSSProperties` does not model custom properties, hence the cast at
+ * the one place that builds them.
  */
-export function brandVars(primaryColor: string | null | undefined): CSSProperties {
-  const palette = primaryColor ? brandPalette(primaryColor) : { ...FALLBACK_PALETTE };
-  return {
-    "--brand-50": palette["50"],
-    "--brand-100": palette["100"],
-    "--brand-200": palette["200"],
-    "--brand-700": palette["700"],
-    "--brand-800": palette["800"],
-  } satisfies BrandVars as CSSProperties;
+export function brandVars(
+  theme: Partial<Pick<BrandTheme, "primaryColor" | "secondaryColor">> | null | undefined,
+): CSSProperties {
+  const ramp = (value: string | undefined, fallback: Record<PaletteStep, string>) =>
+    value && isHexColor(value) ? brandPalette(value) : fallback;
+  const primary = ramp(theme?.primaryColor, FALLBACK_PRIMARY);
+  const secondary = ramp(theme?.secondaryColor, FALLBACK_SECONDARY);
+  const vars = {} as BrandVars;
+  for (const step of PALETTE_STEPS) {
+    vars[`--brand-${step}`] = primary[step];
+    vars[`--accent-${step}`] = secondary[step];
+  }
+  return vars as CSSProperties;
 }
 
 export function logoDataUrl(theme: Pick<BrandTheme, "logoMimeType" | "logoData">): string | null {

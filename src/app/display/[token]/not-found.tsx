@@ -9,10 +9,10 @@ import { Compass } from "lucide-react";
  */
 export default function DisplayNotFound() {
   return (
-    <main className="grid min-h-screen place-items-center bg-[#0b1a15] px-6 text-center text-white">
+    <main className="grid min-h-screen place-items-center bg-brand-900 px-6 text-center text-white">
       <section className="w-full max-w-md">
         <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-white/10">
-          <Compass className="size-8 text-[#9fd3bd]" strokeWidth={1.6} />
+          <Compass className="size-8 text-brand-300" strokeWidth={1.6} />
         </div>
         <h1 className="mt-6 text-2xl font-semibold tracking-tight">
           Layar ini tidak aktif

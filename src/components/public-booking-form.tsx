@@ -128,12 +128,12 @@ export function PublicBookingForm({
 
   if (!configuration.services.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-[#e1e8e4] bg-[#fbfdfc] p-6 text-center">
+      <div className="rounded-2xl bg-brand-50 p-6 text-center bubble-panel">
         <CalendarDays className="mx-auto size-8 text-[#91a29b]" />
         <p className="mt-3 text-sm font-semibold text-[#344440]">
           Belum ada layanan booking
         </p>
-        <p className="mt-1 text-xs text-[#899591]">
+        <p className="mt-1 text-xs text-[#616a67]">
           Silakan hubungi cabang untuk informasi jadwal.
         </p>
       </div>
@@ -161,7 +161,7 @@ export function PublicBookingForm({
             label: service.name,
             description: service.code,
           }))}
-          className="h-12 w-full rounded-xl border border-[#e1e8e4] bg-white px-3.5 text-sm text-[#344440] outline-none transition focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08]"
+          className="h-12 w-full rounded-xl bubble-field bg-white px-3.5 text-sm text-[#344440] outline-none transition"
         />
         <FieldError id="booking-service-error" message={fieldErrors.serviceId} />
       </label>
@@ -185,7 +185,7 @@ export function PublicBookingForm({
             }}
             aria-invalid={Boolean(fieldErrors.date)}
             aria-describedby={fieldErrors.date ? "booking-date-error" : undefined}
-            className={`h-12 w-full rounded-xl border bg-white pl-10 pr-3 text-sm text-[#344440] outline-none transition focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.date ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+            className={`h-12 w-full rounded-xl border bg-white pl-10 pr-3 text-sm text-[#344440] outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.date ? "border-[#d98a80]" : "border-brand-200"}`}
           />
         </span>
         <FieldError id="booking-date-error" message={fieldErrors.date} />
@@ -196,12 +196,12 @@ export function PublicBookingForm({
           <legend className="text-xs font-semibold text-[#45544f]">
             Pilih waktu
           </legend>
-          <span className="flex items-center gap-1 text-[10px] text-[#91a09a]">
+          <span className="flex items-center gap-1 text-[11px] text-[#91a09a]">
             <Clock3 className="size-3" /> Durasi slot 30 menit
           </span>
         </div>
         {loadingSlots ? (
-          <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl bg-[#f8faf9] text-xs text-[#83918b]">
+          <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl bg-brand-50 text-xs text-[#83918b]">
             <LoaderCircle className="size-4 animate-spin" />
             Memeriksa ketersediaan...
           </div>
@@ -220,10 +220,10 @@ export function PublicBookingForm({
                 }}
                 className={`h-10 rounded-lg border text-xs font-semibold transition ${
                   selectedTime === slot.time
-                    ? "border-brand-700 bg-brand-700 text-white shadow-sm"
+                    ? "border-brand-700 bg-brand-700 text-white shadow-bubble-sm"
                     : slot.available
-                      ? "border-[#e1e8e4] bg-white text-[#4b5a54] hover:border-[#93c0ab] hover:bg-[#f4f9f6]"
-                      : "cursor-not-allowed border-[#eff1f0] bg-[#f7f8f8] text-[#c0c8c4] line-through"
+                      ? "border-brand-200 bg-white text-[#4b5a54] hover:border-brand-400 hover:bg-brand-50"
+                      : "cursor-not-allowed border-[#eff1f0] bg-[#f7f8f8] text-[#626664] line-through"
                 }`}
               >
                 {slot.time}
@@ -231,12 +231,12 @@ export function PublicBookingForm({
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-[#e1e8e4] bg-[#fbfdfc] px-4 py-7 text-center">
+          <div className="rounded-xl bg-brand-50 px-4 py-7 text-center bubble-panel">
             <Clock3 className="mx-auto size-5 text-[#9ba8a2]" />
             <p className="mt-2 text-xs font-semibold text-[#596761]">
               Tidak ada waktu tersedia
             </p>
-            <p className="mt-1 text-[10px] text-[#98a39f]">
+            <p className="mt-1 text-[11px] text-[#5d6b67]">
               Pilih tanggal lain atau hubungi cabang.
             </p>
           </div>
@@ -244,9 +244,9 @@ export function PublicBookingForm({
         <FieldError id="booking-time-error" message={fieldErrors.time} />
       </fieldset>
 
-      <div className="border-t border-[#eff2f0] pt-5">
+      <div className="border-t border-brand-100 pt-5">
         <p className="mb-4 flex items-center gap-2 text-xs font-semibold text-[#45544f]">
-          <UserRound className="size-4 text-[#6c9581]" />
+          <UserRound className="size-4 text-brand-500" />
           Data pelanggan
         </p>
         <div className="space-y-3">
@@ -265,7 +265,7 @@ export function PublicBookingForm({
               autoComplete="name"
               placeholder="Nama lengkap"
               aria-label="Nama lengkap"
-              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerName ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#636a67] focus:border-brand-400 focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerName ? "border-[#d98a80]" : "border-brand-200"}`}
             />
             <FieldError id="booking-name-error" message={fieldErrors.customerName} />
           </div>
@@ -285,7 +285,7 @@ export function PublicBookingForm({
               autoComplete="tel"
               placeholder="Nomor telepon"
               aria-label="Nomor telepon"
-              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerPhone ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#636a67] focus:border-brand-400 focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerPhone ? "border-[#d98a80]" : "border-brand-200"}`}
             />
             <FieldError id="booking-phone-error" message={fieldErrors.customerPhone} />
           </div>
@@ -303,7 +303,7 @@ export function PublicBookingForm({
               autoComplete="email"
               placeholder="Email (opsional)"
               aria-label="Email (opsional)"
-              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerEmail ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+              className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#636a67] focus:border-brand-400 focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerEmail ? "border-[#d98a80]" : "border-brand-200"}`}
             />
             <FieldError id="booking-email-error" message={fieldErrors.customerEmail} />
           </div>
@@ -330,7 +330,7 @@ export function PublicBookingForm({
       <button
         type="submit"
         disabled={submitting || loadingSlots || !selectedTime}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 text-sm font-semibold text-white shadow-[0_5px_12px_rgba(23,107,91,.12)] transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-700 text-sm font-semibold text-white shadow-bubble-lift transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting ? (
           <>
@@ -342,7 +342,7 @@ export function PublicBookingForm({
           </>
         )}
       </button>
-      <p className="text-center text-[10px] leading-4 text-[#9aa5a1]">
+      <p className="text-center text-[11px] leading-4 text-[#5d6b67]">
         Satu pelanggan per slot 30 menit. Status booking dapat diperiksa melalui
         tautan konfirmasi.
       </p>

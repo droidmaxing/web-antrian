@@ -15,11 +15,11 @@ export function InlineNotice({
   return (
     <div
       role={success || warning ? "status" : "alert"}
-      className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-xs leading-5 ${
+      className={`flex items-start gap-2.5 rounded-2xl border px-3.5 py-3 text-xs leading-5 ${
         success
-          ? "border-[#d7e9de] bg-[#f2f8f4] text-[#397154]"
+          ? "border-brand-200 bg-brand-50 text-brand-700"
           : warning
-            ? "border-[#eee2c9] bg-[#fff9eb] text-[#8d713f]"
+            ? "border-accent-300 bg-accent-100 text-accent-900"
             : "border-[#f2d9d5] bg-[#fff7f5] text-[#a5463d]"
       } ${className}`}
     >
@@ -32,7 +32,7 @@ export function InlineNotice({
 export function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p id={id} className="mt-1.5 text-[11px] leading-4 text-[#b4473d]">
+    <p id={id} className="mt-1.5 text-xs leading-5 text-[#b4473d]">
       {message}
     </p>
   );

@@ -38,22 +38,22 @@ export default async function PublicQueuePage({ params }: PageProps) {
 
   return (
     <main
-      className="min-h-screen bg-[#f3f7f5] px-5 py-8 sm:py-12"
-      style={brandVars(config.theme.primaryColor)}
+      className="bubble-flow min-h-screen px-5 py-8 sm:py-12"
+      style={brandVars(config.theme)}
     >
       <div className="mx-auto max-w-md">
-        <div className="mb-6 flex items-center justify-center gap-2 text-sm font-semibold tracking-tight text-[#24483c]">
+        <div className="mb-6 flex items-center justify-center gap-2 text-sm font-semibold tracking-tight text-brand-900">
           <span className="flex size-8 items-center justify-center overflow-hidden rounded-[10px] bg-brand-700 text-sm font-black text-white">
             <BrandLogo theme={config.theme} className="text-sm font-black" />
           </span>
           {brandTitle(config.theme, config.business)}
         </div>
-        <section className="overflow-hidden rounded-[24px] border border-[#e8eeeb] bg-white shadow-[0_18px_60px_rgba(28,60,47,.08)]">
+        <section className="overflow-hidden bubble-card bg-white">
           <div className="relative overflow-hidden bg-brand-700 px-6 pb-6 pt-7 text-white">
             <div className="absolute -right-12 -top-16 size-48 rounded-full border border-white/10" />
             <div className="absolute -right-4 -top-8 size-32 rounded-full border border-white/10" />
             <p className="relative flex items-center gap-2 text-[11px] font-medium text-white/70">
-              <span className="size-1.5 rounded-full bg-[#a8e6ce]" />
+              <span className="size-1.5 rounded-full bg-brand-300" />
               Pendaftaran antrean
             </p>
             <h1 className="relative mt-2 text-2xl font-semibold tracking-[-.04em]">
@@ -68,13 +68,13 @@ export default async function PublicQueuePage({ params }: PageProps) {
             </div>
           </div>
           <div className="p-6">
-            <h2 className="mb-5 text-base font-semibold tracking-[-.02em] text-[#25352f]">
+            <h2 className="mb-5 text-base font-semibold tracking-[-.02em] text-brand-900">
               Mulai antrean Anda
             </h2>
             <PublicQueueForm token={token} services={config.services} />
           </div>
         </section>
-        <p className="mt-5 text-center text-[10px] text-[#a0aaa6]">
+        <p className="mt-5 text-center text-[11px] text-[#5d6b67]">
           Aman, cepat, dan tanpa perlu mengunduh aplikasi.
         </p>
       </div>

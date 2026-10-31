@@ -14,6 +14,32 @@ enum MembershipRole {
   ADMIN
 }
 
+/// Platform-level role. Tenant roles live on `BusinessMembership`; this one
+/// spans every company and is required for the Master Admin console.
+enum PlatformRole {
+  USER
+  MASTER_ADMIN
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  FAILED
+}
+
 enum QueueStatus {
   WAITING
   CALLED
@@ -79,6 +105,68 @@ model Business {
   accessTokens  AccessToken[]
   auditLogs     AuditLog[]
   theme         BusinessTheme?
+  subscription  Subscription?
+  payments      Payment[]
+}
+
+/// A plan is data, not code: prices are entered by the Master Admin so the
+/// product can be re-priced without a deployment.
+model Plan {
+  id            String         @id @default(cuid())
+  code          String         @unique
+  name          String
+  description   String?        @db.VarChar(200)
+  monthlyPrice  Int            @default(0)
+  yearlyPrice   Int            @default(0)
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+  payments      Payment[]
+}
+
+/// Exactly one subscription row per business. A business without a row is a
+/// workspace created before billing existed and stays usable (grandfathered).
+model Subscription {
+  id               String             @id @default(cuid())
+  businessId       String             @unique
+  planId           String?
+  status           SubscriptionStatus @default(TRIAL)
+  cycle            BillingCycle       @default(MONTHLY)
+  trialEndsAt      DateTime?
+  currentPeriodEnd DateTime?
+  startedAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  business         Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  plan             Plan?              @relation(fields: [planId], references: [id], onDelete: SetNull)
+  payments         Payment[]
+
+  @@index([status, currentPeriodEnd])
+}
+
+/// One row per Midtrans order. `orderId` is the idempotency key for the
+/// webhook: replaying the same notification never extends the period twice.
+model Payment {
+  id             String        @id @default(cuid())
+  businessId     String
+  subscriptionId String?
+  planId         String?
+  orderId        String        @unique
+  cycle          BillingCycle
+  amount         Int
+  status         PaymentStatus @default(PENDING)
+  provider       String        @default("midtrans")
+  providerRef    String?
+  paidAt         DateTime?
+  payload        Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  business       Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  plan           Plan?         @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt])
+  @@index([status, createdAt])
 }
 
 model Branch {
@@ -114,6 +202,7 @@ model User {
   image         String?
   passwordHash  String?
   active        Boolean              @default(true)
+  platformRole  PlatformRole         @default(USER)
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   accounts      Account[]
@@ -514,12 +603,20 @@ model RateLimitBucket {
 /// Tampilan kustom per bisnis. Baris hanya dibuat setelah Superadmin menyimpan
 /// warna atau logo; tanpa baris aplikasi memakai nilai bawaan dari tema.
 model BusinessTheme {
-  businessId   String   @id
-  title        String?  @db.VarChar(60)
-  primaryColor String   @default("#176b5b") @db.VarChar(7)
-  logoMimeType String?  @db.VarChar(32)
-  logoData     String?  @db.Text
-  updatedAt    DateTime @updatedAt
+  businessId     String   @id
+  title          String?  @db.VarChar(60)
+  primaryColor   String   @default("#176b5b") @db.VarChar(7)
+  secondaryColor String   @default("#f2a93b") @db.VarChar(7)
+  logoMimeType   String?  @db.VarChar(32)
+  logoData       String?  @db.Text
+  updatedAt      DateTime @updatedAt
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+/// Platform-only settings; sensitive values are authenticated-encrypted with AUTH_SECRET.
+model PlatformSetting {
+  key       String   @id @db.VarChar(64)
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
 }

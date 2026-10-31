@@ -259,32 +259,32 @@ export function TeamManager({
   return (
     <section
       id="team"
-      className="scroll-mt-28 rounded-2xl border border-[#e9edeb] bg-white p-5 shadow-[0_2px_8px_rgba(25,48,40,.025)] md:p-6"
+      className="scroll-mt-28 bubble-card p-5 shadow-bubble-sm md:p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-semibold tracking-[-.02em]">Tim & akses</h2>
-          <p className="mt-1 text-xs text-[#929e99]">
+          <p className="mt-1 text-xs text-[#66736e]">
             Atur siapa yang boleh mengelola antrean dan workspace.
           </p>
         </div>
         {canManage && !draft && (
           <div className="flex flex-wrap items-center gap-2">
-            <label className="relative flex h-9 items-center rounded-lg border border-[#e0e6e3] bg-white">
-              <Search className="pointer-events-none absolute left-2.5 size-3.5 text-[#9aa5a1]" />
+            <label className="relative flex h-9 items-center rounded-lg bubble-card bg-white">
+              <Search className="pointer-events-none absolute left-2.5 size-3.5 text-[#5d6b67]" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Cari nama atau email"
                 aria-label="Cari anggota tim"
-                className="h-9 w-40 rounded-lg bg-transparent pl-8 pr-2 text-xs outline-none placeholder:text-[#a9b3af] focus:border-[#78b6a4]"
+                className="h-9 w-40 rounded-lg bg-transparent pl-8 pr-2 text-xs outline-none placeholder:text-[#646a67] focus:border-brand-600"
               />
             </label>
             <button
             onClick={() =>
               setDraft({ name: "", email: "", role: "ADMIN", branchIds: [], counterIds: [] })
             }
-            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"
+            className="flex h-9 items-center gap-2 rounded-full bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"
           >
             <CirclePlus className="size-4" /> Tambah anggota
           </button>
@@ -295,23 +295,23 @@ export function TeamManager({
       {notice && <InlineNotice message={notice} variant={noticeVariant} className="mt-4" />}
 
       {inviteResult?.temporaryPassword && (
-        <div className="mt-4 rounded-xl border border-[#eee2c9] bg-[#fff9eb] p-4">
-          <p className="text-[11px] font-semibold text-[#8d713f]">
+        <div className="mt-4 rounded-xl bg-accent-100 p-4 shadow-bubble-sm">
+          <p className="text-[11px] font-semibold text-accent-900">
             Kata sandi sementara untuk {inviteResult.email}
           </p>
           <div className="mt-2 flex items-center gap-2">
-            <code className="flex-1 rounded-lg border border-[#e8dcc2] bg-white px-3 py-2 font-mono text-xs text-[#5c4a2a]">
+            <code className="flex-1 rounded-lg bg-white px-3 py-2 font-mono text-xs text-accent-900 shadow-bubble-sm">
               {inviteResult.temporaryPassword}
             </code>
             <button
               onClick={() => void navigator.clipboard.writeText(inviteResult.temporaryPassword!)}
               aria-label="Salin kata sandi"
-              className="flex size-8 items-center justify-center rounded-lg border border-[#e8dcc2] bg-white text-[#8d713f]"
+              className="flex size-8 items-center justify-center rounded-lg bg-white text-accent-800 shadow-bubble-sm"
             >
               <Copy className="size-3.5" />
             </button>
           </div>
-          <p className="mt-2 text-[10px] leading-4 text-[#a08a5f]">
+          <p className="mt-2 text-[11px] leading-4 text-accent-800">
             Sampaikan lewat kanal aman. Kata sandi ini tidak ditampilkan lagi setelah halaman
             dimuat ulang — minta anggota menggantinya setelah masuk.
           </p>
@@ -324,7 +324,7 @@ export function TeamManager({
             event.preventDefault();
             void submit();
           }}
-          className="mt-4 grid gap-3 rounded-xl border border-[#e3ece7] bg-[#fafcfb] p-4 sm:grid-cols-2"
+          className="mt-4 grid gap-3 bubble-panel bg-brand-50 p-4 sm:grid-cols-2"
         >
           <label className="text-[11px] font-medium text-[#5d6b65]">
             Nama
@@ -333,7 +333,7 @@ export function TeamManager({
               minLength={2}
               value={draft.name}
               onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-              className="mt-1.5 h-9 w-full rounded-lg border border-[#e0e6e3] bg-white px-3 text-xs outline-none focus:border-[#78b6a4]"
+              className="mt-1.5 h-9 w-full rounded-lg bubble-field bg-white px-3 text-xs outline-none"
             />
           </label>
           <label className="text-[11px] font-medium text-[#5d6b65]">
@@ -343,7 +343,7 @@ export function TeamManager({
               type="email"
               value={draft.email}
               onChange={(event) => setDraft({ ...draft, email: event.target.value })}
-              className="mt-1.5 h-9 w-full rounded-lg border border-[#e0e6e3] bg-white px-3 text-xs outline-none focus:border-[#78b6a4]"
+              className="mt-1.5 h-9 w-full rounded-lg bubble-field bg-white px-3 text-xs outline-none"
             />
           </label>
           <label className="text-[11px] font-medium text-[#5d6b65]">
@@ -353,13 +353,13 @@ export function TeamManager({
               onChange={(event) =>
                 setDraft({ ...draft, role: event.target.value as Role, branchIds: [] })
               }
-              className="mt-1.5 h-9 w-full rounded-lg border border-[#e0e6e3] bg-white px-3 text-xs outline-none focus:border-[#78b6a4]"
+              className="mt-1.5 h-9 w-full rounded-lg bubble-field bg-white px-3 text-xs outline-none"
             >
               <option value="ADMIN">Admin Operasional</option>
               <option value="SUPER_ADMIN">Super Admin</option>
               <option value="OWNER">Owner</option>
             </select>
-            <span className="mt-1 block text-[10px] font-normal text-[#9aa5a1]">
+            <span className="mt-1 block text-[11px] font-normal text-[#5d6b67]">
               {roleHints[draft.role]}
             </span>
           </label>
@@ -384,10 +384,10 @@ export function TeamManager({
                             : [...draft.branchIds, branch.id],
                         })
                       }
-                      className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
+                      className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                         selected
-                          ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
-                          : "border-[#e0e6e3] bg-white text-[#687570]"
+                          ? "border-brand-700 bg-brand-100 text-brand-700"
+                          : "border-brand-200 bg-white text-[#687570]"
                       }`}
                     >
                       {branch.name}
@@ -395,7 +395,7 @@ export function TeamManager({
                   );
                 })}
               </div>
-              <span className="mt-1 block text-[10px] text-[#9aa5a1]">
+              <span className="mt-1 block text-[11px] text-[#5d6b67]">
                 Tanpa pilihan = semua cabang.
               </span>
             </fieldset>
@@ -427,10 +427,10 @@ export function TeamManager({
                               : [...draft.counterIds, counter.id],
                           })
                         }
-                        className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium disabled:opacity-50 ${
+                        className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium disabled:opacity-50 ${
                           selected
-                            ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
-                            : "border-[#e0e6e3] bg-white text-[#687570]"
+                            ? "border-brand-700 bg-brand-100 text-brand-700"
+                            : "border-brand-200 bg-white text-[#687570]"
                         }`}
                       >
                         {counter.code} · {counter.name}
@@ -438,7 +438,7 @@ export function TeamManager({
                     );
                   })}
               </div>
-              <span className="mt-1 block text-[10px] text-[#9aa5a1]">
+              <span className="mt-1 block text-[11px] text-[#5d6b67]">
                 Tanpa pilihan = boleh menangani semua loket di cabangnya.
               </span>
             </fieldset>
@@ -447,7 +447,7 @@ export function TeamManager({
             <button
               type="submit"
               disabled={busy}
-              className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="flex h-9 items-center gap-2 rounded-full bg-brand-700 px-3.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               {busy && <LoaderCircle className="size-3.5 animate-spin" />}
               Tambah
@@ -455,7 +455,7 @@ export function TeamManager({
             <button
               type="button"
               onClick={() => setDraft(null)}
-              className="h-9 rounded-lg border border-[#e0e6e3] px-3.5 text-xs font-medium text-[#687570]"
+              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#687570]"
             >
               Batal
             </button>
@@ -463,9 +463,9 @@ export function TeamManager({
         </form>
       )}
 
-      <div className="mt-4 divide-y divide-[#eff2f0]">
+      <div className="mt-4 divide-y divide-brand-100">
         {members === null && (
-          <p className="py-6 text-center text-xs text-[#a1aca8]">Memuat anggota…</p>
+          <p className="py-6 text-center text-xs text-[#5d6b67]">Memuat anggota…</p>
         )}
         {paged.rows?.map((member) => {
           const isSelf = member.userId === currentUserId;
@@ -477,14 +477,14 @@ export function TeamManager({
           return (
             <div key={member.membershipId} className="py-3">
               <div className="flex flex-wrap items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#e7f1ed] text-[10px] font-bold text-[#276b5b]">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-700">
                 {member.name.slice(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="truncate text-xs font-semibold text-[#344440]">{member.name}</p>
                   {isSelf && (
-                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[9px] font-medium text-[#47796a]">
+                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[9px] font-medium text-brand-600">
                       Anda
                     </span>
                   )}
@@ -494,7 +494,7 @@ export function TeamManager({
                     </span>
                   )}
                 </div>
-                <p className="mt-1 truncate text-[10px] text-[#929e99]">
+                <p className="mt-1 truncate text-[11px] text-[#66736e]">
                   {member.email}
                   {member.role === "ADMIN" &&
                     ` · ${
@@ -515,7 +515,7 @@ export function TeamManager({
                     disabled={busy}
                     onChange={(event) => void changeRole(member, event.target.value as Role)}
                     aria-label={`Peran ${member.name}`}
-                    className="h-8 rounded-lg border border-[#e0e6e3] bg-white px-2 text-[10px] text-[#687570] disabled:opacity-50"
+                    className="h-8 rounded-lg bubble-btn bg-white px-2 text-[11px] text-[#687570] disabled:opacity-50"
                   >
                     <option value="ADMIN">Admin</option>
                     <option value="SUPER_ADMIN">Super Admin</option>
@@ -529,7 +529,7 @@ export function TeamManager({
                         void setScopes(member, event.target.value ? [event.target.value] : [])
                       }
                       aria-label={`Cabang ${member.name}`}
-                      className="h-8 max-w-28 rounded-lg border border-[#e0e6e3] bg-white px-2 text-[10px] text-[#687570] disabled:opacity-50"
+                      className="h-8 max-w-28 rounded-lg bubble-btn bg-white px-2 text-[11px] text-[#687570] disabled:opacity-50"
                     >
                       <option value="">Semua cabang</option>
                       {branches.map((branch) => (
@@ -553,10 +553,10 @@ export function TeamManager({
                       aria-expanded={
                         counterEdit?.membershipId === member.membershipId
                       }
-                      className={`h-8 rounded-lg border px-2 text-[10px] font-medium disabled:opacity-50 ${
+                      className={`h-8 rounded-lg border px-2 text-[11px] font-medium disabled:opacity-50 ${
                         member.counterIds.length
-                          ? "border-[#cfe0d8] bg-brand-100 text-[#276b5b]"
-                          : "border-[#e0e6e3] bg-white text-[#687570]"
+                          ? "border-brand-300 bg-brand-100 text-brand-700"
+                          : "border-brand-200 bg-white text-[#687570]"
                       }`}
                     >
                       {member.counterIds.length
@@ -574,14 +574,14 @@ export function TeamManager({
                   </button>
                 </div>
               ) : (
-                <span className="flex items-center gap-1.5 rounded-full bg-[#f4f7f5] px-2.5 py-1 text-[10px] font-medium text-[#5f6d67]">
+                <span className="flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-[#5f6d67]">
                   <ShieldCheck className="size-3.5" />
                   {roleLabels[member.role]}
                 </span>
               )}
               </div>
               {editing && (
-                <div className="mt-2.5 rounded-xl border border-[#e3ece7] bg-[#fafcfb] p-3">
+                <div className="mt-2.5 bubble-panel bg-brand-50 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[11px] font-semibold text-[#344440]">
                       Loket yang ditangani {member.name}
@@ -589,7 +589,7 @@ export function TeamManager({
                     <button
                       type="button"
                       onClick={() => setCounterEdit(null)}
-                      className="text-[10px] font-medium text-[#7d8a85] hover:text-[#344440]"
+                      className="text-[11px] font-medium text-[#7d8a85] hover:text-[#344440]"
                     >
                       Tutup
                     </button>
@@ -611,10 +611,10 @@ export function TeamManager({
                                   : [...counterEdit.counterIds, counter.id],
                               })
                             }
-                            className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
+                            className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                               selected
-                                ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
-                                : "border-[#e0e6e3] bg-white text-[#687570]"
+                                ? "border-brand-700 bg-brand-100 text-brand-700"
+                                : "border-brand-200 bg-white text-[#687570]"
                             }`}
                           >
                             {counter.code} · {counter.name}
@@ -623,11 +623,11 @@ export function TeamManager({
                       })}
                     </div>
                   ) : (
-                    <p className="mt-2 text-[10px] text-[#9aa5a1]">
+                    <p className="mt-2 text-[11px] text-[#5d6b67]">
                       Belum ada loket di cabang ini.
                     </p>
                   )}
-                  <p className="mt-2 text-[10px] leading-4 text-[#9aa5a1]">
+                  <p className="mt-2 text-[11px] leading-4 text-[#5d6b67]">
                     Tanpa pilihan = semua loket. Operator yang dibatasi hanya melihat dan bisa
                     memanggil tiket untuk loket pilihannya.
                   </p>
@@ -636,7 +636,7 @@ export function TeamManager({
                       type="button"
                       disabled={busy}
                       onClick={() => void setCounterScopes(member, counterEdit.counterIds)}
-                      className="h-8 rounded-lg bg-brand-700 px-3 text-[11px] font-semibold text-white disabled:opacity-50"
+                      className="h-8 rounded-full bg-brand-700 px-3 text-[11px] font-semibold text-white disabled:opacity-50"
                     >
                       Simpan akses loket
                     </button>
@@ -645,7 +645,7 @@ export function TeamManager({
                         type="button"
                         disabled={busy}
                         onClick={() => void setCounterScopes(member, [])}
-                        className="h-8 rounded-lg border border-[#e0e6e3] px-3 text-[11px] font-medium text-[#687570] disabled:opacity-50"
+                        className="h-8 rounded-lg bubble-btn px-3 text-[11px] font-medium text-[#687570] disabled:opacity-50"
                       >
                         Beri semua loket
                       </button>
@@ -657,7 +657,7 @@ export function TeamManager({
           );
         })}
         {visibleMembers?.length === 0 && (
-          <p className="py-6 text-center text-xs text-[#a1aca8]">
+          <p className="py-6 text-center text-xs text-[#5d6b67]">
             Tidak ada anggota yang cocok dengan “{query.trim()}”.
           </p>
         )}

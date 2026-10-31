@@ -1,5 +1,6 @@
 "use client";
 
+import { timezoneOr, viewerTimeZone } from "@/modules/shared/timezone";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, CirclePlus, LoaderCircle, Pencil, Power, X } from "lucide-react";
@@ -56,6 +57,8 @@ export function BranchesManager({
   currentBranchId: string;
 }) {
   const [branches, setBranches] = useState<BranchRow[] | null>(null);
+  // Zona perangkat ikut ditawarkan supaya owner di WITA/WIT tak terkunci WIB.
+  const [zones] = useState(() => Array.from(new Set([...TIMEZONES, viewerTimeZone()])));
   const paged = usePaged(branches);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -165,7 +168,7 @@ export function BranchesManager({
     setDraft({
       id: branch.id,
       name: branch.name,
-      timezone: branch.timezone,
+      timezone: viewerTimeZone(branch.timezone),
       ticketPrefix: branch.ticketPrefix,
       estimateBuffer: branch.estimateBuffer,
     });
@@ -176,14 +179,14 @@ export function BranchesManager({
   return (
     <section
       id="branches"
-      className="scroll-mt-28 rounded-2xl border border-[#e9edeb] bg-white p-5 shadow-[0_2px_8px_rgba(25,48,40,.025)] md:p-6"
+      className="scroll-mt-28 bubble-card p-5 shadow-bubble-sm md:p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-[15px] font-semibold tracking-[-.02em]">
-            <Building2 className="size-4 text-[#34775f]" /> Cabang
+            <Building2 className="size-4 text-brand-700" /> Cabang
           </h2>
-          <p className="mt-1 text-xs text-[#929e99]">
+          <p className="mt-1 text-xs text-[#66736e]">
             Setiap cabang punya loket, layanan, dan penomoran antreannya sendiri.
           </p>
         </div>
@@ -192,9 +195,9 @@ export function BranchesManager({
             type="button"
             onClick={() => {
               setNotice("");
-              setDraft({ ...emptyDraft });
+              setDraft({ ...emptyDraft, timezone: viewerTimeZone() });
             }}
-            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"
+            className="flex h-9 items-center gap-2 rounded-full bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"
           >
             <CirclePlus className="size-3.5" /> Cabang baru
           </button>
@@ -205,27 +208,27 @@ export function BranchesManager({
 
       {draft && (
         <form
-          className="mt-4 rounded-xl border border-[#e4ece8] bg-[#fbfdfc] p-4"
+          className="mt-4 bubble-panel bg-brand-50 p-4"
           onSubmit={(event) => {
             event.preventDefault();
             void submit();
           }}
         >
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-[#3d594b]">
+            <p className="text-xs font-semibold text-brand-800">
               {draft.id ? "Ubah cabang" : "Tambah cabang"}
             </p>
             <button
               type="button"
               onClick={() => setDraft(null)}
               aria-label="Tutup formulir cabang"
-              className="rounded-lg p-1.5 text-[#889590] hover:bg-white"
+              className="rounded-lg p-1.5 text-[#5c6a65] hover:bg-white"
             >
               <X className="size-3.5" />
             </button>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="text-[10px] font-medium text-[#75827f]">
+            <label className="text-[11px] font-medium text-[#53615b]">
               Nama cabang
               <input
                 required
@@ -234,34 +237,34 @@ export function BranchesManager({
                 value={draft.name}
                 onChange={(event) => setDraft({ ...draft, name: event.target.value })}
                 placeholder="Cabang Sudirman"
-                className="mt-1 block h-9 w-full rounded-lg border border-[#e0e6e3] px-2.5 text-xs text-[#344440]"
+                className="mt-1 block h-9 w-full rounded-lg bubble-panel px-2.5 text-xs text-[#344440]"
               />
             </label>
-            <label className="text-[10px] font-medium text-[#75827f]">
+            <label className="text-[11px] font-medium text-[#53615b]">
               Zona waktu
               <select
                 value={draft.timezone}
                 onChange={(event) => setDraft({ ...draft, timezone: event.target.value })}
-                className="mt-1 block h-9 w-full rounded-lg border border-[#e0e6e3] bg-white px-2.5 text-xs text-[#344440]"
+                className="mt-1 block h-9 w-full rounded-lg bubble-card bg-white px-2.5 text-xs text-[#344440]"
               >
-                {TIMEZONES.map((zone) => (
+                {zones.map((zone) => (
                   <option key={zone} value={zone}>
                     {zone}
                   </option>
                 ))}
               </select>
             </label>
-            <label className="text-[10px] font-medium text-[#75827f]">
+            <label className="text-[11px] font-medium text-[#53615b]">
               Prefiks nomor antrean
               <input
                 maxLength={4}
                 value={draft.ticketPrefix}
                 onChange={(event) => setDraft({ ...draft, ticketPrefix: event.target.value })}
                 placeholder="Q"
-                className="mt-1 block h-9 w-full rounded-lg border border-[#e0e6e3] px-2.5 font-mono text-xs text-[#344440]"
+                className="mt-1 block h-9 w-full rounded-lg bubble-panel px-2.5 font-mono text-xs text-[#344440]"
               />
             </label>
-            <label className="text-[10px] font-medium text-[#75827f]">
+            <label className="text-[11px] font-medium text-[#53615b]">
               Penyangga estimasi (menit)
               <input
                 type="number"
@@ -271,7 +274,7 @@ export function BranchesManager({
                 onChange={(event) =>
                   setDraft({ ...draft, estimateBuffer: Number(event.target.value) || 0 })
                 }
-                className="mt-1 block h-9 w-full rounded-lg border border-[#e0e6e3] px-2.5 text-xs text-[#344440]"
+                className="mt-1 block h-9 w-full rounded-lg bubble-panel px-2.5 text-xs text-[#344440]"
               />
             </label>
           </div>
@@ -279,7 +282,7 @@ export function BranchesManager({
             <button
               type="submit"
               disabled={busy}
-              className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white disabled:opacity-50"
+              className="flex h-9 items-center gap-2 rounded-full bg-brand-700 px-3 text-xs font-semibold text-white disabled:opacity-50"
             >
               {busy && <LoaderCircle className="size-3.5 animate-spin" />}
               {draft.id ? "Simpan perubahan" : "Tambah cabang"}
@@ -287,7 +290,7 @@ export function BranchesManager({
             <button
               type="button"
               onClick={() => setDraft(null)}
-              className="h-9 rounded-lg border border-[#e0e6e3] px-3 text-xs font-medium text-[#687570]"
+              className="h-9 rounded-lg bubble-panel px-3 text-xs font-medium text-[#687570]"
             >
               Batal
             </button>
@@ -300,29 +303,29 @@ export function BranchesManager({
           <LoaderCircle className="size-4 animate-spin" /> Memuat cabang...
         </div>
       ) : branches.length ? (
-        <div className="mt-4 divide-y divide-[#f2f5f3] overflow-hidden rounded-xl border border-[#eff2f0]">
+        <div className="mt-4 divide-y divide-brand-50 overflow-hidden bubble-panel">
           {paged.rows?.map((branch) => (
             <div key={branch.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <span className="flex size-9 items-center justify-center rounded-[10px] bg-brand-50 text-[10px] font-bold text-[#377861]">
+              <span className="flex size-9 items-center justify-center rounded-[10px] bg-brand-50 text-[11px] font-bold text-brand-700">
                 {branch.ticketPrefix}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 text-xs font-semibold text-[#344440]">
                   {branch.name}
                   {branch.id === currentBranchId && (
-                    <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[9px] font-medium text-[#377861]">
+                    <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[9px] font-medium text-brand-700">
                       Sedang dibuka
                     </span>
                   )}
                 </p>
-                <p className="mt-0.5 text-[10px] text-[#929e99]">
-                  {branch.timezone} · {branch.counterCount} loket · {branch.queueCount} antrean
+                <p className="mt-0.5 text-[11px] text-[#66736e]">
+                  {timezoneOr(branch.timezone)} · {branch.counterCount} loket · {branch.queueCount} antrean
                   {branch.resetDaily ? " · reset harian" : ""}
                 </p>
               </div>
               <span
-                className={`rounded-full px-2 py-1 text-[10px] font-medium ${
-                  branch.active ? "bg-[#e9f5ef] text-[#31795d]" : "bg-[#f0f3f2] text-[#74817c]"
+                className={`rounded-full px-2 py-1 text-[11px] font-medium ${
+                  branch.active ? "bg-brand-100 text-brand-700" : "bg-brand-50 text-[#74817c]"
                 }`}
               >
                 {branch.active ? "Aktif" : "Nonaktif"}
@@ -334,7 +337,7 @@ export function BranchesManager({
                     onClick={() => edit(branch)}
                     disabled={busy}
                     aria-label={`Ubah ${branch.name}`}
-                    className="flex size-8 items-center justify-center rounded-lg border border-[#e4e9e6] text-[#687570] hover:bg-[#f7faf8] disabled:opacity-40"
+                    className="flex size-8 items-center justify-center rounded-lg bubble-panel text-[#687570] hover:bg-brand-50 disabled:opacity-40"
                   >
                     <Pencil className="size-3.5" />
                   </button>
@@ -343,7 +346,7 @@ export function BranchesManager({
                     onClick={() => void toggleActive(branch)}
                     disabled={busy}
                     aria-label={branch.active ? `Nonaktifkan ${branch.name}` : `Aktifkan ${branch.name}`}
-                    className="flex size-8 items-center justify-center rounded-lg border border-[#e4e9e6] text-[#687570] hover:bg-[#f7faf8] disabled:opacity-40"
+                    className="flex size-8 items-center justify-center rounded-lg bubble-panel text-[#687570] hover:bg-brand-50 disabled:opacity-40"
                   >
                     <Power className="size-3.5" />
                   </button>
@@ -353,7 +356,7 @@ export function BranchesManager({
           ))}
         </div>
       ) : (
-        <p className="mt-4 rounded-xl border border-dashed border-[#e4e9e6] px-4 py-6 text-center text-xs text-[#929e99]">
+        <p className="mt-4 rounded-xl px-4 py-6 text-center text-xs text-[#66736e] bubble-panel">
           Belum ada cabang. Tambahkan cabang pertama untuk mulai melayani antrean.
         </p>
       )}
@@ -371,12 +374,12 @@ export function BranchesManager({
       </div>
 
       {!editable && (
-        <p className="mt-4 text-[10px] leading-5 text-[#a1aca8]">
+        <p className="mt-4 text-[11px] leading-5 text-[#5d6b67]">
           Hanya Super Admin bisnis yang dapat menambah atau mengubah cabang.
         </p>
       )}
 
-      <div className="mt-4 flex flex-wrap gap-3 text-[10px] text-[#a1aca8]">
+      <div className="mt-4 flex flex-wrap gap-3 text-[11px] text-[#5d6b67]">
         {DAYS.map((day, index) => {
           const hours = branches?.[0]?.operatingHours.find((entry) => entry.weekday === index);
           return (

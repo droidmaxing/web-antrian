@@ -236,6 +236,10 @@ export function TvDisplay({
     if (!player) return;
     const ready = await player.prime();
     setVoiceReady(ready);
+    if (ready) {
+      setVoiceEnabled(true);
+      voiceRef.current = true;
+    }
   }
 
   function toggleVoice() {
@@ -281,25 +285,25 @@ export function TvDisplay({
 
   return (
     <main
-      className="flex min-h-screen flex-col overflow-hidden bg-[#092c27] text-white"
-      style={brandVars(snapshot.theme.primaryColor)}
+      className="flex min-h-screen flex-col overflow-hidden bg-brand-900 text-white"
+      style={brandVars(snapshot.theme)}
     >
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-4 md:px-10">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center overflow-hidden rounded-xl bg-brand-700 text-sm font-black text-white">
+          <div className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-brand-700 text-sm font-black text-white">
             <BrandLogo theme={snapshot.theme} className="text-sm font-black" />
           </div>
           <div>
-            <p className="text-xs font-medium text-[#9fd5c4]">{display.business}</p>
+            <p className="text-xs font-medium text-brand-300">{display.business}</p>
             <h1 className="mt-1 text-lg font-semibold tracking-tight">{display.branch}</h1>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <span className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[10px] text-white/75">
-            <span className={`size-1.5 rounded-full ${connected ? "bg-[#84e1ab]" : "bg-[#e4ba6e]"}`} />
+          <span className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11px] text-white/75">
+            <span className={`size-1.5 rounded-full ${connected ? "bg-brand-300" : "bg-accent-400"}`} />
             {connected ? "Tersambung" : "Menghubungkan"}
           </span>
-          <span className="hidden rounded-full border border-white/15 px-3 py-1.5 text-[10px] text-white/60 sm:inline">
+          <span className="hidden rounded-full border border-white/15 px-3 py-1.5 text-[11px] text-white/60 sm:inline">
             {display.scope === "counter"
               ? `Loket terpilih · ${display.counterCount}`
               : "Semua loket"}
@@ -316,11 +320,11 @@ export function TvDisplay({
       </header>
 
       {needsVoiceUnlock && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f0c987]/30 bg-[#f0c987]/10 px-6 py-2.5 md:px-10">
-          <p className="text-[11px] text-[#f4dcae]">{audioHint}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-accent-400/30 bg-accent-400/10 px-6 py-2.5 md:px-10">
+          <p className="text-[11px] text-accent-300">{audioHint}</p>
           <button
             onClick={() => void enableVoice()}
-            className="flex items-center gap-2 rounded-lg bg-[#f0c987] px-3 py-1.5 text-[11px] font-semibold text-[#3d2d15]"
+            className="flex items-center gap-2 rounded-full bg-accent-400 px-3 py-1.5 text-[11px] font-semibold text-brand-900"
           >
             <Volume2 className="size-3.5" /> Aktifkan suara
           </button>
@@ -330,48 +334,48 @@ export function TvDisplay({
       <section className="grid flex-1 gap-6 px-6 py-8 md:grid-cols-[1.45fr_.75fr] md:px-10 md:py-10">
         <div className="flex flex-col">
           <div className="mb-5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[.18em] text-[#a1ccbd]">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[.18em] text-brand-300">
               <Radio className="size-4" />
               Nomor dipanggil
             </div>
             <button
               onClick={toggleVoice}
               aria-pressed={voiceEnabled}
-              className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-medium text-white/70 hover:bg-white/15"
+              className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-medium text-white/70 hover:bg-white/15"
             >
               {voiceEnabled ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
               {voiceEnabled ? "Suara aktif" : "Suara nonaktif"}
             </button>
           </div>
           {current[0] ? (
-            <div className="relative flex min-h-[310px] flex-1 flex-col justify-center overflow-hidden rounded-[28px] bg-[#d6f0e3] px-8 py-8 text-[#123f34] md:px-14">
+            <div className="relative flex min-h-[310px] flex-1 flex-col justify-center overflow-hidden rounded-[28px] bg-brand-200 px-8 py-8 text-brand-900 md:px-14">
               <div className="absolute -right-16 -top-28 size-80 rounded-full border border-brand-700/10" />
-              <p className="relative text-sm font-medium text-[#52836f]">{current[0].service}</p>
+              <p className="relative text-sm font-medium text-brand-600">{current[0].service}</p>
               <p className="relative mt-4 text-[clamp(4rem,13vw,10rem)] font-semibold leading-none tracking-[-.075em]">
                 {current[0].ticketNumber}
               </p>
               <div className="relative mt-8 inline-flex w-fit items-center gap-2 rounded-full bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white">
-                <span className="flex size-6 items-center justify-center rounded-full bg-white/15 text-[10px]">
+                <span className="flex size-6 items-center justify-center rounded-full bg-white/15 text-[11px]">
                   {current[0].counterCode || "→"}
                 </span>
                 {current[0].counter}
               </div>
               {lastAnnouncement && (
-                <p className="relative mt-6 max-w-md text-xs leading-5 text-[#4d7568]">
+                <p className="relative mt-6 max-w-md text-xs leading-5 text-brand-600">
                   {lastAnnouncement}
                 </p>
               )}
             </div>
           ) : (
             <div className="flex min-h-[310px] flex-1 flex-col items-center justify-center rounded-[28px] border border-white/10 bg-white/[.04] text-center">
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/10 text-[#a1ccbd]">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/10 text-brand-300">
                 <Radio className="size-6" />
               </div>
               <p className="mt-4 text-base font-medium text-white/80">Belum ada panggilan</p>
               <p className="mt-1 text-xs text-white/45">Nomor antrean akan tampil di sini.</p>
             </div>
           )}
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-white/45">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-white/45">
             <span className="flex items-center gap-1.5">
               <Volume2 className="size-3.5" />
               {voiceEnabled ? "Pemanggilan suara aktif" : "Ikuti informasi nomor di layar"}
@@ -383,12 +387,12 @@ export function TvDisplay({
         <div className="flex flex-col">
           <div className="mb-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[.18em] text-[#a1ccbd]">
+              <p className="text-xs font-medium uppercase tracking-[.18em] text-brand-300">
                 Sedang dilayani
               </p>
-              <p className="mt-1 text-[10px] text-white/40">Antrean pada loket aktif</p>
+              <p className="mt-1 text-[11px] text-white/40">Antrean pada loket aktif</p>
             </div>
-            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] text-white/60">
+            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-white/60">
               {serving.length} aktif
             </span>
           </div>
@@ -397,15 +401,15 @@ export function TvDisplay({
               <div key={queue.ticketNumber} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[.05] p-4">
                 <div>
                   <p className="text-lg font-semibold tracking-tight">{queue.ticketNumber}</p>
-                  <p className="mt-1 text-[10px] text-white/45">{queue.service}</p>
+                  <p className="mt-1 text-[11px] text-white/45">{queue.service}</p>
                 </div>
-                <span className="rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-[#d5e7df]">
+                <span className="rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-brand-200">
                   {queue.counter}
                 </span>
               </div>
             ))}
             {serving.length > 4 && (
-              <p className="rounded-2xl border border-white/10 bg-white/[.03] px-4 py-2.5 text-center text-[10px] text-white/45">
+              <p className="rounded-2xl border border-white/10 bg-white/[.03] px-4 py-2.5 text-center text-[11px] text-white/45">
                 {serving.length - 4} antrean lain sedang dilayani
               </p>
             )}
@@ -417,16 +421,16 @@ export function TvDisplay({
           </div>
           <div className="mb-4 mt-8 flex items-center justify-between text-xs">
             <p className="font-medium text-white/80">Panggilan terbaru</p>
-            <span className="text-[10px] text-white/40">Live</span>
+            <span className="text-[11px] text-white/40">Live</span>
           </div>
           <div className="space-y-2">
             {current.slice(1, 5).map((queue) => (
               <div key={queue.ticketNumber} className="flex items-center justify-between rounded-xl bg-white/[.045] px-3.5 py-3">
                 <div className="flex items-center gap-3">
-                  <span className="font-semibold text-[#e0f1e9]">{queue.ticketNumber}</span>
-                  <span className="text-[10px] text-white/40">{queue.service}</span>
+                  <span className="font-semibold text-brand-200">{queue.ticketNumber}</span>
+                  <span className="text-[11px] text-white/40">{queue.service}</span>
                 </div>
-                <span className="text-[10px] text-[#bad8ca]">{queue.counter}</span>
+                <span className="text-[11px] text-brand-300">{queue.counter}</span>
               </div>
             ))}
           </div>
@@ -435,11 +439,11 @@ export function TvDisplay({
 
       <section className="border-t border-white/10 px-6 py-5 md:px-10">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[.18em] text-[#a1ccbd]">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[.18em] text-brand-300">
             <Users className="size-4" />
             Menunggu
           </div>
-          <div className="flex items-center gap-2 text-[10px] text-white/60">
+          <div className="flex items-center gap-2 text-[11px] text-white/60">
             {totalWaitingPages > 1 && (
               <span className="rounded-full border border-white/15 px-2.5 py-1">
                 Halaman {activeWaitingPage + 1}/{totalWaitingPages} · berganti otomatis
@@ -458,8 +462,8 @@ export function TvDisplay({
                 className="min-w-0 rounded-xl bg-white/[.06] px-4 py-3"
               >
                 <p className="truncate text-base font-semibold tracking-tight">{queue.ticketNumber}</p>
-                <p className="mt-0.5 truncate text-[10px] text-white/40">{queue.service}</p>
-                <p className="mt-1 text-[10px] text-[#9fd5c4]">
+                <p className="mt-0.5 truncate text-[11px] text-white/40">{queue.service}</p>
+                <p className="mt-1 text-[11px] text-brand-300">
                   {queue.ahead > 0 ? `${queue.ahead} antrean lagi` : "Berikutnya"}
                 </p>
               </div>
@@ -471,12 +475,12 @@ export function TvDisplay({
           </p>
         )}
         {waitingTotal > waiting.length && (
-          <p className="mt-3 text-[10px] text-white/40">
+          <p className="mt-3 text-[11px] text-white/40">
             Menampilkan {waiting.length} nomor terdekat dari {waitingTotal} antrean yang menunggu.
           </p>
         )}
       </section>
-      <footer className="flex items-center justify-between border-t border-white/10 px-6 py-3.5 text-[10px] text-white/35 md:px-10">
+      <footer className="flex items-center justify-between border-t border-white/10 px-6 py-3.5 text-[11px] text-white/35 md:px-10">
         <span>Harap siapkan nomor antrean saat dipanggil</span>
         <span>Antrian · Layanan lebih nyaman</span>
       </footer>

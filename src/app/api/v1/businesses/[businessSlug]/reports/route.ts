@@ -15,9 +15,10 @@ export async function GET(request: Request, { params }: RouteContext) {
     const to = url.searchParams.get("to");
     const include = url.searchParams.get("include");
 
+    // Autentikasi/tenant dulu, validasi parameter setelahnya.
+    const context = await requireBusinessContext(businessSlug, branchId ?? undefined);
     if (!branchId) throw new AppError("Cabang wajib dipilih.", 400, "INVALID_BRANCH");
 
-    const context = await requireBusinessContext(businessSlug, branchId);
     if (include === "audit") {
       const logs = await listAuditTrail(context, Number(url.searchParams.get("limit") ?? 50));
       return Response.json({ data: { logs } }, { headers: { "Cache-Control": "no-store" } });

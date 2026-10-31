@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import type { AccessTokenType } from "@prisma/client";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { auditData } from "@/modules/shared/audit";
 import { AppError } from "@/modules/shared/errors";
@@ -5,10 +8,12 @@ import { BusinessContext, requireRole } from "@/modules/tenancy/context";
 import {
   BrandTheme,
   DEFAULT_PRIMARY_COLOR,
+  DEFAULT_SECONDARY_COLOR,
   DEFAULT_THEME,
   LOGO_MAX_LENGTH,
   LogoMimeType,
   normalizeHexColor,
+  normalizeSecondaryColor,
   normalizeTitle,
 } from "@/modules/tenancy/brand";
 
@@ -16,6 +21,7 @@ export type ThemeInput = {
   /** undefined keeps the current title, null clears it back to the business name. */
   title?: string | null;
   primaryColor?: string;
+  secondaryColor?: string;
   /** undefined keeps the current logo, null removes it, a data URL replaces it. */
   logo?: string | null;
 };
@@ -79,6 +85,7 @@ export function parseLogoUpload(value: unknown): LogoUpload {
 function toTheme(row: {
   title: string | null;
   primaryColor: string;
+  secondaryColor: string;
   logoMimeType: string | null;
   logoData: string | null;
 } | null): BrandTheme {
@@ -86,6 +93,7 @@ function toTheme(row: {
   return {
     title: row.title,
     primaryColor: row.primaryColor,
+    secondaryColor: row.secondaryColor,
     logoMimeType: row.logoMimeType,
     logoData: row.logoData,
   };
@@ -94,6 +102,7 @@ function toTheme(row: {
 const THEME_FIELDS = {
   title: true,
   primaryColor: true,
+  secondaryColor: true,
   logoMimeType: true,
   logoData: true,
 } as const;
@@ -105,6 +114,45 @@ export async function getTheme(businessId: string): Promise<BrandTheme> {
       select: THEME_FIELDS,
     }),
   );
+}
+
+/**
+ * Public pages (`/q/status`, `/book/status`) only know the access token, not the
+ * business. An unknown or revoked token just gets the shipped look; the page
+ * itself rejects the token through its own API call.
+ */
+export async function getThemeForToken(
+  token: string,
+  type: AccessTokenType,
+): Promise<BrandTheme> {
+  const access = await prisma.accessToken.findUnique({
+    where: { tokenHash: createHash("sha256").update(token).digest("hex") },
+    select: { businessId: true, type: true, revokedAt: true },
+  });
+  if (!access || access.type !== type || access.revokedAt) return DEFAULT_THEME;
+  return getTheme(access.businessId);
+}
+
+/**
+ * Warna untuk layar di luar workspace — 404/500 global yang dirender di root
+ * layout. Boundary di root tidak tahu slug bisnis, jadi pakai workspace milik
+ * pengguna yang sedang masuk. Tanpa sesi, kembalikan null agar palet bawaan
+ * yang dipakai.
+ */
+export async function getThemeForSession(): Promise<BrandTheme | null> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return null;
+    const membership = await prisma.businessMembership.findFirst({
+      where: { userId: session.user.id, business: { active: true } },
+      orderBy: { createdAt: "asc" },
+      select: { business: { select: { id: true } } },
+    });
+    return membership ? await getTheme(membership.business.id) : null;
+  } catch {
+    // Saat build/prerender tidak ada request scope; palet bawaan sudah benar.
+    return null;
+  }
 }
 
 /** Batch lookup for pages that render several businesses at once. */
@@ -127,12 +175,16 @@ export async function updateTheme(
 ): Promise<BrandTheme> {
   requireRole(context, ["SUPER_ADMIN"]);
   const primaryColor = normalizeHexColor(input.primaryColor ?? DEFAULT_PRIMARY_COLOR);
+  const secondaryColor = normalizeSecondaryColor(
+    input.secondaryColor ?? DEFAULT_SECONDARY_COLOR,
+  );
   const logo = input.logo === undefined ? undefined : input.logo === null ? null : parseLogoUpload(input.logo);
   const title = input.title === undefined ? undefined : normalizeTitle(input.title);
 
   return await prisma.$transaction(async (tx) => {
     const data = {
       primaryColor,
+      secondaryColor,
       ...(title === undefined ? {} : { title }),
       ...(logo === undefined
         ? {}
@@ -153,6 +205,7 @@ export async function updateTheme(
         targetId: context.businessId,
         metadata: {
           primaryColor,
+          secondaryColor,
           title: title === undefined ? "unchanged" : title ?? "removed",
           logo: logo === undefined ? "unchanged" : logo === null ? "removed" : logo.mimeType,
         },

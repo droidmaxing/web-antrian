@@ -66,7 +66,7 @@ export default async function SettingsPage({ params, searchParams }: PageProps) 
     business.branches.find((option) => option.id === requestedBranchId) ?? business.branches[0];
 
   return (
-    <div className="min-h-screen bg-[#f6f8f7] text-[#182321]" style={brandVars(theme.primaryColor)}>
+    <div className="min-h-screen bubble-flow text-[#182321]" style={brandVars(theme)}>
       <AppHeader
         businessName={business.name}
         businessSlug={businessSlug}
@@ -83,7 +83,7 @@ export default async function SettingsPage({ params, searchParams }: PageProps) 
           <h1 className="mt-1.5 text-2xl font-semibold tracking-[-.03em]">
             Tampilan, fitur, dan akses pelanggan
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#75827f]">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#53615b]">
             Perubahan di sini berlaku untuk seluruh pengguna workspace. Pengaturan warna dan logo
             hanya tersedia bagi Super Admin.
           </p>
@@ -100,7 +100,7 @@ export default async function SettingsPage({ params, searchParams }: PageProps) 
                 className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                   option.id === branch.id
                     ? "border-brand-700 bg-brand-50 font-semibold text-brand-700"
-                    : "border-[#e1e7e4] text-[#52615b] hover:bg-[#f7faf8]"
+                    : "border-brand-200 text-[#52615b] hover:bg-brand-50"
                 }`}
               >
                 {option.name}
@@ -124,7 +124,7 @@ export default async function SettingsPage({ params, searchParams }: PageProps) 
                 bookingEnabled={enabledFeatures.includes("BOOKING")}
               />
             ) : (
-              <section className="rounded-2xl border border-[#e9edeb] bg-white p-5 text-sm text-[#75827f] md:p-6">
+              <section className="bubble-card p-5 text-sm text-[#53615b] md:p-6">
                 Belum ada cabang aktif, sehingga tautan pelanggan belum dapat dibuat.
               </section>
             )}

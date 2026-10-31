@@ -49,7 +49,102 @@ async function main() {
     },
   });
 
-  const business = await prisma.business.upsert({
+  const masterAdminEmail = "master@antrian.test";
+  await prisma.user.upsert({
+    where: { email: masterAdminEmail },
+    update: {
+      passwordHash: await hash("MasterAdmin123!", 12),
+      active: true,
+      name: "Sena Master Admin",
+      platformRole: "MASTER_ADMIN",
+    },
+    create: {
+      email: masterAdminEmail,
+      passwordHash: await hash("MasterAdmin123!", 12),
+      active: true,
+      name: "Sena Master Admin",
+      platformRole: "MASTER_ADMIN",
+    },
+  });
+
+  // Business 2 users
+  const owner2Email = "owner2@antrian.test";
+  const owner2 = await prisma.user.upsert({
+    where: { email: owner2Email },
+    update: {
+      passwordHash: await hash("Owner2Pass123!", 12),
+      active: true,
+      name: "Hendra Kusuma",
+    },
+    create: {
+      email: owner2Email,
+      passwordHash: await hash("Owner2Pass123!", 12),
+      active: true,
+      name: "Hendra Kusuma",
+    },
+  });
+  const superAdmin2Email = "spv2@antrian.test";
+  const superAdmin2 = await prisma.user.upsert({
+    where: { email: superAdmin2Email },
+    update: {
+      passwordHash: await hash("SuperAdmin2Pass123!", 12),
+      active: true,
+      name: "Sari Supervisor",
+    },
+    create: {
+      email: superAdmin2Email,
+      passwordHash: await hash("SuperAdmin2Pass123!", 12),
+      active: true,
+      name: "Sari Supervisor",
+    },
+  });
+  const admin2Email = "admin2@antrian.test";
+  const admin2 = await prisma.user.upsert({
+    where: { email: admin2Email },
+    update: {
+      passwordHash: await hash("Admin2Pass123!", 12),
+      active: true,
+      name: "Budi Admin",
+    },
+    create: {
+      email: admin2Email,
+      passwordHash: await hash("Admin2Pass123!", 12),
+      active: true,
+      name: "Budi Admin",
+    },
+  });
+
+  // Paket langganan contoh — tampil di halaman landing dan konsol Master Admin.
+  // Upsert by code supaya seed ulang tidak menggandakan paket.
+  const planDefinitions = [
+    {
+      code: "starter",
+      name: "Starter",
+      description: "Satu cabang, pemanggilan loket, dan QR antrean.",
+      monthlyPrice: 149_000,
+      yearlyPrice: 1_490_000,
+    },
+    {
+      code: "growth",
+      name: "Growth",
+      description: "Beberapa cabang, booking online, dan laporan harian.",
+      monthlyPrice: 299_000,
+      yearlyPrice: 2_990_000,
+    },
+    {
+      code: "pro",
+      name: "Pro",
+      description: "Cabang tanpa batas, layar display, dan akses tim lengkap.",
+      monthlyPrice: 599_000,
+      yearlyPrice: 5_990_000,
+    },
+  ];
+  for (const plan of planDefinitions) {
+    await prisma.plan.upsert({ where: { code: plan.code }, update: plan, create: plan });
+  }
+
+  // Business 1: Klinik Sehat Sentosa
+  const business1 = await prisma.business.upsert({
     where: { slug: "klinik-sehat" },
     update: {},
     create: {
@@ -68,20 +163,20 @@ async function main() {
     },
     include: { branches: true },
   });
-  const branch =
-    business.branches[0] ??
-    (await prisma.branch.findFirstOrThrow({ where: { businessId: business.id } }));
+  const branch1 =
+    business1.branches[0] ??
+    (await prisma.branch.findFirstOrThrow({ where: { businessId: business1.id } }));
 
   for (let weekday = 0; weekday < 7; weekday += 1) {
     await prisma.operatingHours.upsert({
-      where: { branchId_weekday: { branchId: branch.id, weekday } },
+      where: { branchId_weekday: { branchId: branch1.id, weekday } },
       update: {
         opensAt: "09:00",
         closesAt: "17:00",
         closed: weekday === 0,
       },
       create: {
-        branchId: branch.id,
+        branchId: branch1.id,
         weekday,
         opensAt: "09:00",
         closesAt: "17:00",
@@ -90,27 +185,27 @@ async function main() {
     });
   }
 
-  const membership = await prisma.businessMembership.upsert({
-    where: { userId_businessId: { userId: user.id, businessId: business.id } },
+  const membership1 = await prisma.businessMembership.upsert({
+    where: { userId_businessId: { userId: user.id, businessId: business1.id } },
     update: { role: MembershipRole.ADMIN },
-    create: { userId: user.id, businessId: business.id, role: MembershipRole.ADMIN },
+    create: { userId: user.id, businessId: business1.id, role: MembershipRole.ADMIN },
   });
   await prisma.membershipBranchScope.upsert({
-    where: { membershipId_branchId: { membershipId: membership.id, branchId: branch.id } },
+    where: { membershipId_branchId: { membershipId: membership1.id, branchId: branch1.id } },
     update: {},
-    create: { membershipId: membership.id, branchId: branch.id },
+    create: { membershipId: membership1.id, branchId: branch1.id },
   });
   await prisma.businessMembership.upsert({
     where: {
       userId_businessId: {
         userId: superAdmin.id,
-        businessId: business.id,
+        businessId: business1.id,
       },
     },
     update: { role: MembershipRole.SUPER_ADMIN },
     create: {
       userId: superAdmin.id,
-      businessId: business.id,
+      businessId: business1.id,
       role: MembershipRole.SUPER_ADMIN,
     },
   });
@@ -118,16 +213,77 @@ async function main() {
     where: {
       userId_businessId: {
         userId: owner.id,
-        businessId: business.id,
+        businessId: business1.id,
       },
     },
     update: { role: MembershipRole.OWNER },
     create: {
       userId: owner.id,
-      businessId: business.id,
+      businessId: business1.id,
       role: MembershipRole.OWNER,
     },
   });
+
+  // Business 2: Rumah Sakit Kusuma
+  const business2 = await prisma.business.upsert({
+    where: { slug: "rumah-sakit-kusuma" },
+    update: {},
+    create: {
+      name: "Rumah Sakit Kusuma",
+      slug: "rumah-sakit-kusuma",
+      businessType: "HEALTHCARE",
+      timezone: "Asia/Jakarta",
+      branches: {
+        create: {
+          name: "Cabang Pusat",
+          slug: "pusat",
+          timezone: "Asia/Jakarta",
+          queueConfig: { create: { ticketPrefix: "R", resetDaily: true } },
+        },
+      },
+    },
+    include: { branches: true },
+  });
+  const branch2 =
+    business2.branches[0] ??
+    (await prisma.branch.findFirstOrThrow({ where: { businessId: business2.id } }));
+
+  for (let weekday = 0; weekday < 7; weekday += 1) {
+    await prisma.operatingHours.upsert({
+      where: { branchId_weekday: { branchId: branch2.id, weekday } },
+      update: {
+        opensAt: "08:00",
+        closesAt: "20:00",
+        closed: false,
+      },
+      create: {
+        branchId: branch2.id,
+        weekday,
+        opensAt: "08:00",
+        closesAt: "20:00",
+        closed: false,
+      },
+    });
+  }
+
+  await prisma.businessMembership.upsert({
+    where: { userId_businessId: { userId: admin2.id, businessId: business2.id } },
+    update: { role: MembershipRole.ADMIN },
+    create: { userId: admin2.id, businessId: business2.id, role: MembershipRole.ADMIN },
+  });
+  await prisma.businessMembership.upsert({
+    where: { userId_businessId: { userId: superAdmin2.id, businessId: business2.id } },
+    update: { role: MembershipRole.SUPER_ADMIN },
+    create: { userId: superAdmin2.id, businessId: business2.id, role: MembershipRole.SUPER_ADMIN },
+  });
+  await prisma.businessMembership.upsert({
+    where: { userId_businessId: { userId: owner2.id, businessId: business2.id } },
+    update: { role: MembershipRole.OWNER },
+    create: { userId: owner2.id, businessId: business2.id, role: MembershipRole.OWNER },
+  });
+
+  const business = business1;
+  const branch = branch1;
 
   // Sama dengan data layanan yang ada sekarang di cabang Menteng, diurutkan
   // menurut nama layanan.

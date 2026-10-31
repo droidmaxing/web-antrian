@@ -1,8 +1,18 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
-import { brandTitle, logoDataUrl } from "@/modules/tenancy/brand";
+import { brandTitle, brandVars, logoDataUrl } from "@/modules/tenancy/brand";
 import { getTheme } from "@/modules/tenancy/theme-service";
+
+/** Satu lookup per request, dipakai metadata dan pembungkus warna. */
+const workspaceBrand = cache(async (slug: string) => {
+  const business = await prisma.business.findUnique({
+    where: { slug },
+    select: { id: true, name: true },
+  });
+  return business ? { business, theme: await getTheme(business.id) } : null;
+});
 
 /**
  * Judul tab dan favicon seluruh halaman dashboard mengikuti branding workspace:
@@ -14,19 +24,26 @@ export async function generateMetadata({
   params: Promise<{ businessSlug: string }>;
 }): Promise<Metadata> {
   const { businessSlug } = await params;
-  const business = await prisma.business.findUnique({
-    where: { slug: businessSlug },
-    select: { id: true, name: true },
-  });
-  if (!business) return {};
-  const theme = await getTheme(business.id);
-  const title = brandTitle(theme, business.name);
+  const brand = await workspaceBrand(businessSlug);
+  if (!brand) return {};
   return {
-    title,
-    icons: { icon: logoDataUrl(theme) ?? "/icon.svg" },
+    title: brandTitle(brand.theme, brand.business.name),
+    icons: { icon: logoDataUrl(brand.theme) ?? "/icon.svg" },
   };
 }
 
-export default function WorkspaceLayout({ children }: { children: ReactNode }) {
-  return children;
+/**
+ * Warna workspace dipasang di layout, bukan per halaman: layar error dan 404 di
+ * dalam workspace tetap memakai warna perusahaan karena layout tidak ikut diganti.
+ */
+export default async function WorkspaceLayout({
+  children,
+  params,
+}: {
+  children: ReactNode;
+  params: Promise<{ businessSlug: string }>;
+}) {
+  const { businessSlug } = await params;
+  const brand = await workspaceBrand(businessSlug);
+  return <div style={brandVars(brand?.theme)}>{children}</div>;
 }

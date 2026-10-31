@@ -1,5 +1,6 @@
 "use client";
 
+import { viewerTimeZone } from "@/modules/shared/timezone";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Clock3, Printer, RefreshCw, TicketCheck } from "lucide-react";
@@ -66,11 +67,11 @@ export function PublicQueueStatus({ token, statusUrl }: { token: string; statusU
 
   if (error && !data) {
     return (
-      <div className="rounded-2xl border border-[#e8eeeb] bg-white p-5 shadow-[0_18px_60px_rgba(28,60,47,.08)]">
+      <div className="bubble-card bg-white p-5">
         <InlineNotice message={error} />
         <Link
           href="/"
-          className="mt-4 flex h-10 items-center justify-center rounded-xl bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"
+          className="mt-4 flex h-10 items-center justify-center rounded-full bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"
         >
           Kembali ke halaman utama
         </Link>
@@ -79,7 +80,7 @@ export function PublicQueueStatus({ token, statusUrl }: { token: string; statusU
   }
 
   return (
-    <section className="overflow-hidden rounded-[24px] border border-[#e8eeeb] bg-white shadow-[0_18px_60px_rgba(28,60,47,.08)]">
+    <section className="overflow-hidden bubble-card bg-white">
       <div className="bg-brand-700 px-6 pb-7 pt-7 text-center text-white">
         <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-white/15">
           <TicketCheck className="size-6" />
@@ -89,7 +90,7 @@ export function PublicQueueStatus({ token, statusUrl }: { token: string; statusU
           {data?.ticketNumber ?? "—"}
         </p>
         <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-medium">
-          <span className="size-1.5 rounded-full bg-[#a8e6ce]" />
+          <span className="size-1.5 rounded-full bg-brand-300" />
           {data ? statusLabels[data.status] ?? data.status : "Memuat status..."}
         </p>
       </div>
@@ -97,8 +98,8 @@ export function PublicQueueStatus({ token, statusUrl }: { token: string; statusU
         {error && (
           <InlineNotice message={error} />
         )}
-        <div className="rounded-xl bg-[#f5f8f6] p-4">
-          <p className="text-[10px] font-medium uppercase tracking-[.1em] text-[#9aa5a1]">
+        <div className="rounded-xl bg-brand-50 p-4">
+          <p className="text-[11px] font-medium uppercase tracking-[.1em] text-[#5d6b67]">
             Layanan
           </p>
           <p className="mt-1 text-sm font-semibold text-[#344440]">
@@ -106,36 +107,36 @@ export function PublicQueueStatus({ token, statusUrl }: { token: string; statusU
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-[#e9edeb] p-4">
-            <p className="text-[10px] text-[#9aa5a1]">Antrean di depan</p>
+          <div className="bubble-panel p-4">
+            <p className="text-[11px] text-[#5d6b67]">Antrean di depan</p>
             <p className="mt-1 text-2xl font-semibold text-[#344440]">
               {data?.waitingAhead ?? "—"}
             </p>
           </div>
-          <div className="rounded-xl border border-[#e9edeb] p-4">
-            <p className="text-[10px] text-[#9aa5a1]">Estimasi tunggu</p>
+          <div className="bubble-panel p-4">
+            <p className="text-[11px] text-[#5d6b67]">Estimasi tunggu</p>
             <p className="mt-1 flex items-baseline gap-1 text-2xl font-semibold text-[#344440]">
               {data?.estimateMinutes ?? "—"}
-              <span className="text-[10px] font-medium text-[#8a9691]">menit</span>
+              <span className="text-[11px] font-medium text-[#626a67]">menit</span>
             </p>
           </div>
         </div>
-        <div className="space-y-3 rounded-xl border border-dashed border-[#cfd8d4] p-4">
+        <div className="space-y-3 rounded-xl p-4 bubble-panel">
           <div>
             <p className="text-xs font-semibold text-[#344440]">Cetak nomor antrean</p>
-            <p className="mt-0.5 text-[10px] text-[#8a9691]">
+            <p className="mt-0.5 text-[11px] text-[#626a67]">
               Struk 80mm (printer termal). Tunjukkan struk atau nomor ini saat dipanggil.
             </p>
           </div>
           {/* Pratinjau apa adanya: elemen ini yang tercetak, sisanya disembunyikan
               lewat aturan @media print di globals.css. */}
-          <div className="struk-80mm mx-auto overflow-hidden rounded-lg border border-[#e9edeb] px-3">
+          <div className="struk-80mm mx-auto overflow-hidden rounded-lg bubble-panel px-3">
             <p className="text-center font-semibold uppercase tracking-[.08em]">
               {data?.business ?? "—"}
             </p>
-            <p className="text-center text-[10px]">{data?.branch ?? ""}</p>
+            <p className="text-center text-[11px]">{data?.branch ?? ""}</p>
             <p className="my-2 border-t border-dashed border-black/40" />
-            <p className="text-center text-[10px] uppercase tracking-[.14em]">
+            <p className="text-center text-[11px] uppercase tracking-[.14em]">
               Nomor antrean
             </p>
             <p className="mt-1 text-center text-3xl font-bold tracking-[.12em]">
@@ -158,7 +159,7 @@ export function PublicQueueStatus({ token, statusUrl }: { token: string; statusU
                 <span className="text-right">
                   {data
                     ? new Date(data.issuedAt).toLocaleString("id-ID", {
-                        timeZone: data.timezone,
+                        timeZone: viewerTimeZone(data.timezone),
                         dateStyle: "short",
                         timeStyle: "short",
                       })
@@ -175,10 +176,10 @@ export function PublicQueueStatus({ token, statusUrl }: { token: string; statusU
               </div>
             </div>
             <p className="my-2 border-t border-dashed border-black/40" />
-            <p className="text-center text-[10px] break-all">
+            <p className="text-center text-[11px] break-all">
               Status: {statusUrl || `/q/status/${token}`}
             </p>
-            <p className="mt-1 text-center text-[10px]">
+            <p className="mt-1 text-center text-[11px]">
               Mohon menunggu sampai nomor ini dipanggil.
             </p>
           </div>
@@ -186,19 +187,19 @@ export function PublicQueueStatus({ token, statusUrl }: { token: string; statusU
             type="button"
             onClick={() => window.print()}
             disabled={!data}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-brand-700 text-sm font-semibold text-brand-700 transition hover:bg-[#eef6f1] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-full bubble-btn bg-white text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Printer className="size-4" />
             Cetak struk 80mm
           </button>
         </div>
-        <p className="flex items-center justify-center gap-1.5 pt-1 text-[10px] text-[#a0aaa6]">
+        <p className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-[#5d6b67]">
           <RefreshCw className="size-3" />
           {updatedAt
             ? `Diperbarui ${updatedAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} · diperbarui otomatis`
             : "Memuat antrean"}
         </p>
-        <div className="flex gap-2 rounded-xl bg-[#eef6f1] p-3 text-[11px] leading-5 text-[#658172]">
+        <div className="flex gap-2 rounded-xl bg-brand-50 p-3 text-[11px] leading-5 text-[#658172]">
           <Clock3 className="mt-0.5 size-4 shrink-0" />
           Estimasi waktu dapat berubah mengikuti kondisi pelayanan.
         </div>

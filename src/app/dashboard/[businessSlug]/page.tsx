@@ -92,13 +92,13 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
     business.branches[0];
   if (!branch) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#f7f8fa] p-6">
-        <div className="max-w-md rounded-2xl border border-[#e9edeb] bg-white p-8 text-center shadow-sm">
+      <main className="bubble-flow grid min-h-screen place-items-center p-6">
+        <div className="max-w-md bubble-card p-8 text-center shadow-bubble-sm">
           <p className="text-sm font-medium text-brand-700">Belum ada cabang</p>
           <h1 className="mt-2 text-xl font-semibold text-[#182321]">
             Bisnis Anda belum memiliki cabang aktif
           </h1>
-          <p className="mt-2 text-sm leading-6 text-[#75827f]">
+          <p className="mt-2 text-sm leading-6 text-[#53615b]">
             Hubungi Super Admin bisnis untuk menyiapkan cabang operasional.
           </p>
         </div>

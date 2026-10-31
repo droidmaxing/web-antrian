@@ -17,9 +17,10 @@ export async function GET(request: Request, { params }: RouteContext) {
     const { businessSlug } = await params;
     const url = new URL(request.url);
     const branchId = z.string().min(1).safeParse(url.searchParams.get("branchId"));
+    // Autentikasi/tenant dulu: permintaan tanpa sesi harus 401, bukan bocor 400 validasi.
+    const context = await requireBusinessContext(businessSlug, branchId.data);
     if (!branchId.success) throw new AppError("Cabang wajib dipilih.", 400, "INVALID_BRANCH");
 
-    const context = await requireBusinessContext(businessSlug, branchId.data);
     const queues = await listQueues(context, branchId.data);
     return Response.json({ data: queues });
   } catch (error) {

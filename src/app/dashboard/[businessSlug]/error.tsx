@@ -10,10 +10,10 @@ import { ErrorState } from "@/components/error-state";
  */
 export default function DashboardError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     console.error("Dashboard render failed", { digest: error.digest });
@@ -24,7 +24,7 @@ export default function DashboardError({
       code="500"
       title="Dashboard gagal dimuat"
       description="Data operasional tidak dapat diambil saat ini. Coba muat ulang; sesi dan pengaturan Anda tidak berubah."
-      onRetry={reset}
+      onRetry={retry}
     />
   );
 }

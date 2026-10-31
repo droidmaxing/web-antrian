@@ -7,6 +7,7 @@ import { InlineNotice } from "@/components/inline-notice";
 import {
   LOGO_MAX_LENGTH,
   TITLE_MAX_LENGTH,
+  brandVars,
   logoDataUrl,
   type BrandTheme,
 } from "@/modules/tenancy/brand";
@@ -15,12 +16,46 @@ import {
 const MAX_LOGO_BYTES = 300_000;
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
-const PRESETS = [
+const PRIMARY_PRESETS = [
   { label: "Hijau antrian", value: "#176b5b" },
   { label: "Biru laut", value: "#1d5f9c" },
   { label: "Ungu", value: "#5b4bb7" },
   { label: "Oranye", value: "#b8622a" },
   { label: "Merah", value: "#a83a4b" },
+];
+
+const SECONDARY_PRESETS = [
+  { label: "Kuning madu", value: "#f2a93b" },
+  { label: "Mint", value: "#4fc79c" },
+  { label: "Langit", value: "#4aa3e0" },
+  { label: "Lavender", value: "#9b7ce0" },
+  { label: "Koral", value: "#f0716a" },
+];
+
+/** Static class strings: Tailwind only generates classes it can read literally. */
+const BRAND_SWATCHES = [
+  "bg-brand-50",
+  "bg-brand-100",
+  "bg-brand-200",
+  "bg-brand-300",
+  "bg-brand-400",
+  "bg-brand-500",
+  "bg-brand-600",
+  "bg-brand-700",
+  "bg-brand-800",
+  "bg-brand-900",
+];
+const ACCENT_SWATCHES = [
+  "bg-accent-50",
+  "bg-accent-100",
+  "bg-accent-200",
+  "bg-accent-300",
+  "bg-accent-400",
+  "bg-accent-500",
+  "bg-accent-600",
+  "bg-accent-700",
+  "bg-accent-800",
+  "bg-accent-900",
 ];
 
 /** Prefers the per-field message so an upload problem is stated precisely. */
@@ -31,14 +66,81 @@ function apiMessage(result: unknown, fallback: string) {
     error?.fields?.logo ??
     error?.fields?.title ??
     error?.fields?.primaryColor ??
+    error?.fields?.secondaryColor ??
     error?.message ??
     fallback
   );
 }
 
 /**
- * Super Admin workspace branding. The colour is previewed locally before saving;
- * persistence and validation are the API's job, so nothing here is trusted.
+ * Colour picker + preset row. The hex field is free text so a customer can paste
+ * their exact brand code; the API validates before anything is stored.
+ */
+function ColorField({
+  id,
+  label,
+  hint,
+  value,
+  presets,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  value: string;
+  presets: { label: string; value: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="mt-6">
+      <label htmlFor={id} className="block text-xs font-semibold text-brand-800">
+        {label}
+      </label>
+      <div className="mt-2 flex items-center gap-2.5">
+        <input
+          id={id}
+          type="color"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="size-11 cursor-pointer bubble-card bg-white p-1"
+        />
+        <input
+          type="text"
+          inputMode="text"
+          aria-label={`Kode heksadesimal ${label.toLowerCase()}`}
+          value={value}
+          maxLength={7}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-11 w-32 rounded-xl bubble-field px-3 font-mono text-xs uppercase text-brand-900 outline-none"
+        />
+      </div>
+      <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{hint}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {presets.map((preset) => (
+          <button
+            key={preset.value}
+            type="button"
+            onClick={() => onChange(preset.value)}
+            aria-label={`Pakai warna ${preset.label}`}
+            aria-pressed={value.toLowerCase() === preset.value}
+            className="flex items-center gap-2 rounded-full bubble-btn px-2.5 py-1.5 text-[11px] font-medium text-brand-800 transition hover:bg-brand-50 aria-pressed:border-brand-700 aria-pressed:bg-brand-50"
+          >
+            <span
+              aria-hidden="true"
+              className="size-3.5 rounded-full"
+              style={{ backgroundColor: preset.value }}
+            />
+            {preset.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Super Admin workspace branding: two colours (primary + secondary) and a logo.
+ * The preview renders the real palette, so what is shown is what gets saved.
  */
 export function ThemeSettings({
   businessSlug,
@@ -52,6 +154,7 @@ export function ThemeSettings({
   const [current, setCurrent] = useState(initialTheme);
   const [title, setTitle] = useState(initialTheme.title ?? "");
   const [primaryColor, setPrimaryColor] = useState(initialTheme.primaryColor);
+  const [secondaryColor, setSecondaryColor] = useState(initialTheme.secondaryColor);
   const [pendingLogo, setPendingLogo] = useState<string | null>(null);
   const [removeLogo, setRemoveLogo] = useState(false);
   const [busy, setBusy] = useState<"save" | "reset" | null>(null);
@@ -60,8 +163,21 @@ export function ThemeSettings({
 
   const previewSrc = removeLogo ? null : (pendingLogo ?? logoDataUrl(current));
   const colorChanged = primaryColor.toLowerCase() !== current.primaryColor.toLowerCase();
+  const secondaryChanged =
+    secondaryColor.toLowerCase() !== current.secondaryColor.toLowerCase();
   const titleChanged = title.trim() !== (current.title ?? "");
-  const hasChanges = colorChanged || titleChanged || removeLogo || pendingLogo !== null;
+  const hasChanges =
+    colorChanged || secondaryChanged || titleChanged || removeLogo || pendingLogo !== null;
+
+  function applyTheme(theme: BrandTheme) {
+    setCurrent(theme);
+    setTitle(theme.title ?? "");
+    setPrimaryColor(theme.primaryColor);
+    setSecondaryColor(theme.secondaryColor);
+    setPendingLogo(null);
+    setRemoveLogo(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
 
   function pickFile(file: File | undefined) {
     setError("");
@@ -103,9 +219,15 @@ export function ThemeSettings({
     setError("");
     setSaved("");
     try {
-      const body: { title?: string | null; primaryColor?: string; logo?: string | null } = {};
+      const body: {
+        title?: string | null;
+        primaryColor?: string;
+        secondaryColor?: string;
+        logo?: string | null;
+      } = {};
       if (titleChanged) body.title = title.trim() || null;
       if (colorChanged) body.primaryColor = primaryColor;
+      if (secondaryChanged) body.secondaryColor = secondaryColor;
       if (removeLogo) body.logo = null;
       else if (pendingLogo) body.logo = pendingLogo;
 
@@ -118,13 +240,7 @@ export function ThemeSettings({
       if (!response.ok) {
         throw new Error(apiMessage(result, "Pengaturan tampilan gagal disimpan."));
       }
-      const theme = result.data as BrandTheme;
-      setCurrent(theme);
-      setTitle(theme.title ?? "");
-      setPrimaryColor(theme.primaryColor);
-      setPendingLogo(null);
-      setRemoveLogo(false);
-      if (fileRef.current) fileRef.current.value = "";
+      applyTheme(result.data as BrandTheme);
       setSaved("Pengaturan tampilan tersimpan.");
       router.refresh();
     } catch (saveError) {
@@ -146,13 +262,7 @@ export function ThemeSettings({
       if (!response.ok) {
         throw new Error(apiMessage(result, "Tampilan bawaan gagal dipulihkan."));
       }
-      const theme = result.data as BrandTheme;
-      setCurrent(theme);
-      setTitle(theme.title ?? "");
-      setPrimaryColor(theme.primaryColor);
-      setPendingLogo(null);
-      setRemoveLogo(false);
-      if (fileRef.current) fileRef.current.value = "";
+      applyTheme(result.data as BrandTheme);
       setSaved("Judul, warna, dan logo dikembalikan ke tampilan standar.");
       router.refresh();
     } catch (resetError) {
@@ -163,22 +273,23 @@ export function ThemeSettings({
   }
 
   return (
-    <section className="rounded-2xl border border-[#e9edeb] bg-white p-5 shadow-[0_2px_8px_rgba(25,48,40,.025)] md:p-6">
+    <section className="bubble-card p-5 md:p-6">
       <div className="flex items-center gap-2.5">
-        <span className="flex size-9 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+        <span className="flex size-9 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
           <Palette className="size-[18px]" />
         </span>
         <div>
           <h2 className="text-[15px] font-semibold tracking-[-.02em]">Judul, warna, dan logo</h2>
-          <p className="mt-0.5 text-xs text-[#929e99]">
-            Hanya Super Admin. Berlaku di dashboard, halaman QR, booking, dan layar TV.
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Hanya Super Admin. Warna utama dan warna sekunder berlaku di dashboard, halaman QR,
+            booking, dan layar TV.
           </p>
         </div>
       </div>
 
       <div className="mt-5 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div>
-          <label htmlFor="app-title" className="text-xs font-semibold text-[#40504a]">
+          <label htmlFor="app-title" className="text-xs font-semibold text-brand-800">
             Judul aplikasi
           </label>
           <input
@@ -191,66 +302,37 @@ export function ThemeSettings({
               setTitle(event.target.value);
               setSaved("");
             }}
-            className="mt-2 h-11 w-full max-w-xs rounded-xl border border-[#e1e7e4] px-3 text-sm text-[#344440] outline-none focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08]"
+            className="mt-2 h-11 w-full max-w-xs rounded-xl bubble-field px-3 text-sm text-brand-900 outline-none"
           />
-          <p className="mt-2 text-[11px] leading-4 text-[#929e99]">
+          <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
             Muncul sebagai judul tab browser. Kosongkan untuk memakai nama bisnis.
           </p>
 
-          <label
-            htmlFor="primary-color"
-            className="mt-6 block text-xs font-semibold text-[#40504a]"
-          >
-            Warna utama
-          </label>
-          <div className="mt-2 flex items-center gap-2.5">
-            <input
-              id="primary-color"
-              type="color"
-              value={primaryColor}
-              onChange={(event) => {
-                setPrimaryColor(event.target.value);
-                setSaved("");
-              }}
-              className="size-11 cursor-pointer rounded-xl border border-[#e1e7e4] bg-white p-1"
-            />
-            <input
-              type="text"
-              inputMode="text"
-              aria-label="Kode warna heksadesimal"
-              value={primaryColor}
-              maxLength={7}
-              onChange={(event) => {
-                setPrimaryColor(event.target.value);
-                setSaved("");
-              }}
-              className="h-11 w-32 rounded-xl border border-[#e1e7e4] px-3 font-mono text-xs uppercase text-[#344440] outline-none focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08]"
-            />
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {PRESETS.map((preset) => (
-              <button
-                key={preset.value}
-                type="button"
-                onClick={() => {
-                  setPrimaryColor(preset.value);
-                  setSaved("");
-                }}
-                aria-label={`Pakai warna ${preset.label}`}
-                aria-pressed={primaryColor.toLowerCase() === preset.value}
-                className="flex items-center gap-2 rounded-lg border border-[#e9edeb] px-2.5 py-1.5 text-[11px] font-medium text-[#52615b] transition hover:bg-[#f7faf8] aria-pressed:border-brand-700"
-              >
-                <span
-                  aria-hidden="true"
-                  className="size-3.5 rounded-full"
-                  style={{ backgroundColor: preset.value }}
-                />
-                {preset.label}
-              </button>
-            ))}
-          </div>
+          <ColorField
+            id="primary-color"
+            label="Warna utama"
+            hint="Tombol, navigasi, dan header. Semua gradasi warna diturunkan dari sini."
+            value={primaryColor}
+            presets={PRIMARY_PRESETS}
+            onChange={(value) => {
+              setPrimaryColor(value);
+              setSaved("");
+            }}
+          />
 
-          <p className="mt-6 text-xs font-semibold text-[#40504a]">Logo bisnis</p>
+          <ColorField
+            id="secondary-color"
+            label="Warna sekunder"
+            hint="Aksen: lencana, sorotan, dan sentuhan playful di kartu serta halaman publik."
+            value={secondaryColor}
+            presets={SECONDARY_PRESETS}
+            onChange={(value) => {
+              setSecondaryColor(value);
+              setSaved("");
+            }}
+          />
+
+          <p className="mt-6 text-xs font-semibold text-brand-800">Logo bisnis</p>
           <div className="mt-2 flex flex-wrap items-center gap-2.5">
             <input
               ref={fileRef}
@@ -262,7 +344,7 @@ export function ThemeSettings({
             />
             <label
               htmlFor="logo-file"
-              className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#e1e7e4] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#40504a] transition hover:bg-[#f7faf8]"
+              className="inline-flex cursor-pointer items-center gap-2 bubble-card bg-white px-3.5 py-2.5 text-xs font-semibold text-brand-800 transition hover:bg-brand-50"
             >
               <Upload className="size-4" /> Pilih berkas
             </label>
@@ -275,26 +357,28 @@ export function ThemeSettings({
                   if (fileRef.current) fileRef.current.value = "";
                   setSaved("");
                 }}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#e9edeb] px-3.5 py-2.5 text-xs font-semibold text-[#7a4b45] transition hover:border-[#e0a99f] hover:bg-[#fdf4f2]"
+                className="inline-flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#7a4b45] transition hover:bg-[#fdf4f2] bubble-btn"
               >
                 <Trash2 className="size-4" /> Hapus logo
               </button>
             )}
           </div>
-          <p className="mt-2 text-[11px] leading-4 text-[#929e99]">
+          <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
             PNG, JPEG, atau WebP. Maksimal {MAX_LOGO_BYTES / 1000} KB, disarankan bentuk persegi.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-dashed border-[#dfe6e3] bg-[#fafcfb] p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-[#a1aca8]">
+        {/* Colours are dragged in as CSS variables, so the preview uses the very
+            same utilities the app renders with. */}
+        <div
+          style={brandVars({ primaryColor, secondaryColor })}
+          className="rounded-bubble bg-brand-50 p-4 bubble-panel"
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[.14em] text-muted-foreground">
             Pratinjau
           </p>
           <div className="mt-3 flex items-center gap-3">
-            <span
-              className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[14px] text-white"
-              style={{ backgroundColor: primaryColor }}
-            >
+            <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-brand-700 text-white shadow-bubble-lift">
               {previewSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element -- logo is an inline data URL
                 <img src={previewSrc} alt="Pratinjau logo" className="size-full object-contain" />
@@ -303,29 +387,36 @@ export function ThemeSettings({
               )}
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-[#182321]">
+              <span className="block truncate text-sm font-semibold text-brand-900">
                 {title.trim() || "Nama bisnis Anda"}
               </span>
-              <span className="block text-[11px] text-[#929e99]">
+              <span className="block text-[11px] text-muted-foreground">
                 Judul tab browser dan header
               </span>
             </span>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span
-              className="rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white"
-              style={{ backgroundColor: primaryColor }}
-            >
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-brand-700 px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-bubble-lift">
               Tombol utama
             </span>
-            <span
-              className="rounded-lg border px-3 py-1.5 text-[11px] font-semibold"
-              style={{ borderColor: primaryColor, color: primaryColor }}
-            >
-              Tombol sekunder
+            <span className="rounded-full bg-brand-50 px-3.5 py-1.5 text-[11px] font-semibold text-brand-700 shadow-bubble-sm">
+              Tombol utama (lembut)
+            </span>
+            <span className="bubble-chip px-3.5 py-1.5 text-[11px] font-semibold">
+              Aksen sekunder
             </span>
           </div>
-          <div className="mt-3 flex items-start gap-2 text-[11px] leading-4 text-[#929e99]">
+          <div className="mt-4 grid grid-cols-10 gap-1">
+            {BRAND_SWATCHES.map((swatch) => (
+              <span key={swatch} title={swatch} className={`h-6 rounded-full ${swatch}`} />
+            ))}
+          </div>
+          <div className="mt-2 grid grid-cols-10 gap-1">
+            {ACCENT_SWATCHES.map((swatch) => (
+              <span key={swatch} title={swatch} className={`h-6 rounded-full ${swatch}`} />
+            ))}
+          </div>
+          <div className="mt-4 flex items-start gap-2 text-[11px] leading-4 text-muted-foreground">
             <ImageIcon className="mt-0.5 size-3.5 shrink-0" />
             <span>Logo tampil pada header dashboard dan halaman publik antrean.</span>
           </div>
@@ -337,7 +428,7 @@ export function ThemeSettings({
           type="button"
           onClick={() => void save()}
           disabled={busy !== null || !hasChanges}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand-700 px-5 text-sm font-semibold text-white shadow-bubble-lift transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
         >
           {busy === "save" && <LoaderCircle className="size-4 animate-spin" />}
           Simpan tampilan
@@ -346,7 +437,7 @@ export function ThemeSettings({
           type="button"
           onClick={() => void reset()}
           disabled={busy !== null}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#e1e7e4] px-4 text-sm font-semibold text-[#52615b] transition hover:bg-[#f7faf8] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-full bubble-btn px-4 text-sm font-semibold text-brand-800 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy === "reset" ? (
             <LoaderCircle className="size-4 animate-spin" />

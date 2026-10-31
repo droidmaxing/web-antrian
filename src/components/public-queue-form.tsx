@@ -71,12 +71,12 @@ export function PublicQueueForm({
 
   if (!services.length) {
     return (
-      <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
+      <div className="rounded-2xl bg-white p-6 text-center shadow-bubble-sm">
         <TicketCheck className="mx-auto size-8 text-[#91a29b]" />
         <p className="mt-3 text-sm font-semibold text-[#344440]">
           Belum ada layanan tersedia
         </p>
-        <p className="mt-1 text-xs text-[#899591]">
+        <p className="mt-1 text-xs text-[#616a67]">
           Silakan hubungi petugas di lokasi.
         </p>
       </div>
@@ -103,7 +103,7 @@ export function PublicQueueForm({
             label: service.name,
             description: `${service.code} · ±${service.averageMinutes} menit`,
           }))}
-          className="h-12 w-full rounded-xl border border-[#e1e8e4] bg-white px-3.5 text-sm text-[#344440] outline-none focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08]"
+          className="h-12 w-full rounded-xl bubble-field bg-white px-3.5 text-sm text-[#344440] outline-none"
         />
         <FieldError id="queue-service-error" message={fieldErrors.serviceId} />
       </label>
@@ -124,13 +124,13 @@ export function PublicQueueForm({
           aria-describedby={fieldErrors.customerName ? "queue-name-error" : undefined}
           autoComplete="name"
           placeholder="Masukkan nama lengkap"
-          className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerName ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+          className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#636a67] focus:border-brand-400 focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerName ? "border-[#d98a80]" : "border-brand-200"}`}
         />
         <FieldError id="queue-name-error" message={fieldErrors.customerName} />
       </label>
       <label className="block">
         <span className="mb-2 flex items-center justify-between text-xs font-semibold text-[#45544f]">
-          Nomor WhatsApp <span className="font-normal text-[#a0aaa6]">Opsional</span>
+          Nomor WhatsApp <span className="font-normal text-[#5d6b67]">Opsional</span>
         </span>
         <input
           value={phone}
@@ -144,13 +144,13 @@ export function PublicQueueForm({
           aria-describedby={fieldErrors.customerPhone ? "queue-phone-error" : undefined}
           autoComplete="tel"
           placeholder="+62 812 3456 7890"
-          className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#a3ada9] focus:border-[#79b39e] focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerPhone ? "border-[#d98a80]" : "border-[#e1e8e4]"}`}
+          className={`h-12 w-full rounded-xl border bg-white px-3.5 text-sm outline-none placeholder:text-[#636a67] focus:border-brand-400 focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerPhone ? "border-[#d98a80]" : "border-brand-200"}`}
         />
         <FieldError id="queue-phone-error" message={fieldErrors.customerPhone} />
       </label>
       {selectedService && (
-        <div className="flex items-center justify-between rounded-xl bg-[#f1f7f4] px-4 py-3">
-          <span className="text-xs text-[#75827f]">Estimasi layanan</span>
+        <div className="flex items-center justify-between rounded-xl bg-brand-50 px-4 py-3">
+          <span className="text-xs text-[#53615b]">Estimasi layanan</span>
           <span className="text-xs font-semibold text-brand-700">
             ±{selectedService.averageMinutes} menit
           </span>
@@ -162,7 +162,7 @@ export function PublicQueueForm({
       <button
         type="submit"
         disabled={loading || !serviceId}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-700 text-sm font-semibold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? (
           <>
@@ -175,7 +175,7 @@ export function PublicQueueForm({
           </>
         )}
       </button>
-      <p className="text-center text-[10px] leading-4 text-[#a0aaa6]">
+      <p className="text-center text-[11px] leading-4 text-[#5d6b67]">
         Dengan melanjutkan, data Anda digunakan untuk mengelola layanan antrean ini.
       </p>
     </form>

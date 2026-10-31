@@ -23,8 +23,9 @@ export async function GET(request: Request, { params }: RouteContext) {
   try {
     const { businessSlug } = await params;
     const branchId = new URL(request.url).searchParams.get("branchId");
+    // Autentikasi/tenant dulu, validasi parameter setelahnya.
+    const context = await requireBusinessContext(businessSlug, branchId ?? undefined);
     if (!branchId) throw new AppError("Cabang wajib dipilih.", 400, "INVALID_BRANCH");
-    const context = await requireBusinessContext(businessSlug, branchId);
     const counters = await listCounters(context, branchId);
     return Response.json({ data: counters }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

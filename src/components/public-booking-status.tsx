@@ -1,5 +1,6 @@
 "use client";
 
+import { viewerTimeZone } from "@/modules/shared/timezone";
 import { useEffect, useState } from "react";
 import {
   CalendarCheck,
@@ -71,11 +72,11 @@ export function PublicBookingStatus({ token }: { token: string }) {
 
   if (error && !booking) {
     return (
-      <div className="rounded-2xl border border-[#e8eeeb] bg-white p-5 shadow-[0_18px_60px_rgba(28,60,47,.08)]">
+      <div className="bubble-card bg-white p-5">
         <InlineNotice message={error} />
         <Link
           href="/login"
-          className="mt-4 flex h-10 items-center justify-center rounded-xl bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"
+          className="mt-4 flex h-10 items-center justify-center rounded-full bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"
         >
           Kembali ke halaman utama
         </Link>
@@ -99,12 +100,12 @@ export function PublicBookingStatus({ token }: { token: string }) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: booking.timezone,
+    timeZone: viewerTimeZone(booking.timezone),
   }).format(new Date(booking.scheduledAt));
   const cancelled = booking.status === "CANCELLED";
 
   return (
-    <section className="overflow-hidden rounded-[24px] border border-[#e8eeeb] bg-white shadow-[0_18px_60px_rgba(28,60,47,.08)]">
+    <section className="overflow-hidden bubble-card bg-white">
       <div className={`px-6 py-7 text-center text-white ${cancelled ? "bg-[#8b6666]" : "bg-brand-700"}`}>
         <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-white/15">
           {cancelled ? <Clock3 className="size-6" /> : <CalendarCheck className="size-6" />}
@@ -120,8 +121,8 @@ export function PublicBookingStatus({ token }: { token: string }) {
         <DetailRow icon={TicketCheck} label="Layanan" value={booking.service} />
         <DetailRow icon={MapPin} label="Cabang" value={booking.branch} />
         {booking.queue && (
-          <div className="rounded-xl border border-[#dcebe2] bg-[#f5faf7] p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[.1em] text-[#779181]">
+          <div className="bubble-panel bg-brand-50 p-4">
+            <p className="text-[11px] font-medium uppercase tracking-[.1em] text-brand-500">
               Nomor antrean check-in
             </p>
             <p className="mt-1 text-2xl font-semibold tracking-tight text-brand-700">
@@ -133,13 +134,13 @@ export function PublicBookingStatus({ token }: { token: string }) {
           </div>
         )}
         {booking.status === "PENDING" && (
-          <div className="flex gap-2 rounded-xl bg-[#fff8eb] p-3 text-[11px] leading-5 text-[#8d713f]">
+          <div className="flex gap-2 rounded-xl bg-accent-100 p-3 text-[11px] leading-5 text-accent-900">
             <Clock3 className="mt-0.5 size-4 shrink-0" />
             Cabang akan mengonfirmasi booking Anda. Simpan tautan ini untuk memeriksa status.
           </div>
         )}
         {booking.status === "CONFIRMED" && (
-          <div className="flex gap-2 rounded-xl bg-[#eef6f1] p-3 text-[11px] leading-5 text-[#557563]">
+          <div className="flex gap-2 rounded-xl bg-brand-50 p-3 text-[11px] leading-5 text-brand-600">
             <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
             Booking terkonfirmasi. Datang sesuai jadwal dan tunjukkan halaman ini kepada petugas.
           </div>
@@ -165,12 +166,12 @@ function DetailRow({
   value: string;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-[#eff2f0] p-3.5">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-[#57836d]">
+    <div className="flex items-start gap-3 bubble-panel p-3.5">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
         <Icon className="size-4" />
       </div>
       <div className="min-w-0">
-        <p className="text-[10px] text-[#9aa5a1]">{label}</p>
+        <p className="text-[11px] text-[#5d6b67]">{label}</p>
         <p className="mt-1 text-xs font-semibold leading-5 text-[#43514b]">{value}</p>
       </div>
     </div>

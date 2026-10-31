@@ -10,20 +10,20 @@ import { CircleAlert, RotateCcw } from "lucide-react";
  */
 export default function DisplayError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     console.error("Display screen failed", { digest: error.digest });
   }, [error]);
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#0b1a15] px-6 py-10 text-center text-white">
+    <main className="grid min-h-screen place-items-center bg-brand-900 px-6 py-10 text-center text-white">
       <section className="w-full max-w-md">
-        <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-white/10">
-          <CircleAlert className="size-8 text-[#f0b7a6]" strokeWidth={1.6} />
+        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-white/10">
+          <CircleAlert className="size-8 text-accent-300" strokeWidth={1.6} />
         </div>
         <h1 className="mt-6 text-2xl font-semibold tracking-tight">
           Layar antrean sedang dimuat ulang
@@ -34,14 +34,14 @@ export default function DisplayError({
         </p>
         <button
           type="button"
-          onClick={reset}
-          className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-[#0b3b2d] transition hover:bg-white/90"
+          onClick={retry}
+          className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-brand-900 transition hover:bg-white/90"
         >
           <RotateCcw className="size-4" />
           Muat ulang layar
         </button>
         {error.digest && (
-          <p className="mt-6 font-mono text-[10px] tracking-[.18em] text-white/40">
+          <p className="mt-6 font-mono text-[11px] tracking-[.18em] text-white/40">
             {error.digest}
           </p>
         )}

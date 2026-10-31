@@ -47,8 +47,8 @@ export default async function GuidePage({ params }: PageProps) {
 
   return (
     <div
-      className="min-h-screen bg-[#f6f8f7] text-[#182321]"
-      style={brandVars(theme.primaryColor)}
+      className="min-h-screen bubble-flow text-[#182321]"
+      style={brandVars(theme)}
     >
       <AppHeader
         businessName={business.name}
@@ -65,14 +65,14 @@ export default async function GuidePage({ params }: PageProps) {
         <h1 className="mt-1.5 text-2xl font-semibold tracking-[-.03em]">
           Panduan penggunaan {business.name}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#75827f]">
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#53615b]">
           Langkah di bawah ini disesuaikan dengan peran Anda sebagai{" "}
-          <strong className="font-semibold text-[#40504a]">{roleLabel(context.role)}</strong> dan
+          <strong className="font-semibold text-brand-800">{roleLabel(context.role)}</strong> dan
           fitur yang aktif di workspace ini. Setiap tautan membuka bagian yang dimaksud.
         </p>
 
         {granted.length > 0 && (
-          <section className="mt-6 rounded-2xl border border-[#e9edeb] bg-white p-5 md:p-6">
+          <section className="mt-6 bubble-card p-5 md:p-6">
             <h2 className="text-[13px] font-semibold tracking-[-.01em]">
               Yang dapat Anda lakukan
             </h2>
@@ -91,12 +91,12 @@ export default async function GuidePage({ params }: PageProps) {
         )}
 
         {sections.length === 0 ? (
-          <section className="mt-6 rounded-2xl border border-dashed border-[#dfe6e3] bg-white p-8 text-center">
+          <section className="mt-6 rounded-2xl bg-white p-8 text-center bubble-panel">
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
               <BookOpen className="size-5" />
             </div>
             <h2 className="mt-4 text-base font-semibold">Panduan belum tersedia</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#75827f]">
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#53615b]">
               Belum ada langkah panduan untuk peran Anda pada konfigurasi workspace saat ini.
               Hubungi Super Admin bisnis untuk mengaktifkan fitur yang Anda butuhkan.
             </p>
@@ -106,7 +106,7 @@ export default async function GuidePage({ params }: PageProps) {
             {sections.map((section, index) => (
               <section
                 key={section.title}
-                className="rounded-2xl border border-[#e9edeb] bg-white p-5 shadow-[0_2px_8px_rgba(25,48,40,.025)] md:p-6"
+                className="bubble-card p-5 shadow-bubble-sm md:p-6"
               >
                 <div className="flex items-start gap-3">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-brand-700 text-xs font-bold text-white">
@@ -114,17 +114,17 @@ export default async function GuidePage({ params }: PageProps) {
                   </span>
                   <div>
                     <h2 className="text-[15px] font-semibold tracking-[-.02em]">{section.title}</h2>
-                    <p className="mt-0.5 text-xs text-[#929e99]">{section.description}</p>
+                    <p className="mt-0.5 text-xs text-[#66736e]">{section.description}</p>
                   </div>
                 </div>
                 <ol className="mt-4 grid gap-3 sm:grid-cols-2">
                   {section.steps.map((step) => (
                     <li
                       key={step.title}
-                      className="rounded-xl border border-[#eef1f0] bg-[#fbfcfb] p-4"
+                      className="rounded-xl bg-brand-50 p-4 bubble-panel"
                     >
                       <p className="text-xs font-semibold text-[#344440]">{step.title}</p>
-                      <p className="mt-1.5 text-[11px] leading-5 text-[#75827f]">{step.detail}</p>
+                      <p className="mt-1.5 text-[11px] leading-5 text-[#53615b]">{step.detail}</p>
                       {step.href && (
                         <a
                           href={guideHref(step.href, businessSlug)}
@@ -142,13 +142,13 @@ export default async function GuidePage({ params }: PageProps) {
           </div>
         )}
 
-        <section className="mt-6 flex flex-wrap items-start gap-3 rounded-2xl bg-[#edf6f2] p-5">
+        <section className="mt-6 flex flex-wrap items-start gap-3 rounded-2xl bg-brand-50 p-5">
           <span className="flex size-9 items-center justify-center rounded-xl bg-white text-brand-700">
             <CircleHelp className="size-[17px]" />
           </span>
           <div className="min-w-0">
             <p className="text-sm font-semibold">Butuh bantuan lain?</p>
-            <p className="mt-1 text-xs leading-5 text-[#75827f]">
+            <p className="mt-1 text-xs leading-5 text-[#53615b]">
               Hubungi Super Admin atau pemilik bisnis untuk perubahan yang di luar peran Anda.
               Kembali ke dashboard kapan saja tanpa kehilangan antrean yang sedang berjalan.
             </p>

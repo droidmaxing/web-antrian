@@ -85,21 +85,21 @@ export function BookingManagement({
   return (
     <section
       id="bookings"
-      className="overflow-hidden rounded-2xl border border-[#e9edeb] bg-white shadow-[0_2px_8px_rgba(25,48,40,.025)]"
+      className="overflow-hidden bubble-card"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eff2f0] px-5 py-5 md:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-100 px-5 py-5 md:px-6">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-[15px] font-semibold tracking-[-.02em]">Booking hari ini</h2>
-            <span className="rounded-full bg-[#eff5f2] px-2 py-0.5 text-[10px] font-semibold text-[#397b68]">
+            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-600">
               {bookings.length}
             </span>
           </div>
-          <p className="mt-1 text-xs text-[#929e99]">
+          <p className="mt-1 text-xs text-[#66736e]">
             Konfirmasi reservasi dan check-in pelanggan.
           </p>
         </div>
-        <span className="flex items-center gap-1.5 rounded-full bg-[#f4f7f5] px-2.5 py-1.5 text-[10px] text-[#7b8983]">
+        <span className="flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1.5 text-[11px] text-[#7b8983]">
           <CalendarClock className="size-3.5" /> Jadwal lokal cabang
         </span>
       </div>
@@ -109,7 +109,7 @@ export function BookingManagement({
       )}
 
       {bookings.length ? (
-        <div className="divide-y divide-[#eff2f0]">
+        <div className="divide-y divide-brand-100">
           {paged.rows?.map((booking) => (
             <article
               key={booking.id}
@@ -133,7 +133,7 @@ export function BookingManagement({
                   <p className="mt-1 truncate text-xs text-[#687570]">
                     {booking.service.name}
                   </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-[#929e99]">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#66736e]">
                     <span className="flex items-center gap-1">
                       <UserRound className="size-3" /> {booking.customer.name}
                     </span>
@@ -143,7 +143,7 @@ export function BookingManagement({
                       </span>
                     )}
                     {booking.queue && (
-                      <span className="flex items-center gap-1 font-semibold text-[#397b68]">
+                      <span className="flex items-center gap-1 font-semibold text-brand-600">
                         <TicketCheck className="size-3" /> {booking.queue.ticketNumber}
                       </span>
                     )}
@@ -189,12 +189,12 @@ export function BookingManagement({
         </div>
       ) : (
         <div className="px-5 py-7 md:px-6">
-          <div className="rounded-xl border border-dashed border-[#e2e9e5] bg-[#fbfcfb] px-4 py-8 text-center">
+          <div className="rounded-xl bg-brand-50 px-4 py-8 text-center bubble-panel">
             <CalendarCheckIcon />
             <p className="mt-3 text-xs font-semibold text-[#46544f]">
               Belum ada booking hari ini
             </p>
-            <p className="mt-1 text-[11px] text-[#98a39f]">
+            <p className="mt-1 text-[11px] text-[#5d6b67]">
               Reservasi pelanggan akan tampil di sini.
             </p>
           </div>
@@ -211,7 +211,7 @@ export function BookingManagement({
           onPageSize={paged.setPageSize}
         />
       </div>
-      <div className="flex items-center justify-between border-t border-[#eff2f0] px-5 py-3.5 text-[10px] text-[#929e99] md:px-6">
+      <div className="flex items-center justify-between border-t border-brand-100 px-5 py-3.5 text-[11px] text-[#66736e] md:px-6">
         <span>{readOnly ? "Tampilan baca saja" : "Perubahan tercatat dalam audit log"}</span>
         <MapPin className="size-3.5" />
       </div>
@@ -223,8 +223,8 @@ function StatusBadge({ status }: { status: BookingRow["status"] }) {
   const styles: Record<BookingRow["status"], string> = {
     PENDING: "bg-[#fff6e8] text-[#ae7723]",
     CONFIRMED: "bg-[#edf2fc] text-[#5b78b0]",
-    CHECKED_IN: "bg-[#e9f5ef] text-[#31795d]",
-    COMPLETED: "bg-[#f0f3f2] text-[#74817c]",
+    CHECKED_IN: "bg-brand-100 text-brand-700",
+    COMPLETED: "bg-brand-50 text-[#74817c]",
     CANCELLED: "bg-[#fbefef] text-[#bd6e6e]",
     NO_SHOW: "bg-[#f4effb] text-[#856ca9]",
   };
@@ -250,10 +250,10 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={loading}
-      className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[10px] font-semibold transition disabled:opacity-50 ${
+      className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold transition disabled:opacity-50 ${
         primary
           ? "bg-brand-700 text-white hover:bg-brand-800"
-          : "border border-[#e6ebe8] text-[#687570] hover:bg-[#f8faf9]"
+          : "bubble-btn text-[#687570] hover:bg-brand-50"
       }`}
     >
       {loading ? (
@@ -270,7 +270,7 @@ function ActionButton({
 
 function CalendarCheckIcon() {
   return (
-    <div className="mx-auto flex size-9 items-center justify-center rounded-xl bg-[#eef5f1] text-[#538a73]">
+    <div className="mx-auto flex size-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
       <CalendarClock className="size-4" />
     </div>
   );

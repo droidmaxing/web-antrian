@@ -2,6 +2,7 @@ import { MembershipRole } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
+import { isSubscriptionAllowed } from "@/modules/billing/billing-domain";
 
 export type BusinessContext = {
   userId: string;
@@ -20,6 +21,7 @@ export type BusinessContext = {
 export async function requireBusinessContext(
   businessSlug: string,
   branchId?: string,
+  options: { allowInactiveSubscription?: boolean } = {},
 ): Promise<BusinessContext> {
   const session = await auth();
   if (!session?.user?.id) {
@@ -48,6 +50,23 @@ export async function requireBusinessContext(
 
   if (!membership) {
     throw new AppError("Akses ke bisnis ini tidak diizinkan.", 403, "FORBIDDEN");
+  }
+
+  // Existing businesses without a subscription row predate billing and remain
+  // usable. When a row exists, only the owner can reach the renewal screen.
+  const subscription = await prisma.subscription.findUnique({
+    where: { businessId: membership.business.id },
+    select: { status: true, trialEndsAt: true, currentPeriodEnd: true },
+  });
+  if (
+    subscription &&
+    !isSubscriptionAllowed(
+      subscription.status,
+      subscription.currentPeriodEnd ?? subscription.trialEndsAt,
+    ) &&
+    !(options.allowInactiveSubscription && membership.role === "OWNER")
+  ) {
+    throw new AppError("Langganan workspace tidak aktif. Hubungi pemilik workspace.", 402, "SUBSCRIPTION_REQUIRED");
   }
 
   const branchIds =

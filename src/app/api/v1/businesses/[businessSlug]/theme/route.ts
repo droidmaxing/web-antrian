@@ -17,6 +17,11 @@ const updateSchema = z
       .trim()
       .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
       .optional(),
+    secondaryColor: z
+      .string()
+      .trim()
+      .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+      .optional(),
     /** `data:` URL from the settings form; null removes the current logo. */
     logo: z.string().startsWith("data:image/").max(LOGO_MAX_LENGTH + 64).nullable().optional(),
   })
@@ -24,6 +29,7 @@ const updateSchema = z
     (value) =>
       value.title !== undefined ||
       value.primaryColor !== undefined ||
+      value.secondaryColor !== undefined ||
       value.logo !== undefined,
     "Tidak ada perubahan yang dikirim.",
   );
@@ -36,6 +42,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
       throw validationAppError(parsed.error, "Periksa kembali pengaturan tampilan.", {
         title: "judul aplikasi",
         primaryColor: "warna utama",
+        secondaryColor: "warna sekunder",
         logo: "logo",
       });
     }

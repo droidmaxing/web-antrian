@@ -299,12 +299,12 @@ export function DisplaysManager({
   return (
     <section
       id="displays-manage"
-      className="scroll-mt-28 rounded-2xl border border-[#e9edeb] bg-white p-5 shadow-[0_2px_8px_rgba(25,48,40,.025)] md:p-6"
+      className="scroll-mt-28 bubble-card p-5 shadow-bubble-sm md:p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-semibold tracking-[-.02em]">Layar display</h2>
-          <p className="mt-1 text-xs text-[#929e99]">
+          <p className="mt-1 text-xs text-[#66736e]">
             Layar TV yang menampilkan antrean dan memutar suara panggilan
             {displays ? ` · ${displays.length} layar` : ""}. Tiap layar punya
             tautannya sendiri, jadi tiap loket bisa punya layarnya masing-masing.
@@ -315,7 +315,7 @@ export function DisplaysManager({
             onClick={() =>
               setDraft({ id: null, name: "", branchId: branches[0].id, counterIds: [] })
             }
-            className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"
+            className="flex h-9 items-center gap-2 rounded-full bg-brand-700 px-3 text-xs font-semibold text-white hover:bg-brand-800"
           >
             <CirclePlus className="size-4" /> Tambah display
           </button>
@@ -325,26 +325,26 @@ export function DisplaysManager({
       {notice && <InlineNotice message={notice} variant={noticeVariant} className="mt-4" />}
 
       {freshToken && (
-        <div className="mt-4 rounded-xl border border-[#cfe6dc] bg-[#f2faf6] p-4">
-          <p className="flex items-center gap-2 text-xs font-semibold text-[#215f4c]">
+        <div className="mt-4 bubble-panel bg-brand-50 p-4">
+          <p className="flex items-center gap-2 text-xs font-semibold text-brand-800">
             <Tv className="size-4" /> Tautan untuk {freshToken.name}
           </p>
           <p className="mt-1 text-[11px] text-[#5d7a70]">
             Buka tautan ini di perangkat layar. Simpan sekarang — tautan tidak ditampilkan lagi.
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-lg border border-[#cfe6dc] bg-white px-3 py-2 text-[11px] text-[#2f4a41]">
+            <code className="min-w-0 flex-1 truncate rounded-lg bubble-card bg-white px-3 py-2 text-[11px] text-brand-900">
               {`${origin}/display/${freshToken.token}`}
             </code>
             <button
               onClick={() => void copyLink(freshToken.token)}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-brand-700 px-3 text-[11px] font-semibold text-white"
+              className="flex h-8 items-center gap-1.5 rounded-full bg-brand-700 px-3 text-[11px] font-semibold text-white"
             >
               <Copy className="size-3.5" /> Salin
             </button>
             <button
               onClick={() => setFreshToken(null)}
-              className="h-8 rounded-lg border border-[#cfe6dc] px-3 text-[11px] font-medium text-[#5d7a70]"
+              className="h-8 rounded-lg bubble-panel px-3 text-[11px] font-medium text-[#5d7a70]"
             >
               Tutup
             </button>
@@ -358,7 +358,7 @@ export function DisplaysManager({
             event.preventDefault();
             void submit();
           }}
-          className="mt-4 grid gap-3 rounded-xl border border-[#e3ece7] bg-[#fafcfb] p-4 sm:grid-cols-2"
+          className="mt-4 grid gap-3 bubble-panel bg-brand-50 p-4 sm:grid-cols-2"
         >
           <label className="text-[11px] font-medium text-[#5d6b65]">
             Nama layar
@@ -369,7 +369,7 @@ export function DisplaysManager({
               value={draft.name}
               onChange={(event) => setDraft({ ...draft, name: event.target.value })}
               placeholder="TV Ruang Tunggu"
-              className="mt-1.5 h-9 w-full rounded-lg border border-[#e0e6e3] bg-white px-3 text-xs text-[#344440] outline-none focus:border-[#78b6a4]"
+              className="mt-1.5 h-9 w-full rounded-lg bubble-field bg-white px-3 text-xs text-[#344440] outline-none"
             />
           </label>
           <label className="text-[11px] font-medium text-[#5d6b65]">
@@ -380,7 +380,7 @@ export function DisplaysManager({
               onChange={(event) =>
                 setDraft({ ...draft, branchId: event.target.value, counterIds: [] })
               }
-              className="mt-1.5 h-9 w-full rounded-lg border border-[#e0e6e3] bg-white px-3 text-xs text-[#344440] outline-none focus:border-[#78b6a4] disabled:bg-[#f4f6f5]"
+              className="mt-1.5 h-9 w-full rounded-lg bubble-field bg-white px-3 text-xs text-[#344440] outline-none disabled:bg-[#f4f6f5]"
             >
               {branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>
@@ -398,10 +398,10 @@ export function DisplaysManager({
                 type="button"
                 aria-pressed={draft.counterIds.length === 0}
                 onClick={() => setDraft({ ...draft, counterIds: [] })}
-                className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
+                className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                   draft.counterIds.length === 0
-                    ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
-                    : "border-[#e0e6e3] bg-white text-[#687570]"
+                    ? "border-brand-700 bg-brand-100 text-brand-700"
+                    : "border-brand-200 bg-white text-[#687570]"
                 }`}
               >
                 Semua loket
@@ -423,10 +423,10 @@ export function DisplaysManager({
                             : [...draft.counterIds, counter.id],
                         })
                       }
-                      className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
+                      className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                         selected
-                          ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
-                          : "border-[#e0e6e3] bg-white text-[#687570]"
+                          ? "border-brand-700 bg-brand-100 text-brand-700"
+                          : "border-brand-200 bg-white text-[#687570]"
                       }`}
                     >
                       {counter.code} · {counter.name}
@@ -434,7 +434,7 @@ export function DisplaysManager({
                   );
                 })}
             </div>
-            <span className="mt-1 block text-[10px] text-[#9aa5a1]">
+            <span className="mt-1 block text-[11px] text-[#5d6b67]">
               Pilih satu atau beberapa loket untuk layar di ruang tunggu tertentu. Layar selalu
               ikut menampilkan daftar antrean yang menunggu.
             </span>
@@ -443,7 +443,7 @@ export function DisplaysManager({
             <button
               type="submit"
               disabled={busy}
-              className="flex h-9 items-center gap-2 rounded-lg bg-brand-700 px-3.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="flex h-9 items-center gap-2 rounded-full bg-brand-700 px-3.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               {busy && <LoaderCircle className="size-3.5 animate-spin" />}
               Simpan
@@ -451,7 +451,7 @@ export function DisplaysManager({
             <button
               type="button"
               onClick={() => setDraft(null)}
-              className="h-9 rounded-lg border border-[#e0e6e3] px-3.5 text-xs font-medium text-[#687570]"
+              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#687570]"
             >
               Batal
             </button>
@@ -461,7 +461,7 @@ export function DisplaysManager({
 
       <div className="mt-4 space-y-2">
         {displays === null && (
-          <p className="py-6 text-center text-xs text-[#a1aca8]">Memuat display…</p>
+          <p className="py-6 text-center text-xs text-[#5d6b67]">Memuat display…</p>
         )}
         {paged.rows?.map((display) => {
           const scopeCounters = counters.filter(
@@ -473,18 +473,18 @@ export function DisplaysManager({
             (counter) => counter.branchId === (scopeEdit?.branchId ?? display.branchId),
           );
           return (
-          <div key={display.id} className="rounded-xl border border-[#eff2f0] p-3">
+          <div key={display.id} className="bubble-panel p-3">
             <div className="flex flex-wrap items-center gap-3">
             <span
               className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
-                display.active ? "bg-brand-50 text-[#377861]" : "bg-[#f4f2f1] text-[#a3928c]"
+                display.active ? "bg-brand-50 text-brand-700" : "bg-[#f4f2f1] text-[#a3928c]"
               }`}
             >
               <Monitor className="size-4" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold text-[#344440]">{display.name}</p>
-              <p className="mt-1 truncate text-[10px] text-[#929e99]">
+              <p className="mt-1 truncate text-[11px] text-[#66736e]">
                 {branches.find((branch) => branch.id === display.branchId)?.name ?? "Cabang"} ·{" "}
                 {display.active ? "Aktif" : "Nonaktif"} ·{" "}
                 {scopeCounters.length
@@ -509,10 +509,10 @@ export function DisplaysManager({
                   }
                   disabled={busy}
                   aria-expanded={editingScope}
-                  className={`h-8 rounded-lg border px-2 text-[10px] font-medium disabled:opacity-40 ${
+                  className={`h-8 rounded-lg border px-2 text-[11px] font-medium disabled:opacity-40 ${
                     display.counterIds.length
-                      ? "border-[#cfe0d8] bg-brand-100 text-[#276b5b]"
-                      : "border-[#e0e6e3] bg-white text-[#687570]"
+                      ? "border-brand-300 bg-brand-100 text-brand-700"
+                      : "border-brand-200 bg-white text-[#687570]"
                   }`}
                 >
                   {display.counterIds.length ? "Loket terpilih" : "Semua loket"}
@@ -522,7 +522,7 @@ export function DisplaysManager({
                   disabled={busy}
                   aria-label={`Ganti tautan ${display.name}`}
                   title="Terbitkan tautan baru untuk layar ini"
-                  className="flex h-8 items-center gap-1 rounded-lg border border-[#e0e6e3] bg-white px-2 text-[10px] font-medium text-[#687570] hover:bg-[#f4f7f5] disabled:opacity-40"
+                  className="flex h-8 items-center gap-1 rounded-lg bubble-btn bg-white px-2 text-[11px] font-medium text-[#687570] hover:bg-brand-50 disabled:opacity-40"
                 >
                   <RefreshCw className="size-3.5" /> Tautan baru
                 </button>
@@ -530,7 +530,7 @@ export function DisplaysManager({
                   onClick={() => void toggleActive(display)}
                   disabled={busy}
                   aria-label={display.active ? `Nonaktifkan ${display.name}` : `Aktifkan ${display.name}`}
-                  className="rounded-lg px-2 py-1 text-[10px] font-semibold text-[#6f7d78] hover:bg-[#f4f7f5] disabled:opacity-40"
+                  className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#6f7d78] hover:bg-brand-50 disabled:opacity-40"
                 >
                   {display.active ? "Nonaktifkan" : "Aktifkan"}
                 </button>
@@ -544,7 +544,7 @@ export function DisplaysManager({
                     })
                   }
                   aria-label={`Ubah ${display.name}`}
-                  className="rounded-lg p-2 text-[#889590] hover:bg-[#f4f7f5]"
+                  className="rounded-lg p-2 text-[#5c6a65] hover:bg-brand-50"
                 >
                   <Pencil className="size-3.5" />
                 </button>
@@ -560,7 +560,7 @@ export function DisplaysManager({
             )}
             </div>
             {editingScope && (
-              <div className="mt-2.5 rounded-xl border border-[#e3ece7] bg-[#fafcfb] p-3">
+              <div className="mt-2.5 bubble-panel bg-brand-50 p-3">
                 <p className="text-[11px] font-semibold text-[#344440]">
                   Pilih loket yang tampil di {display.name}
                 </p>
@@ -569,10 +569,10 @@ export function DisplaysManager({
                     type="button"
                     aria-pressed={scopeEdit.counterIds.length === 0}
                     onClick={() => setScopeEdit({ ...scopeEdit, counterIds: [] })}
-                    className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
+                    className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                       scopeEdit.counterIds.length === 0
-                        ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
-                        : "border-[#e0e6e3] bg-white text-[#687570]"
+                        ? "border-brand-700 bg-brand-100 text-brand-700"
+                        : "border-brand-200 bg-white text-[#687570]"
                     }`}
                   >
                     Semua loket
@@ -592,10 +592,10 @@ export function DisplaysManager({
                               : [...scopeEdit.counterIds, counter.id],
                           })
                         }
-                        className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${
+                        className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                           selected
-                            ? "border-brand-700 bg-[#eaf4ef] text-brand-700"
-                            : "border-[#e0e6e3] bg-white text-[#687570]"
+                            ? "border-brand-700 bg-brand-100 text-brand-700"
+                            : "border-brand-200 bg-white text-[#687570]"
                         }`}
                       >
                         {counter.code} · {counter.name}
@@ -603,7 +603,7 @@ export function DisplaysManager({
                     );
                   })}
                 </div>
-                <p className="mt-2 text-[10px] leading-4 text-[#9aa5a1]">
+                <p className="mt-2 text-[11px] leading-4 text-[#5d6b67]">
                   Tanpa pilihan = layar menampilkan semua loket cabang. Daftar antrean menunggu
                   ikut menyesuaikan loket yang dipilih.
                 </p>
@@ -612,14 +612,14 @@ export function DisplaysManager({
                     type="button"
                     disabled={busy}
                     onClick={() => void setScope(display, scopeEdit.counterIds)}
-                    className="h-8 rounded-lg bg-brand-700 px-3 text-[11px] font-semibold text-white disabled:opacity-50"
+                    className="h-8 rounded-full bg-brand-700 px-3 text-[11px] font-semibold text-white disabled:opacity-50"
                   >
                     Simpan cakupan
                   </button>
                   <button
                     type="button"
                     onClick={() => setScopeEdit(null)}
-                    className="h-8 rounded-lg border border-[#e0e6e3] px-3 text-[11px] font-medium text-[#687570]"
+                    className="h-8 rounded-lg bubble-panel px-3 text-[11px] font-medium text-[#687570]"
                   >
                     Batal
                   </button>
@@ -630,7 +630,7 @@ export function DisplaysManager({
           );
         })}
         {displays?.length === 0 && (
-          <p className="rounded-xl border border-dashed border-[#e2e9e5] px-4 py-6 text-center text-xs text-[#98a39f]">
+          <p className="rounded-xl px-4 py-6 text-center text-xs text-[#5d6b67] bubble-panel">
             {branches.length === 0
               ? "Buat cabang terlebih dahulu sebelum menambah layar."
               : "Belum ada layar display. Tambahkan untuk menampilkan antrean di ruang tunggu."}

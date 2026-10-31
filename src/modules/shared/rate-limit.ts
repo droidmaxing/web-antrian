@@ -3,44 +3,40 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
 
+/** Start of the current fixed window, aligned to `windowSeconds`. */
+export function windowStartFor(now: Date, windowSeconds: number) {
+  return new Date(
+    Math.floor(now.getTime() / (windowSeconds * 1000)) * windowSeconds * 1000,
+  );
+}
+
 export async function enforceRateLimit(
   identity: string,
   limit: number,
   windowSeconds: number,
 ) {
   const key = createHash("sha256").update(identity).digest("hex");
-  const now = new Date();
-  const windowStart = new Date(
-    Math.floor(now.getTime() / (windowSeconds * 1000)) *
-      windowSeconds *
-      1000,
+  const windowStart = windowStartFor(new Date(), windowSeconds);
+
+  // One atomic statement: concurrent requests for the same key cannot race into a
+  // unique-constraint failure (P2002) the way upsert-then-lock did, and a new
+  // window resets the counter in the same step.
+  await prisma.$executeRaw(
+    Prisma.sql`
+      INSERT INTO \`RateLimitBucket\` (\`key\`, windowStarted, count)
+      VALUES (${key}, ${windowStart}, 1) AS incoming
+      ON DUPLICATE KEY UPDATE
+        count = IF(\`RateLimitBucket\`.\`windowStarted\` = incoming.\`windowStarted\`, \`RateLimitBucket\`.\`count\` + 1, 1),
+        windowStarted = incoming.\`windowStarted\`
+    `,
   );
 
-  await prisma.$transaction(async (tx) => {
-    await tx.rateLimitBucket.upsert({
-      where: { key },
-      create: { key, windowStarted: windowStart, count: 0 },
-      update: {},
-    });
-    await tx.$queryRaw<Array<{ key: string }>>(
-      Prisma.sql`SELECT \`key\` FROM RateLimitBucket WHERE \`key\` = ${key} FOR UPDATE`,
-    );
-    const bucket = await tx.rateLimitBucket.findUniqueOrThrow({ where: { key } });
-    if (bucket.windowStarted.getTime() !== windowStart.getTime()) {
-      await tx.rateLimitBucket.update({
-        where: { key },
-        data: { windowStarted: windowStart, count: 1 },
-      });
-      return;
-    }
-    if (bucket.count >= limit) {
-      throw new AppError("Terlalu banyak permintaan. Coba lagi sebentar.", 429, "RATE_LIMITED");
-    }
-    await tx.rateLimitBucket.update({
-      where: { key },
-      data: { count: { increment: 1 } },
-    });
-  });
+  const [bucket] = await prisma.$queryRaw<Array<{ count: number }>>(
+    Prisma.sql`SELECT count FROM \`RateLimitBucket\` WHERE \`key\` = ${key}`,
+  );
+  if ((bucket?.count ?? 0) > limit) {
+    throw new AppError("Terlalu banyak permintaan. Coba lagi sebentar.", 429, "RATE_LIMITED");
+  }
 }
 
 export function clientAddress(request: Request) {

@@ -49,12 +49,12 @@ export function Pager({
   const lastRow = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eff2f0] pt-3">
-      <p className="text-[10px] text-[#a1aca8]">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-100 pt-3">
+      <p className="text-[11px] text-[#5d6b67]">
         Menampilkan {firstRow}–{lastRow} dari {total} {unit}
       </p>
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-1.5 text-[10px] text-[#7d8a85]">
+        <label className="flex items-center gap-1.5 text-[11px] text-[#7d8a85]">
           Tampil
           <select
             value={pageSize}
@@ -63,7 +63,7 @@ export function Pager({
               onPage(1);
             }}
             aria-label={`Jumlah ${unit} per halaman`}
-            className="h-8 rounded-lg border border-[#e0e6e3] bg-white px-2 text-[11px] text-[#41524c] outline-none focus:border-[#78b6a4]"
+            className="h-8 rounded-lg bubble-field bg-white px-2 text-[11px] text-[#41524c] outline-none"
           >
             {PAGE_SIZES.map((size) => (
               <option key={size} value={size}>
@@ -78,7 +78,7 @@ export function Pager({
             type="button"
             onClick={() => onPage(Math.max(1, page - 1))}
             disabled={page <= 1}
-            className="h-8 rounded-lg border border-[#e0e6e3] px-2.5 text-[11px] font-medium text-[#41524c] hover:bg-[#f6f9f7] disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-8 rounded-lg bubble-btn px-2.5 text-[11px] font-medium text-[#41524c] hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Sebelumnya
           </button>
@@ -89,7 +89,7 @@ export function Pager({
             type="button"
             onClick={() => onPage(Math.min(pageCount, page + 1))}
             disabled={page >= pageCount}
-            className="h-8 rounded-lg border border-[#e0e6e3] px-2.5 text-[11px] font-medium text-[#41524c] hover:bg-[#f6f9f7] disabled:cursor-not-allowed disabled:opacity-40"
+            className="h-8 rounded-lg bubble-btn px-2.5 text-[11px] font-medium text-[#41524c] hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Berikutnya
           </button>
