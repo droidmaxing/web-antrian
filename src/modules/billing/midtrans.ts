@@ -1,18 +1,33 @@
 import { AppError } from "@/modules/shared/errors";
-import { readMidtransServerKey, readMidtransMode } from "@/modules/billing/midtrans-settings";
+import { readMidtransEnabled, readMidtransMode, readMidtransServerKey } from "@/modules/billing/midtrans-settings";
 
 export type MidtransConfig = { serverKey: string; production: boolean };
 
 /**
  * Credentials are stored encrypted when configured from the Master Admin
- * console. The environment remains a compatibility fallback; development uses
- * the Midtrans sandbox unless explicitly configured otherwise.
+ * console. The environment remains a compatibility fallback; each mode has its
+ * own key slot, so switching sandbox ↔ production never loses the other key.
+ * The enable flag is deliberately NOT checked here: a notification that arrives
+ * after the switch was turned off still has to be verified and recorded.
  */
 export async function midtransConfig(): Promise<MidtransConfig | null> {
-  const serverKey = (await readMidtransServerKey())?.trim();
+  const mode = await readMidtransMode();
+  const serverKey = (await readMidtransServerKey(mode))?.trim();
   if (!serverKey) return null;
-  const production = await readMidtransMode() === "production";
-  return { serverKey, production };
+  return { serverKey, production: mode === "production" };
+}
+
+/**
+ * Kunci untuk memverifikasi notifikasi webhook: mode aktif dulu, lalu mode lain.
+ * Pembayaran yang dibuat sebelum mode diganti tetap harus bisa diselesaikan.
+ */
+export async function midtransVerificationKeys(): Promise<string[]> {
+  const mode = await readMidtransMode();
+  const keys = await Promise.all([
+    readMidtransServerKey(mode),
+    readMidtransServerKey(mode === "sandbox" ? "production" : "sandbox"),
+  ]);
+  return keys.flatMap((key) => (key ? [key] : []));
 }
 
 export function midtransSnapUrl(production: boolean) {
@@ -32,6 +47,13 @@ export type SnapInput = {
 export type SnapResult = { token: string; redirectUrl: string };
 
 export async function createSnapTransaction(input: SnapInput): Promise<SnapResult> {
+  if (!(await readMidtransEnabled())) {
+    throw new AppError(
+      "Pembayaran online sedang dinonaktifkan oleh administrator platform.",
+      503,
+      "BILLING_DISABLED",
+    );
+  }
   const config = await midtransConfig();
   if (!config) {
     throw new AppError(

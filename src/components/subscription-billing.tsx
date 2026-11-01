@@ -51,11 +51,14 @@ export function SubscriptionBilling({
   subscription,
   plans,
   payments,
+  billingEnabled,
 }: {
   businessSlug: string;
   subscription: SubscriptionView | null;
   plans: PlanOption[];
   payments: PaymentRow[];
+  /** Midtrans bisa dimatikan dari konsol platform; tombol bayar ikut mati. */
+  billingEnabled: boolean;
 }) {
   const router = useRouter();
   const [cycle, setCycle] = useState<"MONTHLY" | "YEARLY">(subscription?.cycle ?? "MONTHLY");
@@ -194,14 +197,20 @@ export function SubscriptionBilling({
           <button
             type="button"
             onClick={() => void pay()}
-            disabled={pending || !planId || price <= 0}
+            disabled={pending || !planId || price <= 0 || !billingEnabled}
             className="inline-flex h-10 items-center gap-2 rounded-full bg-brand-700 px-4 text-xs font-semibold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {pending && <LoaderCircle className="size-3.5 animate-spin" />}
             Lanjutkan pembayaran
             {selected && price > 0 ? ` · ${rupiah.format(price)}` : ""}
           </button>
-          {selected && price <= 0 && (
+          {!billingEnabled && (
+            <span className="text-[11px] text-[#8d713f]">
+              Pembayaran online sedang dinonaktifkan. Hubungi administrator platform untuk
+              mengaktifkannya kembali; paket yang sudah lunas tetap berlaku.
+            </span>
+          )}
+          {billingEnabled && selected && price <= 0 && (
             <span className="text-[11px] text-[#8d713f]">
               Harga paket ini masih 0. Hubungi administrator platform.
             </span>

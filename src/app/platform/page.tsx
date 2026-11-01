@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Building2, CreditCard, KeyRound, Package, ReceiptText, Users2 } from "lucide-react";
 import { PlatformPageHeader, Pill, Section } from "@/components/platform-ui";
-import { midtransServerKeyStatus } from "@/modules/billing/midtrans-settings";
+import { readMidtransEnabled, readMidtransMode, midtransServerKeyStatus } from "@/modules/billing/midtrans-settings";
 import { googleApiKeyStatus } from "@/modules/billing/google-settings";
 import { googleLoginStatus } from "@/modules/platform/google-login";
 import {
@@ -26,12 +26,14 @@ const PAGES = [
 ];
 
 export default async function PlatformOverviewPage() {
-  const [businesses, users, subscriptions, payments, midtrans, googleLogin, googleKey] = await Promise.all([
+  const [businesses, users, subscriptions, payments, midtrans, midtransEnabled, midtransMode, googleLogin, googleKey] = await Promise.all([
     listPlatformBusinesses(),
     listPlatformUsers(COUNT_ONLY),
     listPlatformSubscriptions(COUNT_ONLY),
     listPlatformPayments(COUNT_ONLY),
-    midtransServerKeyStatus(),
+    readMidtransMode().then((mode) => midtransServerKeyStatus(mode)),
+    readMidtransEnabled(),
+    readMidtransMode(),
     googleLoginStatus(),
     googleApiKeyStatus(),
   ]);
@@ -61,8 +63,12 @@ export default async function PlatformOverviewPage() {
     },
     {
       label: "Midtrans",
-      detail: midtrans.configured ? `Server key dari ${midtrans.source === "website" ? "website" : "environment"}` : "Belum ada Server Key",
-      tone: midtrans.configured ? ("ok" as const) : ("off" as const),
+      detail: !midtransEnabled
+        ? "Dimatikan dari konsol"
+        : midtrans.configured
+          ? `${midtransMode === "production" ? "Production" : "Sandbox"} · ${midtrans.source === "website" ? "website" : "environment"}`
+          : `Belum ada Server Key ${midtransMode}`,
+      tone: midtransEnabled && midtrans.configured ? ("ok" as const) : ("off" as const),
     },
   ];
 

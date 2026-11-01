@@ -6,14 +6,25 @@ import { PlatformMidtransForm } from "@/components/platform-midtrans-form";
 import { PlatformPageHeader, Section } from "@/components/platform-ui";
 import { absoluteUrl } from "@/lib/app-url";
 import { googleApiKeyStatus } from "@/modules/billing/google-settings";
-import { midtransServerKeyStatus } from "@/modules/billing/midtrans-settings";
+import { readMidtransEnabled, readMidtransMode, midtransServerKeyStatus } from "@/modules/billing/midtrans-settings";
 import { googleLoginStatus } from "@/modules/platform/google-login";
 
 export const metadata = { title: "Integrasi | Konsol Master Admin" };
 
+/** Keadaan Midtrans lengkap: mode aktif, sakelar, dan status kunci tiap mode. */
+async function midtransKeyState() {
+  const mode = await readMidtransMode();
+  const [enabled, sandbox, production] = await Promise.all([
+    readMidtransEnabled(),
+    midtransServerKeyStatus("sandbox"),
+    midtransServerKeyStatus("production"),
+  ]);
+  return { mode, enabled, keys: { sandbox, production } };
+}
+
 export default async function PlatformIntegrationsPage() {
   const [midtrans, googleLogin, googleKey, requestHeaders] = await Promise.all([
-    midtransServerKeyStatus(),
+    midtransKeyState(),
     googleLoginStatus(),
     googleApiKeyStatus(),
     headers(),
@@ -50,9 +61,9 @@ export default async function PlatformIntegrationsPage() {
       <Section
         icon={KeyRound}
         title="Midtrans"
-        description="Server key sandbox dipakai untuk checkout dan verifikasi webhook pembayaran."
+        description="Server key dipakai untuk checkout dan verifikasi notifikasi pembayaran. Mode sandbox dan production punya kunci masing-masing."
       >
-        <PlatformMidtransForm initialStatus={midtrans} />
+        <PlatformMidtransForm initialState={midtrans} />
       </Section>
     </>
   );

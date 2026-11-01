@@ -2,8 +2,19 @@ import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:cr
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
 
-const SETTING_KEY = "midtrans.serverKey";
+export type MidtransMode = "sandbox" | "production";
+
+/** Satu slot kunci per mode: beralih mode tidak menghapus kunci mode lain. */
+const KEY_SETTING: Record<MidtransMode, string> = {
+  sandbox: "midtrans.serverKey",
+  production: "midtrans.productionServerKey",
+};
 const MODE_KEY = "midtrans.mode";
+const ENABLED_KEY = "midtrans.enabled";
+const ENV_VAR: Record<MidtransMode, string> = {
+  sandbox: "MIDTRANS_SERVER_KEY",
+  production: "MIDTRANS_PRODUCTION_SERVER_KEY",
+};
 const BOX_INFO = "web-antrian:midtrans-server-key:v1";
 
 function encryptionKey(authSecret: string) {
@@ -32,63 +43,115 @@ export function unsealServerKey(value: string, authSecret = process.env.AUTH_SEC
   }
 }
 
+/** Midtrans memakai awalan berbeda per lingkungan; kunci salah lingkungan baru gagal saat pembayaran pertama. */
+const KEY_PREFIX: Record<MidtransMode, RegExp> = {
+  sandbox: /^SB-Mid-server-[A-Za-z0-9_-]{16,180}$/,
+  production: /^Mid-server-[A-Za-z0-9_-]{16,180}$/,
+};
+
+export function validateServerKey(value: string, mode: MidtransMode) {
+  return KEY_PREFIX[mode].test(value.trim());
+}
+
 export function validateSandboxServerKey(value: string) {
-  return /^SB-Mid-server-[A-Za-z0-9_-]{16,180}$/.test(value);
+  return validateServerKey(value, "sandbox");
 }
 
 export function maskServerKey(value: string) {
   return `${value.slice(0, 14)}…${value.slice(-4)}`;
 }
 
-async function storedServerKey() {
-  const row = await prisma.platformSetting.findUnique({ where: { key: SETTING_KEY }, select: { value: true } });
+const UNREADABLE = "unreadable" as const;
+
+async function storedServerKey(mode: MidtransMode) {
+  const row = await prisma.platformSetting.findUnique({ where: { key: KEY_SETTING[mode] }, select: { value: true } });
   if (!row) return null;
-  const key = unsealServerKey(row.value);
-  if (!key) console.warn("Midtrans server key tidak dapat didekripsi; periksa AUTH_SECRET.");
+  const key = unsealServerKey(row.value)?.trim();
+  if (!key) {
+    // Kunci ada tapi tidak bisa dibuka (AUTH_SECRET berubah) — jangan laporkan sebagai "belum diatur".
+    console.warn(`Midtrans ${mode} server key tidak dapat didekripsi; periksa AUTH_SECRET.`);
+    return UNREADABLE;
+  }
   return key;
 }
 
-export async function readMidtransServerKey() {
-  const stored = await storedServerKey();
+export async function readMidtransServerKey(mode: MidtransMode): Promise<string | null> {
+  const stored = await storedServerKey(mode);
+  if (stored === UNREADABLE) return null;
   if (stored) return stored;
-  const environment = process.env.MIDTRANS_SERVER_KEY?.trim();
-  return environment && validateSandboxServerKey(environment) ? environment : null;
+  const environment = process.env[ENV_VAR[mode]]?.trim();
+  return environment && validateServerKey(environment, mode) ? environment : null;
 }
 
-export async function midtransServerKeyStatus() {
-  const stored = await storedServerKey();
-  if (stored) return { configured: true, source: "website" as const, masked: maskServerKey(stored) };
-  const environment = process.env.MIDTRANS_SERVER_KEY?.trim();
-  return environment && validateSandboxServerKey(environment)
-    ? { configured: true, source: "environment" as const, masked: maskServerKey(environment) }
+export type MidtransKeyStatus = {
+  configured: boolean;
+  source: "website" | "environment" | null;
+  masked: string | null;
+  /** Kunci tersimpan tetapi tidak terbaca lagi, biasanya karena AUTH_SECRET berubah. */
+  unreadable?: boolean;
+};
+
+export async function midtransServerKeyStatus(mode: MidtransMode): Promise<MidtransKeyStatus> {
+  const stored = await storedServerKey(mode);
+  if (stored === UNREADABLE) return { configured: false, source: "website", masked: null, unreadable: true };
+  if (stored) return { configured: true, source: "website", masked: maskServerKey(stored) };
+  const environment = process.env[ENV_VAR[mode]]?.trim();
+  return environment && validateServerKey(environment, mode)
+    ? { configured: true, source: "environment", masked: maskServerKey(environment) }
     : { configured: false, source: null, masked: null };
 }
 
-export async function saveMidtransServerKey(value: string) {
-  const encrypted = sealServerKey(value);
+export async function saveMidtransServerKey(value: string, mode: MidtransMode) {
+  const key = value.trim();
+  if (!validateServerKey(key, mode)) {
+    throw new AppError(
+      mode === "sandbox"
+        ? "Server Key sandbox Midtrans harus diawali SB-Mid-server-."
+        : "Server Key produksi Midtrans harus diawali Mid-server-.",
+      400,
+      "INVALID_SERVER_KEY",
+    );
+  }
+  const encrypted = sealServerKey(key);
   await prisma.platformSetting.upsert({
-    where: { key: SETTING_KEY },
-    create: { key: SETTING_KEY, value: encrypted },
+    where: { key: KEY_SETTING[mode] },
+    create: { key: KEY_SETTING[mode], value: encrypted },
     update: { value: encrypted },
   });
-  return midtransServerKeyStatus();
+  return midtransServerKeyStatus(mode);
 }
 
-export async function removeMidtransServerKey() {
-  await prisma.platformSetting.deleteMany({ where: { key: SETTING_KEY } });
-  return midtransServerKeyStatus();
+export async function removeMidtransServerKey(mode: MidtransMode) {
+  await prisma.platformSetting.deleteMany({ where: { key: KEY_SETTING[mode] } });
+  return midtransServerKeyStatus(mode);
 }
 
-export async function readMidtransMode(): Promise<"sandbox" | "production"> {
+export async function readMidtransMode(): Promise<MidtransMode> {
   const row = await prisma.platformSetting.findUnique({ where: { key: MODE_KEY }, select: { value: true } });
   return row?.value === "production" ? "production" : "sandbox";
 }
 
-export async function saveMidtransMode(mode: "sandbox" | "production") {
+export async function saveMidtransMode(mode: MidtransMode) {
   await prisma.platformSetting.upsert({
     where: { key: MODE_KEY },
     create: { key: MODE_KEY, value: mode },
     update: { value: mode },
   });
   return readMidtransMode();
+}
+
+/** Sakelar besar untuk mematikan pembayaran online tanpa menghapus kunci. Baris hilang = aktif. */
+export async function readMidtransEnabled() {
+  const row = await prisma.platformSetting.findUnique({ where: { key: ENABLED_KEY }, select: { value: true } });
+  return row?.value !== "false";
+}
+
+export async function saveMidtransEnabled(enabled: boolean) {
+  const value = enabled ? "true" : "false";
+  await prisma.platformSetting.upsert({
+    where: { key: ENABLED_KEY },
+    create: { key: ENABLED_KEY, value },
+    update: { value },
+  });
+  return readMidtransEnabled();
 }

@@ -105,6 +105,16 @@ export async function startCheckout(context: BusinessContext, planId: string, cy
   }
 
   const orderId = buildOrderId(context.businessId);
+  // Snap dulu, baru catat: kegagalan gateway tidak boleh meninggalkan baris PENDING yatim.
+  // ponytail: notifikasi yang tiba sebelum baris ini dibuat akan dijawab UNKNOWN_ORDER;
+  // jaraknya milidetik sedangkan pembayaran nyata butuh detik.
+  const snap = await createSnapTransaction({
+    orderId,
+    amount,
+    itemName: `${plan.name} (${cycle === "YEARLY" ? "tahunan" : "bulanan"})`,
+    customerName: user?.name ?? business?.name ?? "Pelanggan",
+    customerEmail: user?.email ?? "",
+  });
   await prisma.payment.create({
     data: {
       businessId: context.businessId,
@@ -114,14 +124,6 @@ export async function startCheckout(context: BusinessContext, planId: string, cy
       cycle,
       amount,
     },
-  });
-
-  const snap = await createSnapTransaction({
-    orderId,
-    amount,
-    itemName: `${plan.name} (${cycle === "YEARLY" ? "tahunan" : "bulanan"})`,
-    customerName: user?.name ?? business?.name ?? "Pelanggan",
-    customerEmail: user?.email ?? "",
   });
   return { orderId, amount, ...snap };
 }

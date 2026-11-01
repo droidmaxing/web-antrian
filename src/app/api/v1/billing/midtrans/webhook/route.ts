@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { midtransConfig } from "@/modules/billing/midtrans";
+import { midtransVerificationKeys } from "@/modules/billing/midtrans";
 import { verifyMidtransSignature } from "@/modules/billing/billing-domain";
 import { applyMidtransNotification } from "@/modules/billing/subscription-service";
 import { AppError, errorResponse, readJsonRequest } from "@/modules/shared/errors";
@@ -23,13 +23,16 @@ export async function POST(request: Request) {
       "unknown";
     await enforceRateLimit(`webhook:midtrans:${address}`, 100, 60);
 
-    const config = await midtransConfig();
-    if (!config) throw new AppError("Webhook pembayaran belum dikonfigurasi.", 503, "BILLING_NOT_CONFIGURED");
+    const serverKeys = await midtransVerificationKeys();
+    if (serverKeys.length === 0) throw new AppError("Webhook pembayaran belum dikonfigurasi.", 503, "BILLING_NOT_CONFIGURED");
     const parsed = notificationSchema.safeParse(await readJsonRequest(request));
     if (!parsed.success) throw new AppError("Notifikasi pembayaran tidak valid.", 400, "INVALID_NOTIFICATION");
     const notification = parsed.data;
     const grossAmount = String(notification.gross_amount);
-    if (!verifyMidtransSignature(notification.order_id, notification.status_code, grossAmount, config.serverKey, notification.signature_key)) {
+    const signatureValid = serverKeys.some((serverKey) =>
+      verifyMidtransSignature(notification.order_id, notification.status_code, grossAmount, serverKey, notification.signature_key),
+    );
+    if (!signatureValid) {
       throw new AppError("Tanda tangan notifikasi tidak valid.", 401, "INVALID_SIGNATURE");
     }
     const result = await applyMidtransNotification({ ...notification, gross_amount: grossAmount });

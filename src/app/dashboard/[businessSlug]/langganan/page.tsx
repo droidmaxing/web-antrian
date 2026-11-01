@@ -4,6 +4,7 @@ import { ErrorState } from "@/components/error-state";
 import { SubscriptionBilling } from "@/components/subscription-billing";
 import { guardWorkspace } from "@/components/workspace-guard";
 import { getSubscriptionView, listPayments } from "@/modules/billing/subscription-service";
+import { readMidtransEnabled } from "@/modules/billing/midtrans-settings";
 import { brandVars } from "@/modules/tenancy/brand";
 import { getTheme } from "@/modules/tenancy/theme-service";
 
@@ -35,7 +36,7 @@ export default async function SubscriptionPage({ params }: PageProps) {
     );
   }
 
-  const [business, theme, subscription, payments, plans] = await Promise.all([
+  const [business, theme, subscription, payments, plans, billingEnabled] = await Promise.all([
     prisma.business.findUniqueOrThrow({
       where: { id: context.businessId },
       select: { name: true },
@@ -55,6 +56,7 @@ export default async function SubscriptionPage({ params }: PageProps) {
         yearlyPrice: true,
       },
     }),
+    readMidtransEnabled(),
   ]);
 
   return (
@@ -84,6 +86,7 @@ export default async function SubscriptionPage({ params }: PageProps) {
         <SubscriptionBilling
           businessSlug={businessSlug}
           subscription={subscription}
+          billingEnabled={billingEnabled}
           plans={plans}
           payments={payments.map((payment) => ({
             id: payment.id,
