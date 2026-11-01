@@ -46,7 +46,7 @@ export function RegistrationForm() {
           type="button"
           onClick={() => setShowPassword((current) => !current)}
           aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
-          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#626a67] transition hover:text-[#344440]"
+          className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-2 text-[#626a67] transition hover:bg-brand-50 hover:text-[#344440]"
         >
           {showPassword ? <EyeOff className="size-[17px]" /> : <Eye className="size-[17px]" />}
         </button>

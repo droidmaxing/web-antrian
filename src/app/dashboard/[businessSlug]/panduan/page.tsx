@@ -129,7 +129,7 @@ export default async function GuidePage({ params }: PageProps) {
                       {step.href && (
                         <a
                           href={guideHref(step.href, businessSlug)}
-                          className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-700 hover:underline"
+                          className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg py-2 text-[11px] font-semibold text-brand-700 hover:bg-brand-100 hover:underline"
                         >
                           {step.hrefLabel ?? "Buka"}{" "}
                           <span aria-hidden="true">↗</span>
@@ -155,7 +155,7 @@ export default async function GuidePage({ params }: PageProps) {
             </p>
             <a
               href={`/dashboard/${businessSlug}`}
-              className="mt-3 inline-block text-xs font-semibold text-brand-700 hover:underline"
+              className="mt-3 inline-block rounded-lg px-2 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 hover:underline"
             >
               Kembali ke dashboard <span aria-hidden="true">↗</span>
             </a>

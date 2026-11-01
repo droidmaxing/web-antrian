@@ -297,7 +297,7 @@ function StatusBadge({ status }: { status: BookingRow["status"] }) {
     NO_SHOW: "bg-[#f4effb] text-[#6d5695]",
   };
   return (
-    <span className={`rounded-full px-2 py-1 text-[9px] font-medium ${styles[status]}`}>
+    <span className={`rounded-full px-2 py-1 text-[10px] font-medium ${styles[status]}`}>
       {labels[status]}
     </span>
   );

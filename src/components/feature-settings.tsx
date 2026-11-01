@@ -117,12 +117,12 @@ export function FeatureSettings({
                 aria-label={`${active ? "Nonaktifkan" : "Aktifkan"} ${feature.title}`}
                 disabled={saving !== null}
                 onClick={() => void toggle(feature.key)}
-                className={`relative h-5 w-9 shrink-0 rounded-full transition disabled:opacity-50 ${active ? "bg-brand-700" : "bg-brand-200"}`}
+                className={`relative my-1 h-6 w-11 shrink-0 rounded-full transition disabled:opacity-50 ${active ? "bg-brand-700" : "bg-brand-200"}`}
               >
                 {saving === feature.key ? (
                   <LoaderCircle className="absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 animate-spin text-white" />
                 ) : (
-                  <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow-bubble-sm transition-all ${active ? "left-[18px]" : "left-0.5"}`} />
+                  <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow-bubble-sm transition-all ${active ? "left-[22px]" : "left-0.5"}`} />
                 )}
               </button>
             </div>

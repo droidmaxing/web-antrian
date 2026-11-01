@@ -49,7 +49,7 @@ export function AppHeader({
       style={brandVars(theme)}
       className="sticky top-0 z-20 border-b border-transparent bg-white/90 shadow-bubble-sm backdrop-blur"
     >
-      <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-x-4 gap-y-3 px-5 py-3 md:px-8">
+      <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-x-4 gap-y-1.5 px-5 py-3 md:px-8">
         <a href={dashboardHref} className="flex min-w-0 items-center gap-2.5">
           <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-[11px] bg-brand-700 text-white">
             <BrandLogo theme={theme} className="text-base font-black" />
@@ -62,7 +62,10 @@ export function AppHeader({
           </span>
         </a>
 
-        <nav aria-label="Navigasi workspace" className="flex items-center gap-1 text-xs font-medium">
+        <nav
+          aria-label="Navigasi workspace"
+          className="order-last flex w-full items-center gap-1 text-xs font-medium md:order-none md:ml-6 md:w-auto"
+        >
           <span
             aria-current="page"
             className="rounded-lg bg-brand-50 px-3 py-1.5 font-semibold text-brand-700"

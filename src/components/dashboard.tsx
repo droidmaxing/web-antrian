@@ -727,7 +727,7 @@ export function Dashboard({
 
         <nav
           aria-label="Navigasi dashboard"
-          className="dashboard-mobile-nav sticky top-[120px] z-[9] flex gap-1 overflow-x-auto border-b border-transparent bg-white shadow-bubble-sm px-3 py-2 md:top-[72px] xl:hidden"
+          className="dashboard-mobile-nav sticky top-[72px] z-[9] flex gap-1 overflow-x-auto border-b border-transparent bg-white shadow-bubble-sm px-3 py-2 xl:hidden"
         >
           {navGroups.flatMap((group) => group.items).map((item) => (
             <MobileNavLink
@@ -891,7 +891,7 @@ export function Dashboard({
                     <select
                       value={counterFilter}
                       onChange={(event) => setCounterFilter(event.target.value)}
-                      className="max-w-[9.5rem] appearance-none bg-transparent pr-4 text-xs font-medium outline-none"
+                      className="h-full max-w-[9.5rem] appearance-none bg-transparent pr-4 text-xs font-medium outline-none"
                     >
                       <option value="ALL">Semua loket</option>
                       <option value="UNASSIGNED">Belum ditugaskan</option>
@@ -908,7 +908,7 @@ export function Dashboard({
                     <select
                       value={statusFilter}
                       onChange={(event) => setStatusFilter(event.target.value as "ALL" | "LIVE" | QueueStatus)}
-                      className="appearance-none bg-transparent pr-4 text-xs font-medium outline-none"
+                      className="h-full appearance-none bg-transparent pr-4 text-xs font-medium outline-none"
                     >
                       <option value="LIVE">Aktif & menunggu</option>
                       <option value="ALL">Semua status</option>
@@ -1004,7 +1004,7 @@ export function Dashboard({
                   <button
                     type="button"
                     onClick={() => (voiceReady ? setVoiceMuted((current) => !current) : enableVoice())}
-                    className="shrink-0 rounded-lg bubble-card bg-white px-2.5 py-1 text-[11px] font-semibold text-brand-700 hover:bg-brand-50"
+                    className="shrink-0 rounded-lg bubble-card bg-white px-2.5 py-2 text-[11px] font-semibold text-brand-700 hover:bg-brand-50"
                   >
                     {!voiceReady ? "Aktifkan suara" : voiceMuted ? "Nyalakan suara" : "Matikan suara"}
                   </button>
@@ -1050,7 +1050,7 @@ export function Dashboard({
                               ? "Tidak ada antrean menunggu untuk layanan loket ini."
                               : `Panggil antrean berikutnya (${counter.waitingForCounter} menunggu).`
                           }
-                          className="mt-1 text-[11px] font-semibold text-brand-700 hover:underline disabled:opacity-40"
+                          className="mt-1 rounded-lg px-2 py-2 text-[11px] font-semibold text-brand-700 transition hover:bg-brand-50 hover:underline disabled:opacity-40"
                         >
                           {busyAction === `call-${counter.id}`
                             ? "Memanggil..."
@@ -1273,7 +1273,7 @@ export function Dashboard({
           {canConfigure && (
             <a
               href={`/dashboard/${businessSlug}/pengaturan`}
-              className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-brand-700 hover:underline"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 hover:underline"
             >
               <Settings2 className="size-4" /> Pengaturan workspace
             </a>
@@ -1557,7 +1557,7 @@ function QueueItem({
               key={action}
               onClick={() => onAction(queue.id, action)}
               disabled={busyAction === `${action}-${queue.id}`}
-              className={`rounded-lg px-2 py-1.5 text-[11px] font-semibold transition disabled:opacity-50 ${action === "complete" || action === "start" ? "bg-brand-700 text-white hover:bg-brand-800" : "bg-brand-50 text-[#65716d] hover:bg-brand-100"}`}
+              className={`rounded-lg px-2.5 py-2 text-[11px] font-semibold transition disabled:opacity-50 ${action === "complete" || action === "start" ? "bg-brand-700 text-white hover:bg-brand-800" : "bg-brand-50 text-[#65716d] hover:bg-brand-100"}`}
             >
               {busyAction === `${action}-${queue.id}`
                 ? "..."
@@ -1578,7 +1578,7 @@ function QueueItem({
                 event.target.value = "";
               }
             }}
-            className="max-w-24 rounded-lg bg-white px-2 py-1.5 text-[11px] text-[#65716d] bubble-btn"
+            className="h-9 max-w-24 rounded-lg bg-white px-2 text-[11px] text-[#65716d] bubble-btn"
           >
             <option value="">Lainnya</option>
             {availableActions[queue.status].slice(2).map((action) => (

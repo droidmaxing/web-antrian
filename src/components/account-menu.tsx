@@ -214,7 +214,7 @@ export function AccountMenuButton({
                     type="button"
                     data-section="password"
                     onClick={() => setSection("menu")}
-                    className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-semibold text-brand-700 transition hover:bg-brand-50"
+                    className="inline-flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold text-brand-700 transition hover:bg-brand-50"
                   >
                     <ChevronLeft className="size-3.5" aria-hidden /> Kembali
                   </button>
