@@ -15,9 +15,12 @@ export type Capability =
   /** Read business performance reports. */
   | "viewReports"
   /** Change the workspace colours and logo. */
-  | "manageTheme";
+  | "manageTheme"
+  /** Owner only: manage the plan, renewal, and payment history. */
+  | "manageBilling";
 
-const OWNER_CAPABILITIES: Capability[] = [
+/** Everything a workspace manager may do; Super Admin has all of it. */
+const MANAGER_CAPABILITIES: Capability[] = [
   "operateQueue",
   "configureBusiness",
   "manageTeam",
@@ -26,8 +29,10 @@ const OWNER_CAPABILITIES: Capability[] = [
 ];
 
 const CAPABILITIES: Record<MembershipRole, Capability[]> = {
-  OWNER: OWNER_CAPABILITIES,
-  SUPER_ADMIN: OWNER_CAPABILITIES,
+  // Billing is the owner's alone: the subscription page and its API already
+  // require the OWNER role, so this list has to agree with them.
+  OWNER: [...MANAGER_CAPABILITIES, "manageBilling"],
+  SUPER_ADMIN: MANAGER_CAPABILITIES,
   // ADMIN runs the counter. It may read the customer directory but cannot
   // configure the business, the team, reports, or the workspace look.
   ADMIN: ["operateQueue"],
@@ -45,6 +50,7 @@ export function capabilitiesFor(role: MembershipRole): Record<Capability, boolea
     manageTeam: granted.includes("manageTeam"),
     viewReports: granted.includes("viewReports"),
     manageTheme: granted.includes("manageTheme"),
+    manageBilling: granted.includes("manageBilling"),
   };
 }
 

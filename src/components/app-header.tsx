@@ -31,7 +31,7 @@ export function AppHeader({
       href: `/dashboard/${businessSlug}/langganan`,
       label: "Langganan",
       id: "langganan",
-      show: role === "OWNER",
+      show: capabilities.manageBilling,
     },
     {
       href: `/dashboard/${businessSlug}/panduan`,

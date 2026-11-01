@@ -573,3 +573,46 @@ PASS: 4 loket -> 4 layar -> 4 tautan berbeda, masing-masing hanya menampilkan lo
 Layar uji dihapus setelah verifikasi; display operasional (`TV Loket 01`–`TV Loket 04`)
 tidak berubah.
 
+
+## 7. Tindak lanjut setelah implementasi (2026-11-01)
+
+Audit di bagian 1–6 dikerjakan, lalu berlanjut pada permintaan pengguna. Catatan
+di bawah ini adalah keadaan setelah pekerjaan tersebut, agar kesimpulan lama yang
+sudah tidak berlaku tidak dipakai lagi.
+
+### 7.1 Yang ditutup dari temuan bagian 1
+
+| Temuan | Keadaan sekarang |
+|---|---|
+| 1.2 D — kontrol dashboard statis, pencarian `queueQuery`/`visibleQueues` tidak berpengaruh | Pencarian navbar dihapus, bukan diperbaiki. Pencarian yang benar adalah kotak di bagian Antrean (memfilter `visibleQueues` lewat state `queueQuery` bersama filter status dan loket) dan kotak di Pelanggan/Loket/Tim. Shortcut ⌘K dan judul "Cari nomor…" yang tidak berfungsi ikut hilang. |
+| 1.2 D — step panduan ⌘K | Step "Cari pelanggan" diganti dua step: "Ganti kata sandi sendiri" dan "Cari antrean dan pelanggan". |
+| 1.2 C — modul pelanggan | Sudah ada (`customers-manager.tsx`, `/api/v1/businesses/<slug>/customers`), termasuk paginasi dan pencarian. |
+| 1.4 — URL Google API key | Fitur Google API key dihapus seluruhnya. Yang tersisa hanya Client ID + Client Secret untuk login Google; enkripsi rahasia dipindah ke `src/modules/shared/secret-box.ts` (`sealSecret`/`unsealSecret`) dan dipakai Midtrans juga. |
+
+### 7.2 Fitur baru yang tidak ada di rancangan awal
+
+- **Ubah kata sandi sendiri** — `POST /api/v1/auth/password`, panel di sidebar dashboard
+  dan tombol ikon di `AppHeader`. Wajib sandi lama, rate limit 5×/15 menit per akun,
+  sandi baru 8–128 karakter dan harus berbeda dari yang lama. Sesi JWT di perangkat lain
+  sengaja **tidak** dicabut (lihat komentar `ponytail:` di route-nya).
+- **Midtrans** — mode sandbox/production dengan satu slot kunci per mode, verifikasi
+  tanda tangan SHA-512 atas semua kunci yang tersimpan, tombol checkout Snap, dan
+  tombol "Perbarui status" yang menanyakan keadaan transaksi langsung ke Midtrans.
+- **Notifikasi refund** — `refund`/`partial_refund` **tidak** menurunkan status
+  pembayaran; waktunya dicatat di `Payment.refundedAt` dan halaman Langganan menampilkan
+  "Dana dikembalikan". Penurunan akses tetap keputusan manual operator platform.
+- **Konsol platform** (`/platform`) — perusahaan, pengguna, paket, penugasan langganan,
+  reset uji coba, perpanjangan manual, riwayat pembayaran, dan pengaturan integrasi.
+- **Langganan di halaman publik** — halaman Langganan memakai
+  `allowInactiveSubscription` supaya masa aktif yang habis masih bisa diperpanjang dari
+  halaman itu, sementara akses ke halaman lain tetap digerbang.
+
+### 7.3 Temuan yang masih terbuka
+
+| Temuan | Risiko |
+|---|---|
+| `APP_URL` pada deployment LAN (`http://<IP-privat>:3000`) | Notifikasi Midtrans tidak akan pernah sampai: server Midtrans tidak bisa menjangkau alamat privat, dan port 3000 bukan 80/443. Solusinya deployment di URL HTTPS publik; URL notifikasi sudah ditampilkan di `/platform/integrasi` untuk ditempel ke dashboard Midtrans. |
+| Token QR/status tanpa TTL dan tanpa endpoint cabut | Token yang bocor berlaku selamanya. |
+| Sesi JWT tidak dicabut setelah ganti kata sandi | Perangkat lain tetap masuk sampai token kedaluwarsa. |
+| `PaymentStatus` tanpa nilai untuk refund | Disiasati dengan kolom `refundedAt`; menambah nilai enum berarti migrasi data dan perubahan setiap pembacaan status. |
+| Analitik, advertisement, pengiriman WhatsApp | Belum diimplementasikan (sesuai batas di bagian 5). |

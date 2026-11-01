@@ -18,6 +18,11 @@ test("only owners and super admins may configure, manage the team, read reports,
     // what requireRole checks on the server.
     assert.equal(can("ADMIN", capability), false, `ADMIN/${capability}`);
   }
+  // The subscription page and its API allow the OWNER only; the capability
+  // matrix must not contradict them.
+  assert.equal(can("OWNER", "manageBilling"), true);
+  assert.equal(can("SUPER_ADMIN", "manageBilling"), false);
+  assert.equal(can("ADMIN", "manageBilling"), false);
   for (const role of ROLES) {
     assert.equal(can(role, "operateQueue"), true, `${role}/operateQueue`);
   }
@@ -36,6 +41,7 @@ test("capabilitiesFor mirrors the capability matrix", () => {
     manageTeam: false,
     viewReports: false,
     manageTheme: false,
+    manageBilling: false,
   });
 });
 
@@ -62,6 +68,21 @@ test("the tutorial hides steps a role cannot perform", () => {
     "the owner must see how to change the theme",
   );
   assert.ok(ownerSteps.length > adminSteps.length);
+});
+
+test("the tutorial covers the everyday actions of an operator", () => {
+  const steps = guideSections({ role: "ADMIN", enabledFeatures: [] }).flatMap(
+    (section) => section.steps,
+  );
+  const titles = steps.map((step) => step.title).join(" | ");
+  assert.match(titles, /kata sandi/i, "an operator must be told how to change their own password");
+  assert.match(titles, /cari/i, "an operator must be told how to find a queue ticket");
+  // Every capability named by a step has to exist, so a renamed capability
+  // cannot silently make a step unreachable for everyone.
+  for (const step of guideSections({ role: "OWNER", enabledFeatures: ["BOOKING", "TV_DISPLAY"] })
+    .flatMap((section) => section.steps)) {
+    if (step.requires) assert.equal(typeof can("OWNER", step.requires), "boolean", step.title);
+  }
 });
 
 test("the tutorial hides steps for disabled features", () => {

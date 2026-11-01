@@ -49,9 +49,14 @@ const SECTIONS: GuideSection[] = [
         hrefLabel: "Buka antrean",
       },
       {
-        title: "Cari pelanggan",
+        title: "Ganti kata sandi sendiri",
         detail:
-          "Gunakan kotak pencarian (atau tombol ⌘K) untuk menyaring nomor antrean berdasarkan nama pelanggan, kode layanan, atau nama loket.",
+          "Tombol bergambar kunci di kanan atas (juga di bawah sidebar) membuka panel Ubah kata sandi. Isi kata sandi lama dan kata sandi baru minimal 8 karakter. Sesi login di perangkat lain tidak otomatis berakhir, jadi keluar manual bila perangkat itu bukan milik Anda.",
+      },
+      {
+        title: "Cari antrean dan pelanggan",
+        detail:
+          "Di bagian Antrean, kotak pencarian bersama filter status dan loket menyaring nomor antrean hari ini. Membaca kolomnya saja: nama, kode layanan, atau nama loket. Untuk daftar kontak, buka Pelanggan dan pakai kotak pencarian di sana.",
         href: "/dashboard/${slug}#customers-manage",
         hrefLabel: "Buka pelanggan",
       },
@@ -169,6 +174,32 @@ const SECTIONS: GuideSection[] = [
         href: "/dashboard/${slug}/pengaturan",
         hrefLabel: "Kelola fitur",
         requires: "configureBusiness",
+      },
+    ],
+  },
+  {
+    title: "Langganan dan pembayaran",
+    description: "Milik pemilik bisnis: paket, masa aktif, dan riwayat pembayaran.",
+    steps: [
+      {
+        title: "Pilih paket dan bayar",
+        detail:
+          "Halaman Langganan memuat paket yang tersedia, masa aktif berjalan, dan tombol bayar. Pembayaran diproses Midtrans; masa aktif bertambah hanya setelah notifikasi pembayaran terverifikasi.",
+        href: "/dashboard/${slug}/langganan",
+        hrefLabel: "Buka langganan",
+        requires: "manageBilling",
+      },
+      {
+        title: "Perbarui status pembayaran",
+        detail:
+          "Bila notifikasi Midtrans belum sampai, tombol Perbarui status menanyakan langsung keadaan transaksi ke Midtrans, jadi halaman ini tidak perlu menunggu.",
+        requires: "manageBilling",
+      },
+      {
+        title: "Baca riwayat pembayaran",
+        detail:
+          "Tabel di halaman yang sama mencatat tiap pembayaran: Menunggu, Dibayar, Kedaluwarsa, atau \"Dana dikembalikan\" bila Midtrans mengembalikan dananya. Saat fitur pembayaran dimatikan, tombol bayar disembunyikan dan checkout baru ditolak.",
+        requires: "manageBilling",
       },
     ],
   },

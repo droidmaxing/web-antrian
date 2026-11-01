@@ -31,7 +31,11 @@ are for local development only.
 generates — QR codes, customer status links, display/TV links, and auth
 callbacks. `NEXT_PUBLIC_APP_URL` carries the same value into client components.
 Both must point at the public origin of the deployment; localhost is only ever a
-local-development default. `APP_PROTOCOL` optionally forces `http`/`https` when a
+local-development default. The Midtrans *Payment Notification URL* is built from
+the same value — `<APP_URL>/api/v1/billing/midtrans/webhook` is shown in the
+platform console at `/platform/integrasi` so it can be copied verbatim. Midtrans
+must be able to reach it over HTTPS without a redirect, so a LAN address will
+never work. `APP_PROTOCOL` optionally forces `http`/`https` when a
 reverse proxy does not forward `X-Forwarded-Proto`.
 
 ## Local setup
@@ -60,8 +64,18 @@ Requirements: Node.js 20+, MySQL 8+, and npm.
 
 6. Start Next.js with `npm run dev` and open `http://localhost:3000`.
 
-The local seed account is `admin@antrian.test` / `Antrian123!`. It is for local
-development only. Replace it and rotate `AUTH_SECRET` before deploying.
+Local seed accounts, all for local development only — replace them and rotate
+`AUTH_SECRET` before deploying:
+
+| Account | Password | Reaches |
+|---|---|---|
+| `admin@antrian.test` | `Antrian123!` | Demo workspace dashboard |
+| `owner@antrian.test` | `Owner12345!` | Workspace owner, including `/dashboard/klinik-sehat/langganan` |
+| `spv@antrian.test` | `SuperAdmin123!` | Workspace Super Admin |
+| `master@antrian.test` | `MasterAdmin123!` | Platform console `/platform` (`MASTER_ADMIN`) |
+
+The workspace owner reaches the demo subscription page; the platform console
+account configures Google login and the Midtrans keys there.
 
 ## Implemented foundation
 
@@ -86,6 +100,19 @@ development only. Replace it and rotate `AUTH_SECRET` before deploying.
   accessible field-level validation messages for public queue and booking forms.
 - Searchable service pickers appear automatically when a business has more than
   five active services; shorter lists keep the compact native select control.
+- Self-service account management: any signed-in user can change their own
+  password from the dashboard (`POST /api/v1/auth/password`), and the
+  registration and password fields have a show/hide toggle.
+- Platform console for the SaaS operator (`/platform`): businesses, users, plans,
+  subscription assignment, trial reset, manual renewal, payment history, and the
+  integration settings for Google login and Midtrans. Access requires the
+  `MASTER_ADMIN` platform role, which is separate from any workspace membership.
+- Midtrans billing per workspace: sandbox and production keys are stored
+  encrypted (one slot per mode), a workspace owner picks a plan and pays through
+  Snap, and renewal is driven by signature-verified notifications. Refunds do not
+  pull a paid payment back to pending; they mark it with a refund timestamp.
+- Role-aware in-app tutorial (`/dashboard/<slug>/panduan`) whose steps are
+  filtered by the reader's role and the features enabled for that workspace.
 
 ## Verification
 
@@ -103,7 +130,10 @@ repository — UI verification is done manually in the browser.
 
 The application requires a configured MySQL instance for authenticated pages,
 seed data, and API/database integration flows. Unit tests for domain logic do not
-require a database. WhatsApp delivery, full branch administration,
-advertisement, and analytics reports are not implemented yet.
+require a database — `npm test` runs `tsx --test tests/*.test.ts` on `node:test`
+and needs no server. WhatsApp delivery, full branch administration,
+advertisement, and analytics reports are not implemented yet. There is no
+Playwright/E2E dependency either: the flows were exercised in a real browser
+manually, plus scripted HTTP checks kept out of the repository.
 
 Working rules for AI agents and contributors are in `AGENTS.md`.

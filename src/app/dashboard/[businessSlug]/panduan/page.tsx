@@ -17,6 +17,7 @@ const CAPABILITY_SUMMARY: Record<Capability, string> = {
   manageTeam: "Menambah anggota tim dan mengatur aksesnya",
   viewReports: "Membuka laporan kinerja antrean",
   manageTheme: "Mengubah warna dan logo workspace",
+  manageBilling: "Memilih paket langganan dan memperbarui masa aktif",
 };
 
 /** Tutorial page: steps are filtered by the reader's role and enabled features. */
