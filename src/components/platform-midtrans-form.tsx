@@ -19,7 +19,14 @@ const MODE_LABEL: Record<MidtransMode, string> = { sandbox: "Sandbox", productio
 const KEY_PREFIX: Record<MidtransMode, string> = { sandbox: "SB-Mid-server-…", production: "Mid-server-…" };
 
 /** Satu form mengurus tiga hal: mode aktif, kunci per mode, dan sakelar aktif/nonaktif. */
-export function PlatformMidtransForm({ initialState }: { initialState: MidtransState }) {
+export function PlatformMidtransForm({
+  initialState,
+  notificationUrl,
+}: {
+  initialState: MidtransState;
+  /** URL webhook absolut dari APP_URL; disalin ke dashboard Midtrans. */
+  notificationUrl: string;
+}) {
   const router = useRouter();
   const [state, setState] = useState(initialState);
   const [serverKey, setServerKey] = useState("");
@@ -162,6 +169,18 @@ export function PlatformMidtransForm({ initialState }: { initialState: MidtransS
           <p className="text-[11px] leading-5 text-[#5c6a65]">
             Saat nonaktif, checkout baru ditolak dan tombol bayar disembunyikan di dashboard pelanggan.
             Notifikasi untuk pembayaran yang sudah terlanjur masuk tetap diverifikasi dan dicatat.
+          </p>
+        </div>
+
+        <div className="grid gap-2 border-t border-brand-100 pt-4">
+          <p className="text-[11px] font-semibold text-[#52615b]">Payment Notification URL</p>
+          <code className="block break-all rounded-lg bubble-field bg-white px-3 py-2 text-[11px] text-[#344440]">
+            {notificationUrl}
+          </code>
+          <p className="text-[11px] leading-5 text-[#5c6a65]">
+            Tempel persis di Midtrans: Settings → Configuration → Payment Notification URL. URL ini
+            dihitung dari APP_URL, jadi ikut berubah bila domain deployment berubah. URL harus bisa
+            dijangkau Midtrans (HTTPS, tanpa redirect) — alamat LAN seperti ini belum bisa.
           </p>
         </div>
 

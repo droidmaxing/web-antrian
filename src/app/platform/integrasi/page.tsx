@@ -3,7 +3,7 @@ import { KeyRound, Sparkles } from "lucide-react";
 import { PlatformGoogleLoginForm } from "@/components/platform-google-login-form";
 import { PlatformMidtransForm } from "@/components/platform-midtrans-form";
 import { PlatformPageHeader, Section } from "@/components/platform-ui";
-import { absoluteUrl } from "@/lib/app-url";
+import { absoluteUrl, resolveAppUrl } from "@/lib/app-url";
 import { readMidtransEnabled, readMidtransMode, midtransServerKeyStatus } from "@/modules/billing/midtrans-settings";
 import { googleLoginStatus } from "@/modules/platform/google-login";
 
@@ -26,6 +26,15 @@ export default async function PlatformIntegrationsPage() {
     googleLoginStatus(),
     headers(),
   ]);
+
+  // URL notifikasi dihitung dari APP_URL yang sama dengan tautan QR/display, lalu
+  // disalin ke kolom "Payment Notification URL" di dashboard Midtrans.
+  let notificationUrl = "/api/v1/billing/midtrans/webhook";
+  try {
+    notificationUrl = `${resolveAppUrl(requestHeaders)}/api/v1/billing/midtrans/webhook`;
+  } catch {
+    // APP_URL belum diatur: tampilkan jalur relatif saja daripada menggagalkan halaman.
+  }
 
   let redirectUri = "/api/auth/callback/google";
   try {
@@ -53,7 +62,7 @@ export default async function PlatformIntegrationsPage() {
         title="Midtrans"
         description="Server key dipakai untuk checkout dan verifikasi notifikasi pembayaran. Mode sandbox dan production punya kunci masing-masing."
       >
-        <PlatformMidtransForm initialState={midtrans} />
+        <PlatformMidtransForm initialState={midtrans} notificationUrl={notificationUrl} />
       </Section>
     </>
   );
