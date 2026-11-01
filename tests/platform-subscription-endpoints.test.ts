@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { prisma } from "@/lib/prisma";
+import { cleanupTracked, trackBusiness } from "./helpers/cleanup";
 
 test("Platform Subscription Endpoints - trial-reset creates subscription if not exists", async () => {
   const biz = await prisma.business.create({
     data: { name: `Test Biz ${Date.now()}`, slug: `test-${Date.now()}` },
   });
+  trackBusiness(biz);
 
   const now = new Date();
   const trialEnds = new Date(now);
@@ -38,6 +40,7 @@ test("Platform Subscription Endpoints - trial-reset updates existing subscriptio
   const biz = await prisma.business.create({
     data: { name: `Test Biz ${Date.now()}`, slug: `test-${Date.now()}` },
   });
+  trackBusiness(biz);
 
   const sub = await prisma.subscription.create({
     data: {
@@ -72,6 +75,7 @@ test("Platform Subscription Endpoints - assign-plan creates subscription if not 
   const biz = await prisma.business.create({
     data: { name: `Test Biz ${Date.now()}`, slug: `test-${Date.now()}` },
   });
+  trackBusiness(biz);
 
   const plan = await prisma.plan.create({
     data: { code: `TEST-${Date.now()}`, name: `Test Plan ${Date.now()}` },
@@ -92,3 +96,5 @@ test("Platform Subscription Endpoints - assign-plan creates subscription if not 
   await prisma.plan.delete({ where: { id: plan.id } });
   await prisma.business.delete({ where: { id: biz.id } });
 });
+
+test.after(cleanupTracked);

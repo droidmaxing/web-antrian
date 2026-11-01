@@ -23,6 +23,8 @@ export type CustomerInput = {
   name: string;
   phone?: string | null;
   email?: string | null;
+  /** Nonaktifkan/aktifkan pelanggan (hanya dipakai saat update). */
+  active?: boolean;
 };
 
 export type CustomerRow = {
@@ -30,6 +32,7 @@ export type CustomerRow = {
   name: string;
   phone: string | null;
   email: string | null;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
   queueCount: number;
@@ -181,6 +184,7 @@ export async function listCustomers(
       name: true,
       phone: true,
       email: true,
+      active: true,
       createdAt: true,
       updatedAt: true,
       _count: { select: { queues: true, bookings: true } },
@@ -242,13 +246,14 @@ export async function updateCustomer(
   requireRole(context, [...MANAGE_ROLES]);
   const existing = await prisma.customer.findFirst({
     where: { id: customerId, businessId: context.businessId },
-    select: { id: true, phone: true, email: true },
+    select: { id: true, phone: true, email: true, active: true },
   });
   if (!existing) throw new AppError("Pelanggan tidak ditemukan.", 404, "CUSTOMER_NOT_FOUND");
 
   const name = input.name === undefined ? undefined : assertName(input.name);
   const phone = input.phone === undefined ? undefined : assertPhone(input.phone);
   const email = input.email === undefined ? undefined : assertEmail(input.email);
+  const activeChanged = input.active !== undefined && input.active !== existing.active;
   await assertUniqueContact(
     context.businessId,
     phone === undefined ? null : phone,
@@ -263,13 +268,18 @@ export async function updateCustomer(
         ...(name === undefined ? {} : { name }),
         ...(phone === undefined ? {} : { phone }),
         ...(email === undefined ? {} : { email }),
+        ...(input.active === undefined ? {} : { active: input.active }),
       },
     });
     await tx.auditLog.create({
       data: auditData({
         businessId: context.businessId,
         actorUserId: context.userId,
-        action: "CUSTOMER_UPDATED",
+        action: activeChanged
+          ? input.active
+            ? "CUSTOMER_ACTIVATED"
+            : "CUSTOMER_DEACTIVATED"
+          : "CUSTOMER_UPDATED",
         targetType: "Customer",
         targetId: customer.id,
         metadata: { changed: Object.keys(input) },
@@ -280,38 +290,33 @@ export async function updateCustomer(
 }
 
 /**
- * Customers with queue or booking history are never deleted: those rows carry
- * reporting data. Deleting them is refused with an explicit code so the UI can
- * explain why instead of failing silently.
+ * Pelanggan tidak pernah dihapus: barisnya dipakai antrean, booking, dan
+ * notifikasi. Hapus = nonaktifkan supaya relasi tetap utuh dan bisa diaktifkan
+ * kembali kapan saja.
  */
 export async function deleteCustomer(context: BusinessContext, customerId: string) {
   requireRole(context, [...MANAGE_ROLES]);
   const customer = await prisma.customer.findFirst({
     where: { id: customerId, businessId: context.businessId },
-    include: { _count: { select: { queues: true, bookings: true } } },
+    select: { id: true, name: true, active: true },
   });
   if (!customer) throw new AppError("Pelanggan tidak ditemukan.", 404, "CUSTOMER_NOT_FOUND");
 
-  if (customer._count.queues > 0 || customer._count.bookings > 0) {
-    throw new AppError(
-      "Pelanggan ini punya riwayat antrean atau booking, jadi tidak bisa dihapus. Kosongkan kontaknya lewat Edit bila sudah tidak dipakai.",
-      409,
-      "CUSTOMER_HAS_HISTORY",
-    );
-  }
-
   return prisma.$transaction(async (tx) => {
-    await tx.customer.delete({ where: { id: customer.id } });
+    const updated = await tx.customer.update({
+      where: { id: customer.id },
+      data: { active: false },
+    });
     await tx.auditLog.create({
       data: auditData({
         businessId: context.businessId,
         actorUserId: context.userId,
-        action: "CUSTOMER_DELETED",
+        action: "CUSTOMER_DEACTIVATED",
         targetType: "Customer",
         targetId: customer.id,
         metadata: { name: customer.name },
       }),
     });
-    return { id: customer.id };
+    return updated;
   });
 }

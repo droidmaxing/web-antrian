@@ -157,16 +157,39 @@ export async function callNext(
         where: { id: counter.id },
       });
       if (lockedCounter.activeQueueId) {
-        throw new AppError("Loket sedang melayani antrean lain.", 409, "COUNTER_BUSY");
+        // Penunjuk loket hanya mengikat kalau nomornya benar-benar masih
+        // dipegang di hari layanan ini. Sisa nomor hari kemarin (nomor
+        // CALLED/SERVING yang lupa diselesaikan) atau nomor yang sudah final
+        // tidak boleh mengunci loket untuk antrean hari ini.
+        const holding = await tx.queue.findFirst({
+          where: {
+            id: lockedCounter.activeQueueId,
+            businessId: context.businessId,
+            serviceDate,
+            status: { in: [QueueStatus.CALLED, QueueStatus.SERVING] },
+          },
+          select: { id: true },
+        });
+        if (holding) {
+          throw new AppError("Loket sedang melayani antrean lain.", 409, "COUNTER_BUSY");
+        }
+        await tx.counter.update({
+          where: { id: counter.id },
+          data: { activeQueueId: null },
+        });
       }
 
       const eligibleServices = input.serviceId ? [input.serviceId] : serviceIds;
+      // Tiket yang sudah dipetakan ke loket lain (layanan auto-loket) tidak
+      // diambil loket ini; tiket tanpa loket tetap bisa dipanggil siapa pun.
+      // Loket yang salah menahan tiket bisa mengembalikannya ke antrean.
       const eligibleIds = await tx.$queryRaw<Array<{ id: string }>>(
         Prisma.sql`SELECT id FROM Queue
           WHERE branchId = ${branch.id}
             AND businessId = ${context.businessId}
             AND serviceDate = ${serviceDate}
             AND status = 'WAITING'
+            AND (counterId IS NULL OR counterId = ${counter.id})
             AND serviceId IN (${Prisma.join(eligibleServices)})
           ORDER BY issuedAt ASC, id ASC
           LIMIT 1

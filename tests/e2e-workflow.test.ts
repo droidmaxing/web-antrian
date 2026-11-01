@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { prisma } from "@/lib/prisma";
 import { hash } from "bcryptjs";
+import { cleanupTracked, trackBusiness, trackUser } from "./helpers/cleanup";
 
 /**
  * E2E Workflow Test: Register → Create workspace → Create queue → Operate → View status
@@ -37,6 +38,7 @@ test("E2E: User registers with valid credentials", async () => {
       platformRole: "USER",
     },
   });
+  trackUser(user);
 
   testData.userId = user.id;
   assert.ok(user.id, "User created with ID");
@@ -66,6 +68,7 @@ test("E2E: Workspace (business) is created automatically", async () => {
       active: true,
     },
   });
+  trackBusiness(business);
 
   testData.businessId = business.id;
   testData.businessSlug = businessSlug;
@@ -365,6 +368,7 @@ test("E2E: Data isolation after workflow", async () => {
       timezone: "Asia/Jakarta",
     },
   });
+  trackBusiness(otherBusiness);
 
   // Verify user is NOT member of other business
   const otherMembership = await prisma.businessMembership.findFirst({
@@ -394,3 +398,5 @@ test("E2E: Data isolation after workflow", async () => {
     "Queue from user's business doesn't appear in other business"
   );
 });
+
+test.after(cleanupTracked);

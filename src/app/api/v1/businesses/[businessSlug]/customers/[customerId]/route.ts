@@ -11,6 +11,7 @@ const updateSchema = z
     name: z.string().trim().min(2).max(80).optional(),
     phone: z.string().trim().max(20).nullable().optional(),
     email: z.string().trim().max(120).nullable().optional(),
+    active: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Tidak ada perubahan yang dikirim.",

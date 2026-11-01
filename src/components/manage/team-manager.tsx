@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CirclePlus, Copy, LoaderCircle, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { CirclePlus, Copy, KeyRound, LoaderCircle, Power, Search, ShieldCheck } from "lucide-react";
 import { Pager, usePaged } from "@/components/pagination";
 import { InlineNotice } from "@/components/inline-notice";
 
@@ -223,7 +223,7 @@ export function TeamManager({
   }
 
   async function remove(member: MemberRow) {
-    if (!window.confirm(`Keluarkan ${member.name} dari bisnis ini?`)) return;
+    if (!window.confirm(`Nonaktifkan ${member.name}? Aksesnya dicabut, datanya tetap tersimpan dan bisa diaktifkan lagi.`)) return;
     setBusy(true);
     setNotice("");
     try {
@@ -232,13 +232,64 @@ export function TeamManager({
         { method: "DELETE" },
       );
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error?.message ?? "Gagal mengeluarkan anggota.");
+      if (!response.ok) throw new Error(result.error?.message ?? "Gagal menonaktifkan anggota.");
       setNoticeVariant("success");
-      setNotice(`${member.name} dikeluarkan dari bisnis.`);
+      setNotice(`${member.name} dinonaktifkan. Tambahkan lagi dengan email yang sama untuk mengaktifkannya kembali.`);
       await reload();
     } catch (error) {
       setNoticeVariant("error");
-      setNotice(error instanceof Error ? error.message : "Gagal mengeluarkan anggota.");
+      setNotice(error instanceof Error ? error.message : "Gagal menonaktifkan anggota.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function activate(member: MemberRow) {
+    setBusy(true);
+    setNotice("");
+    try {
+      const response = await fetch(
+        `/api/v1/businesses/${businessSlug}/team/${member.membershipId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ active: true }),
+        },
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message ?? "Gagal mengaktifkan anggota.");
+      setNoticeVariant("success");
+      setNotice(`${member.name} aktif kembali.`);
+      await reload();
+    } catch (error) {
+      setNoticeVariant("error");
+      setNotice(error instanceof Error ? error.message : "Gagal mengaktifkan anggota.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Reset sandi: server membuat sandi sementara, ditampilkan sekali di banner. */
+  async function resetPassword(member: MemberRow) {
+    if (!window.confirm(`Reset sandi ${member.name}? Sandi lama langsung tidak berlaku.`)) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      const response = await fetch(
+        `/api/v1/businesses/${businessSlug}/team/${member.membershipId}/password`,
+        { method: "POST" },
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message ?? "Gagal mereset sandi.");
+      setInviteResult({
+        email: member.email,
+        temporaryPassword: result.data.temporaryPassword ?? null,
+      });
+      setNoticeVariant("success");
+      setNotice(`Sandi ${member.name} sudah direset.`);
+    } catch (error) {
+      setNoticeVariant("error");
+      setNotice(error instanceof Error ? error.message : "Gagal mereset sandi.");
     } finally {
       setBusy(false);
     }
@@ -565,12 +616,32 @@ export function TeamManager({
                     </button>
                   )}
                   <button
-                    onClick={() => void remove(member)}
+                    type="button"
+                    onClick={() => void resetPassword(member)}
                     disabled={busy}
-                    aria-label={`Keluarkan ${member.name}`}
-                    className="rounded-lg p-2 text-[#b4756d] hover:bg-[#fdf3f2] disabled:opacity-40"
+                    aria-label={`Reset sandi ${member.name}`}
+                    title="Reset sandi"
+                    className="rounded-lg p-2 text-[#7d8a85] hover:bg-brand-50 disabled:opacity-40"
                   >
-                    <Trash2 className="size-3.5" />
+                    <KeyRound className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void (member.active ? remove(member) : activate(member))}
+                    disabled={busy}
+                    aria-label={
+                      member.active
+                        ? `Nonaktifkan ${member.name}`
+                        : `Aktifkan ${member.name}`
+                    }
+                    title={member.active ? "Nonaktifkan" : "Aktifkan"}
+                    className={
+                      member.active
+                        ? "rounded-lg p-2 text-[#b4756d] hover:bg-[#fdf3f2] disabled:opacity-40"
+                        : "rounded-lg p-2 text-brand-600 hover:bg-brand-50 disabled:opacity-40"
+                    }
+                  >
+                    <Power className="size-3.5" />
                   </button>
                 </div>
               ) : (

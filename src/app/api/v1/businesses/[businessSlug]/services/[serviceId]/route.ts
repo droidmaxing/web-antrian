@@ -19,6 +19,7 @@ const updateSchema = z
     description: z.string().trim().max(500).nullable().optional(),
     averageMinutes: z.coerce.number().int().min(1).max(240).optional(),
     active: z.boolean().optional(),
+    autoAssignCounter: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "Tidak ada perubahan yang dikirim.",

@@ -139,14 +139,16 @@ export async function rotateDisplayToken(context: BusinessContext, displayId: st
 export async function deleteDisplay(context: BusinessContext, displayId: string) {
   requireRole(context, ["SUPER_ADMIN"]);
   const display = await findScopedDisplay(context, displayId);
+  // Display dinonaktifkan, bukan dihapus: token display bisa sudah ditempel di
+  // layar TV dan kita tidak mau memutus riwayat audit-nya.
   await prisma.$transaction(async (tx) => {
-    await tx.display.delete({ where: { id: display.id } });
+    await tx.display.update({ where: { id: display.id }, data: { active: false } });
     await tx.auditLog.create({
       data: {
         businessId: context.businessId,
         actorUserId: context.userId,
         branchId: display.branchId,
-        action: "DISPLAY_DELETED",
+        action: "DISPLAY_DEACTIVATED",
         targetType: "Display",
         targetId: display.id,
       },

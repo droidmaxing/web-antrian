@@ -20,6 +20,7 @@ const createSchema = z.object({
   description: z.string().trim().max(500).optional().nullable(),
   averageMinutes: z.coerce.number().int().min(1).max(240).default(10),
   active: z.boolean().optional(),
+  autoAssignCounter: z.boolean().optional(),
 });
 
 export async function GET(_request: Request, { params }: RouteContext) {

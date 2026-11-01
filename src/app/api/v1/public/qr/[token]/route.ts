@@ -23,6 +23,11 @@ const issueSchema = z.object({
   serviceId: z.string().min(1).max(64),
   customerName: z.string().trim().min(2).max(120),
   customerPhone: z.string().trim().min(8).max(24).optional(),
+  customerNik: z
+    .string()
+    .trim()
+    .regex(/^\d{16}$/, "NIK harus 16 digit angka.")
+    .optional(),
 });
 
 export async function POST(request: Request, { params }: RouteContext) {
@@ -34,6 +39,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         serviceId: "Layanan",
         customerName: "Nama Anda",
         customerPhone: "Nomor WhatsApp",
+        customerNik: "NIK",
       });
     }
     // A QR poster is public, so anyone can burn ticket numbers; cap issuance

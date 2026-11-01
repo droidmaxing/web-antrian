@@ -18,7 +18,7 @@ export default async function WorkspaceSetupPage() {
   if (!session?.user?.id) redirect("/login");
 
   const membership = await prisma.businessMembership.findFirst({
-    where: { userId: session.user.id, business: { active: true } },
+    where: { userId: session.user.id, active: true, business: { active: true } },
     orderBy: { createdAt: "asc" },
     select: { business: { select: { slug: true } } },
   });

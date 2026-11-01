@@ -71,7 +71,12 @@ export default async function PublicQueuePage({ params }: PageProps) {
             <h2 className="mb-5 text-base font-semibold tracking-[-.02em] text-brand-900">
               Mulai antrean Anda
             </h2>
-            <PublicQueueForm token={token} services={config.services} />
+            <PublicQueueForm
+              token={token}
+              services={config.services}
+              intake={config.intake}
+              nikRequired={config.nikRequired}
+            />
           </div>
         </section>
         <p className="mt-5 text-center text-[11px] text-[#5d6b67]">

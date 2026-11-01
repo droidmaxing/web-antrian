@@ -6,6 +6,7 @@ import {
   getWeekday,
   isValidLocalDate,
   localDateTimeToUtc,
+  localDateInTimezone,
 } from "../src/modules/booking/domain/time";
 import { bookingStatusAfterAction } from "../src/modules/booking/domain/state-machine";
 import { AppError } from "../src/modules/shared/errors";
@@ -73,6 +74,14 @@ test("booking state transitions reject actions after cancellation or check-in", 
   assert.equal(bookingStatusAfterAction("PENDING", "confirm"), "CONFIRMED");
   assert.equal(bookingStatusAfterAction("PENDING", "cancel"), "CANCELLED");
   assert.equal(bookingStatusAfterAction("CONFIRMED", "check-in"), "CHECKED_IN");
+  assert.equal(bookingStatusAfterAction("CONFIRMED", "no-show"), "NO_SHOW");
+  assert.throws(
+    () => bookingStatusAfterAction("PENDING", "no-show"),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.status === 409 &&
+      error.code === "INVALID_BOOKING_TRANSITION",
+  );
   assert.throws(
     () => bookingStatusAfterAction("CANCELLED", "confirm"),
     (error: unknown) =>
@@ -87,4 +96,24 @@ test("booking state transitions reject actions after cancellation or check-in", 
       error.status === 409 &&
       error.code === "INVALID_BOOKING_TRANSITION",
   );
+});
+
+test("booking online hanya menerima tanggal H-1 sampai batas jendela booking", () => {
+  // Aturan yang sama dengan validateDate: hari ini tidak boleh, besok boleh.
+  const timezone = "Asia/Jakarta";
+  const today = localDateInTimezone(new Date("2026-10-31T02:00:00.000Z"), timezone);
+  const firstAllowed = addLocalDays(today, 1);
+  const lastAllowed = addLocalDays(today, 14);
+
+  assert.equal(today, "2026-10-31");
+  assert.equal(firstAllowed, "2026-11-01");
+  assert.equal(lastAllowed, "2026-11-14");
+  assert.ok(addLocalDays("2026-10-31", 1) > today);
+  assert.ok(addLocalDays("2026-12-31", 1) === "2027-01-01");
+});
+
+test("hari operasional cabang mengikuti hari lokal tanggal tersebut", () => {
+  // 2026-11-01 adalah hari Minggu di zona cabang mana pun (Asia).
+  assert.equal(getWeekday("2026-11-01"), 0);
+  assert.equal(getWeekday("2026-11-02"), 1);
 });

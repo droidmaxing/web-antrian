@@ -51,6 +51,11 @@ const bookingSchema = z.object({
       return digits >= 8 && digits <= 15;
     }),
   customerEmail: z.email().max(254).optional(),
+  customerNik: z
+    .string()
+    .trim()
+    .regex(/^\d{16}$/, "NIK harus 16 digit angka.")
+    .optional(),
 });
 
 export async function POST(request: Request, { params }: RouteContext) {
@@ -65,6 +70,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         customerName: "Nama lengkap",
         customerPhone: "Nomor telepon",
         customerEmail: "Email",
+        customerNik: "NIK",
       });
     }
     // Public booking form: same abuse surface as QR issuance (someone could

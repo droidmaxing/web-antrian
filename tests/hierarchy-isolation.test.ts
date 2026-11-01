@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { prisma } from "@/lib/prisma";
 import { MembershipRole } from "@prisma/client";
+import { cleanupTracked, trackBusiness, trackUser } from "./helpers/cleanup";
 
 /**
  * Simulasi lengkap: MASTER_ADMIN → 2 Owners → sub-accounts → queue operations
@@ -33,6 +34,7 @@ test("Hierarchy: Create 2 new owner accounts", async () => {
       active: true,
     },
   });
+  trackUser(owner1);
   
   const owner2 = await prisma.user.create({
     data: {
@@ -42,6 +44,7 @@ test("Hierarchy: Create 2 new owner accounts", async () => {
       active: true,
     },
   });
+  trackUser(owner2);
   
   assert.ok(owner1.id, "Owner 1 created");
   assert.ok(owner2.id, "Owner 2 created");
@@ -73,6 +76,7 @@ test("Hierarchy: Each owner creates own business", async () => {
       timezone: "Asia/Jakarta",
     },
   });
+  trackBusiness(biz1);
   
   // Create business for owner 2
   const biz2 = await prisma.business.create({
@@ -83,6 +87,7 @@ test("Hierarchy: Each owner creates own business", async () => {
       timezone: "Asia/Jakarta",
     },
   });
+  trackBusiness(biz2);
   
   assert.ok(biz1.id, "Business 1 created");
   assert.ok(biz2.id, "Business 2 created");
@@ -147,6 +152,7 @@ test("Hierarchy: Each owner invites 2 sub-accounts (ADMIN role)", async () => {
       active: true,
     },
   });
+  trackUser(sub1Owner1);
   
   const sub2Owner1 = await prisma.user.create({
     data: {
@@ -156,6 +162,7 @@ test("Hierarchy: Each owner invites 2 sub-accounts (ADMIN role)", async () => {
       active: true,
     },
   });
+  trackUser(sub2Owner1);
   
   // Add them to owner 1's business as ADMIN
   const subMem1 = await prisma.businessMembership.create({
@@ -319,6 +326,7 @@ test("Isolation: Owner 1 cannot see sub-accounts from Owner 2's business", async
       active: true,
     },
   });
+  trackUser(subOwner2);
   
   // Add to owner 2's business
   await prisma.businessMembership.create({
@@ -388,3 +396,5 @@ test("Isolation: Data in one business doesn't leak to another", async () => {
     "Business 2 queues only belong to Business 2"
   );
 });
+
+test.after(cleanupTracked);

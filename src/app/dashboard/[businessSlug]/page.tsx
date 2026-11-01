@@ -8,10 +8,12 @@ import { listBranchBookings } from "@/modules/booking/application/booking-servic
 import { AppError } from "@/modules/shared/errors";
 import { ErrorState } from "@/components/error-state";
 import { getTheme } from "@/modules/tenancy/theme-service";
+import { intakeState } from "@/modules/queue/domain/intake";
+import { formatLocalDateTime } from "@/modules/booking/domain/time";
 
 type PageProps = {
   params: Promise<{ businessSlug: string }>;
-  searchParams: Promise<{ branch?: string }>;
+  searchParams: Promise<{ branch?: string; tab?: string }>;
 };
 
 export const dynamic = "force-dynamic";
@@ -21,7 +23,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
   if (!session?.user) redirect("/login");
 
   const { businessSlug } = await params;
-  const { branch: requestedBranchId } = await searchParams;
+  const { branch: requestedBranchId, tab } = await searchParams;
   let context;
   try {
     context = await requireBusinessContext(businessSlug, requestedBranchId || undefined);
@@ -58,6 +60,10 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
             id: true,
             name: true,
             timezone: true,
+            intakeMode: true,
+            operatingHours: {
+              select: { weekday: true, opensAt: true, closesAt: true, closed: true },
+            },
             counters: {
               where: { active: true },
               orderBy: { createdAt: "asc" },
@@ -149,8 +155,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
   const waitTime = averageWaitMinutes.length
     ? Math.round(averageWaitMinutes.reduce((sum, minutes) => sum + minutes, 0) / averageWaitMinutes.length)
     : 0;
-  const featureRows = await prisma.featureConfiguration.findMany({
-    where: { businessId: context.businessId, enabled: true },
+  const featureRows = await prisma.featureConfiguration.findMany({    where: { businessId: context.businessId, enabled: true },
     select: { featureKey: true },
   });
   const bookingEnabled = featureRows.some((feature) => feature.featureKey === "BOOKING");
@@ -167,11 +172,19 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
   const bookings = bookingEnabled
     ? await listBranchBookings(context, branch.id, today)
     : [];
+  // Satu kesimpulan dengan halaman QR publik supaya tombol di dashboard dan
+  // penolakan di API tidak pernah berbeda.
+  const intake = intakeState({
+    mode: branch.intakeMode,
+    localDateTime: formatLocalDateTime(new Date(), branch.timezone ?? business.timezone),
+    hours: branch.operatingHours,
+  });
 
   return (
     <Dashboard
       businessName={business.name}
       businessSlug={businessSlug}
+      initialView={tab}
       theme={theme}
       branch={{
 
@@ -213,6 +226,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
       userName={session.user.name ?? "Pengguna"}
       serverNow={new Date().toISOString()}
       enabledFeatures={featureRows.map((feature) => feature.featureKey)}
+      intake={{ open: intake.open, mode: branch.intakeMode, reason: intake.reason }}
       bookings={bookings.map((booking) => ({
         id: booking.id,
         scheduledAt: booking.scheduledAt.toISOString(),
@@ -221,6 +235,7 @@ export default async function DashboardPage({ params, searchParams }: PageProps)
         customer: booking.customer,
         queue: booking.queue,
       }))}
+      bookingDate={today}
       metrics={{
         total: accessibleQueues.length,
         waiting: waiting.length,

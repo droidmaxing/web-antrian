@@ -36,22 +36,58 @@ const labels: Record<BookingRow["status"], string> = {
 
 export function BookingManagement({
   businessSlug,
+  branchId,
+  today,
   timezone,
   bookings,
   readOnly,
 }: {
   businessSlug: string;
+  branchId: string;
+  /** Tanggal hari ini di zona cabang; awal daftar dan tombol "Hari ini". */
+  today: string;
   timezone: string;
   bookings: BookingRow[];
   readOnly: boolean;
 }) {
   const router = useRouter();
-  const paged = usePaged(bookings);
+  // Booking biasanya dibuat untuk hari-hari berikutnya, jadi daftar bisa
+  // dipindah tanggal tanpa menunggu konfirmasi muncul esok hari.
+  const [date, setDate] = useState(today);
+  const [rows, setRows] = useState(bookings);
+  const [loadingDate, setLoadingDate] = useState(false);
+  const paged = usePaged(rows);
   const [pending, setPending] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [noticeVariant, setNoticeVariant] = useState<"error" | "success">("success");
 
-  async function runAction(bookingId: string, action: "confirm" | "cancel" | "check-in") {
+  async function loadDate(next: string) {
+    setLoadingDate(true);
+    try {
+      const response = await fetch(
+        `/api/v1/businesses/${businessSlug}/bookings?branchId=${branchId}&date=${next}`,
+        { cache: "no-store" },
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message ?? "Gagal memuat booking.");
+      setRows(result.data);
+    } catch (error) {
+      setRows([]);
+      setNoticeVariant("error");
+      setNotice(error instanceof Error ? error.message : "Gagal memuat booking.");
+    } finally {
+      setLoadingDate(false);
+    }
+  }
+
+  function selectDate(next: string) {
+    if (!next) return;
+    setDate(next);
+    setNotice("");
+    void loadDate(next);
+  }
+
+  async function runAction(bookingId: string, action: "confirm" | "cancel" | "check-in" | "no-show") {
     setPending(`${bookingId}:${action}`);
     setNotice("");
     try {
@@ -74,6 +110,9 @@ export function BookingManagement({
       );
       setNoticeVariant("success");
       router.refresh();
+      // Status berubah: muat ulang tanggal yang sedang dilihat supaya tidak
+      // menampilkan status lama.
+      await loadDate(date);
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Terjadi kesalahan.");
@@ -90,25 +129,49 @@ export function BookingManagement({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-100 px-5 py-5 md:px-6">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-[15px] font-semibold tracking-[-.02em]">Booking hari ini</h2>
+            <h2 className="text-[15px] font-semibold tracking-[-.02em]">
+              {date === today ? "Booking hari ini" : "Booking"}
+            </h2>
             <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-600">
-              {bookings.length}
+              {rows.length}
             </span>
           </div>
           <p className="mt-1 text-xs text-[#66736e]">
             Konfirmasi reservasi dan check-in pelanggan.
           </p>
         </div>
-        <span className="flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1.5 text-[11px] text-[#7b8983]">
-          <CalendarClock className="size-3.5" /> Jadwal lokal cabang
-        </span>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1.5 text-[11px] text-[#7b8983]">
+            <CalendarClock className="size-3.5" />
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => selectDate(event.target.value)}
+              aria-label="Tanggal booking"
+              className="bg-transparent text-[11px] text-[#5d6b65] outline-none"
+            />
+          </label>
+          {date !== today && (
+            <button
+              type="button"
+              onClick={() => selectDate(today)}
+              className="h-7 rounded-full bubble-btn px-2.5 text-[11px] font-medium text-brand-700"
+            >
+              Hari ini
+            </button>
+          )}
+        </div>
       </div>
 
       {notice && (
         <InlineNotice message={notice} variant={noticeVariant} className="mx-5 mt-4 md:mx-6" />
       )}
 
-      {bookings.length ? (
+      {loadingDate ? (
+        <p className="flex items-center justify-center gap-2 px-5 py-7 text-xs text-[#5d6b67] md:px-6">
+          <LoaderCircle className="size-3.5 animate-spin" /> Memuat booking...
+        </p>
+      ) : rows.length ? (
         <div className="divide-y divide-brand-100">
           {paged.rows?.map((booking) => (
             <article
@@ -180,6 +243,11 @@ export function BookingManagement({
                         loading={pending === `${booking.id}:cancel`}
                         onClick={() => void runAction(booking.id, "cancel")}
                       />
+                      <ActionButton
+                        label="Tidak hadir"
+                        loading={pending === `${booking.id}:no-show`}
+                        onClick={() => void runAction(booking.id, "no-show")}
+                      />
                     </>
                   )}
                 </div>
@@ -192,7 +260,7 @@ export function BookingManagement({
           <div className="rounded-xl bg-brand-50 px-4 py-8 text-center bubble-panel">
             <CalendarCheckIcon />
             <p className="mt-3 text-xs font-semibold text-[#46544f]">
-              Belum ada booking hari ini
+              Belum ada booking pada tanggal ini
             </p>
             <p className="mt-1 text-[11px] text-[#5d6b67]">
               Reservasi pelanggan akan tampil di sini.

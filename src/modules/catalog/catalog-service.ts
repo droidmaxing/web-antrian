@@ -35,6 +35,7 @@ export type ServiceInput = {
   description?: string | null;
   averageMinutes: number;
   active?: boolean;
+  autoAssignCounter?: boolean;
 };
 
 export async function listServices(context: BusinessContext) {
@@ -66,6 +67,7 @@ export async function createService(context: BusinessContext, input: ServiceInpu
           description: input.description ?? null,
           averageMinutes: input.averageMinutes,
           active: input.active ?? true,
+          autoAssignCounter: input.autoAssignCounter ?? false,
         },
       });
       await tx.auditLog.create({
@@ -106,6 +108,9 @@ export async function updateService(
           ...(input.description === undefined ? {} : { description: input.description }),
           ...(input.averageMinutes === undefined ? {} : { averageMinutes: input.averageMinutes }),
           ...(input.active === undefined ? {} : { active: input.active }),
+          ...(input.autoAssignCounter === undefined
+            ? {}
+            : { autoAssignCounter: input.autoAssignCounter }),
         },
       });
       await tx.auditLog.create({
@@ -133,28 +138,25 @@ export async function deleteService(context: BusinessContext, serviceId: string)
   requireRole(context, ["SUPER_ADMIN"]);
   const service = await prisma.service.findFirst({
     where: { id: serviceId, businessId: context.businessId },
-    include: { _count: { select: { queues: true, bookings: true } } },
+    include: { _count: { select: { queues: true } } },
   });
   if (!service) throw new AppError("Layanan tidak ditemukan.", 404, "SERVICE_NOT_FOUND");
 
-  const archived = service._count.queues > 0 || service._count.bookings > 0;
+  // Nonaktifkan, jangan hapus: layanan bisa dipakai nomor antrean, booking,
+  // loket, maupun display lama sehingga penghapusan akan memutus relasi.
   return prisma.$transaction(async (tx) => {
-    if (archived) {
-      await tx.service.update({ where: { id: service.id }, data: { active: false } });
-    } else {
-      await tx.service.delete({ where: { id: service.id } });
-    }
+    await tx.service.update({ where: { id: service.id }, data: { active: false } });
     await tx.auditLog.create({
       data: auditData({
         businessId: context.businessId,
         actorUserId: context.userId,
-        action: archived ? "SERVICE_ARCHIVED" : "SERVICE_DELETED",
+        action: "SERVICE_ARCHIVED",
         targetType: "Service",
         targetId: service.id,
         metadata: { code: service.code, queues: service._count.queues },
       }),
     });
-    return { id: service.id, archived };
+    return { id: service.id, archived: true };
   });
 }
 
@@ -310,24 +312,19 @@ export async function deleteCounter(context: BusinessContext, counterId: string)
       "COUNTER_BUSY",
     );
   }
-  const archived = counter._count.assignedQueues > 0;
   return prisma.$transaction(async (tx) => {
-    if (archived) {
-      await tx.counter.update({ where: { id: counter.id }, data: { active: false } });
-    } else {
-      await tx.counter.delete({ where: { id: counter.id } });
-    }
+    await tx.counter.update({ where: { id: counter.id }, data: { active: false } });
     await tx.auditLog.create({
       data: auditData({
         businessId: context.businessId,
         actorUserId: context.userId,
         branchId: counter.branchId,
-        action: archived ? "COUNTER_ARCHIVED" : "COUNTER_DELETED",
+        action: "COUNTER_ARCHIVED",
         targetType: "Counter",
         targetId: counter.id,
         metadata: { code: counter.code },
       }),
     });
-    return { id: counter.id, archived };
+    return { id: counter.id, archived: true };
   });
 }

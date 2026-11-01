@@ -11,6 +11,21 @@ export function timezoneOr(value?: string | null): string {
 }
 
 /**
+ * Zona hanya berguna kalau `Intl` mengenalinya; nama yang salah (mis. "Mars/Olympus")
+ * membuat setiap `Intl.DateTimeFormat` melempar RangeError, dan karena dipakai di
+ * alur antrean/booking, seluruh halaman pelanggan cabang itu jadi 500. Jadi tolak
+ * di pintu masuk, jangan simpan ke DB.
+ */
+export function isValidTimezone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Zona perangkat pengunjung. Jam di halaman publik (struk, status antrean,
  * booking) harus mengikuti lokasi user yang membukanya, bukan zona server atau
  * default usaha — hasil `Intl` baru bisa dipercaya di sisi klien.

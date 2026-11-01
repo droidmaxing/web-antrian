@@ -20,6 +20,7 @@ const featureInfo: {
   { key: "ANALYTICS", title: "Analytics", description: "Laporan jam sibuk dan performa layanan." },
   { key: "ADVERTISEMENT", title: "Advertisement", description: "Materi promosi di layar display." },
   { key: "MULTI_BRANCH", title: "Multi Branch", description: "Kelola lebih dari satu cabang bisnis." },
+  { key: "NIK", title: "Validasi NIK", description: "Booking online & ambil nomor wajib mengisi NIK 16 digit." },
 ];
 
 export function FeatureSettings({

@@ -11,7 +11,7 @@ const inviteSchema = z.object({
   email: z.email(),
   role: z.enum(["OWNER", "SUPER_ADMIN", "ADMIN"]),
   branchIds: z.array(z.string().min(1)).default([]),
-  counterIds: z.array(z.string().min(1)).default([]),
+  counterIds: z.array(z.string().min(1)).optional(),
 });
 
 export async function GET(_request: Request, { params }: RouteContext) {

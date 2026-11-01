@@ -32,6 +32,14 @@ const labels: Record<string, string> = {
   NO_SHOW: "Tidak hadir",
 };
 
+const queueStatusLabels: Record<string, string> = {
+  WAITING: "Menunggu dipanggil",
+  CALLED: "Sedang dipanggil",
+  SERVING: "Sedang dilayani",
+  COMPLETED: "Selesai dilayani",
+  SKIPPED: "Nomor dilewati",
+};
+
 export function PublicBookingStatus({ token }: { token: string }) {
   const [booking, setBooking] = useState<BookingInfo | null>(null);
   const [error, setError] = useState("");
@@ -120,16 +128,16 @@ export function PublicBookingStatus({ token }: { token: string }) {
         <DetailRow icon={CalendarCheck} label="Waktu kunjungan" value={dateTime} />
         <DetailRow icon={TicketCheck} label="Layanan" value={booking.service} />
         <DetailRow icon={MapPin} label="Cabang" value={booking.branch} />
-        {booking.queue && (
+        {booking.queue && !cancelled && (
           <div className="bubble-panel bg-brand-50 p-4">
             <p className="text-[11px] font-medium uppercase tracking-[.1em] text-brand-500">
-              Nomor antrean check-in
+              Nomor antrean Anda
             </p>
             <p className="mt-1 text-2xl font-semibold tracking-tight text-brand-700">
               {booking.queue.ticketNumber}
             </p>
             <p className="mt-1 text-xs text-[#7b9285]">
-              {booking.queue.status === "WAITING" ? "Menunggu dipanggil" : booking.queue.status}
+              {queueStatusLabels[booking.queue.status] ?? booking.queue.status}
             </p>
           </div>
         )}

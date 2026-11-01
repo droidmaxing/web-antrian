@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { extendSubscriptionPeriod } from "../src/modules/platform/platform-service";
 import { prisma } from "../src/lib/prisma";
+import { cleanupTracked, trackBusiness, trackUser } from "./helpers/cleanup";
 
 test("extend subscription adds months to currentPeriodEnd and sets status to ACTIVE", async () => {
   // Create test admin user
@@ -13,12 +14,14 @@ test("extend subscription adds months to currentPeriodEnd and sets status to ACT
       platformRole: "MASTER_ADMIN",
     },
   });
+  trackUser(admin);
 
   // Create test business and subscription
   const slug = `test-co-${Date.now()}`;
   const business = await prisma.business.create({
     data: { name: "Test Co", slug },
   });
+  trackBusiness(business);
 
   const baseDate = new Date("2026-02-15T10:30:00.000Z");
   const subscription = await prisma.subscription.create({
@@ -54,6 +57,7 @@ test("extend subscription throws when business subscription not found", async ()
       platformRole: "MASTER_ADMIN",
     },
   });
+  trackUser(admin);
 
   try {
     await extendSubscriptionPeriod("nonexistent-business-id", { months: 1 }, admin.id);
@@ -74,11 +78,13 @@ test("extend subscription handles edge case: February to May crossing month boun
       platformRole: "MASTER_ADMIN",
     },
   });
+  trackUser(admin);
 
   const slug = `edge-case-co-${Date.now()}`;
   const business = await prisma.business.create({
     data: { name: "Edge Case Co", slug },
   });
+  trackBusiness(business);
 
   const baseDate = new Date("2026-01-31T00:00:00.000Z");
   const subscription = await prisma.subscription.create({
@@ -103,3 +109,5 @@ test("extend subscription handles edge case: February to May crossing month boun
   await prisma.business.delete({ where: { id: business.id } });
   await prisma.user.delete({ where: { id: admin.id } });
 });
+
+test.after(cleanupTracked);

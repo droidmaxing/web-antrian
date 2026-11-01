@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CirclePlus, LoaderCircle, Pencil, Power, Trash2 } from "lucide-react";
+import { Building2, CirclePlus, LoaderCircle, Pencil, Power, Trash2 } from "lucide-react";
 import { Pager, usePaged } from "@/components/pagination";
 import { InlineNotice } from "@/components/inline-notice";
 
@@ -13,6 +13,7 @@ type ServiceRow = {
   description: string | null;
   averageMinutes: number;
   active: boolean;
+  autoAssignCounter: boolean;
   queueCount: number;
   counterCount: number;
   bookingCount: number;
@@ -24,6 +25,7 @@ type Draft = {
   code: string;
   description: string;
   averageMinutes: number;
+  autoAssignCounter: boolean;
 };
 
 const emptyDraft: Draft = {
@@ -32,6 +34,7 @@ const emptyDraft: Draft = {
   code: "",
   description: "",
   averageMinutes: 10,
+  autoAssignCounter: false,
 };
 
 export function ServicesManager({
@@ -96,6 +99,7 @@ export function ServicesManager({
         code: draft.code.trim().toUpperCase(),
         description: draft.description.trim() || null,
         averageMinutes: draft.averageMinutes,
+        autoAssignCounter: draft.autoAssignCounter,
       };
       const response = await fetch(
         draft.id
@@ -166,6 +170,29 @@ export function ServicesManager({
     } catch (error) {
       setNoticeVariant("error");
       setNotice(error instanceof Error ? error.message : "Gagal mengubah status.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Loket otomatis per layanan: nomor langsung dipetakan ke satu loket. */
+  async function toggleAutoCounter(service: ServiceRow) {
+    setBusy(true);
+    try {
+      const response = await fetch(
+        `/api/v1/businesses/${businessSlug}/services/${service.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ autoAssignCounter: !service.autoAssignCounter }),
+        },
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message ?? "Gagal mengubah loket otomatis.");
+      await reload();
+    } catch (error) {
+      setNoticeVariant("error");
+      setNotice(error instanceof Error ? error.message : "Gagal mengubah loket otomatis.");
     } finally {
       setBusy(false);
     }
@@ -252,6 +279,20 @@ export function ServicesManager({
               className="mt-1.5 h-9 w-full rounded-lg bubble-field bg-white px-3 text-xs text-[#344440] outline-none"
             />
           </label>
+          <label className="flex items-center gap-2 text-[11px] font-medium text-[#5d6b65] sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={draft.autoAssignCounter}
+              onChange={(event) =>
+                setDraft({ ...draft, autoAssignCounter: event.target.checked })
+              }
+              className="size-4 rounded border-brand-200 accent-brand-700"
+            />
+            Nomor langsung dapat loket
+            <span className="font-normal text-[#5d6b67]">
+              (layanan yang loketnya terpisah ruangan/gedung)
+            </span>
+          </label>
           <div className="flex items-end gap-2 sm:col-span-2">
             <button
               type="submit"
@@ -292,6 +333,11 @@ export function ServicesManager({
                     Nonaktif
                   </span>
                 )}
+                {service.autoAssignCounter && (
+                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[9px] font-medium text-brand-700">
+                    Loket otomatis
+                  </span>
+                )}
               </div>
               <p className="mt-1 text-[11px] text-[#66736e]">
                 {service.averageMinutes} mnt · {service.counterCount} loket ·{" "}
@@ -309,12 +355,29 @@ export function ServicesManager({
                       code: service.code,
                       description: service.description ?? "",
                       averageMinutes: service.averageMinutes,
+                      autoAssignCounter: service.autoAssignCounter,
                     })
                   }
                   aria-label={`Ubah ${service.name}`}
                   className="rounded-lg p-2 text-[#5c6a65] hover:bg-brand-50"
                 >
                   <Pencil className="size-3.5" />
+                </button>
+                <button
+                  onClick={() => void toggleAutoCounter(service)}
+                  disabled={busy}
+                  aria-pressed={service.autoAssignCounter}
+                  aria-label={
+                    service.autoAssignCounter
+                      ? `Matikan loket otomatis ${service.name}`
+                      : `Hidupkan loket otomatis ${service.name}`
+                  }
+                  title="Nomor antrean langsung dipetakan ke satu loket"
+                  className={`rounded-lg p-2 hover:bg-brand-50 disabled:opacity-40 ${
+                    service.autoAssignCounter ? "text-brand-700" : "text-[#9aa5a0]"
+                  }`}
+                >
+                  <Building2 className="size-3.5" />
                 </button>
                 <button
                   onClick={() => void toggle(service)}

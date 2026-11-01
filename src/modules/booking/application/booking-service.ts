@@ -1,9 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { AccessTokenType, BookingStatus, Prisma } from "@prisma/client";
+import { AccessTokenType, BookingStatus, Prisma, QueueStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
 import { getTheme } from "@/modules/tenancy/theme-service";
-import { requireFeature } from "@/modules/feature/feature-gate";
+import { requireFeature, isFeatureEnabled } from "@/modules/feature/feature-gate";
+import { issueTicket, releaseTicket } from "@/modules/queue/application/issue-ticket";
+import { isValidNik } from "@/modules/shared/nik";
 import {
   buildThirtyMinuteSlots,
   addLocalDays,
@@ -17,8 +19,18 @@ import {
   type BookingAction,
 } from "@/modules/booking/domain/state-machine";
 import { hashAccessToken } from "@/modules/queue/application/public-queue";
+import {
+  bookingLimitViolation,
+  NO_SHOW_WINDOW_DAYS,
+} from "@/modules/booking/domain/limits";
 import { clientAddress, enforceRateLimit } from "@/modules/shared/rate-limit";
 import { BusinessContext, requireRole } from "@/modules/tenancy/context";
+
+const ACTIVE_BOOKING_STATUSES = [
+  BookingStatus.PENDING,
+  BookingStatus.CONFIRMED,
+  BookingStatus.CHECKED_IN,
+] as const;
 
 const BOOKING_WINDOW_DAYS = 30;
 
@@ -71,14 +83,13 @@ function validateDate(localDate: string, timezone: string) {
     throw new AppError("Format tanggal tidak valid.", 400, "INVALID_BOOKING_DATE");
   }
   const today = localDateInTimezone(new Date(), timezone);
-  const lastAllowedDate = new Date(`${today}T00:00:00.000Z`);
-  lastAllowedDate.setUTCDate(lastAllowedDate.getUTCDate() + BOOKING_WINDOW_DAYS);
-  if (
-    localDate < today ||
-    localDate > lastAllowedDate.toISOString().slice(0, 10)
-  ) {
+  // Booking online minimal H-1. Antrean hari ini diambil langsung di lokasi
+  // lewat QR, jadi tidak perlu tanggal hari ini di tautan booking.
+  const firstAllowedDate = addLocalDays(today, 1);
+  const lastAllowedDate = addLocalDays(today, BOOKING_WINDOW_DAYS);
+  if (localDate < firstAllowedDate || localDate > lastAllowedDate) {
     throw new AppError(
-      `Booking tersedia dari hari ini hingga ${BOOKING_WINDOW_DAYS} hari ke depan.`,
+      `Booking online tersedia mulai besok (H-1) sampai ${BOOKING_WINDOW_DAYS} hari ke depan. Untuk hari ini, ambil nomor lewat QR di lokasi.`,
       400,
       "BOOKING_DATE_OUT_OF_RANGE",
     );
@@ -135,12 +146,10 @@ export async function getBookingConfiguration(token: string, request: Request) {
     branch: { id: access.branch!.id, name: access.branch!.name },
     timezone,
     today,
-    lastDate: (() => {
-      const date = new Date(`${today}T00:00:00.000Z`);
-      date.setUTCDate(date.getUTCDate() + BOOKING_WINDOW_DAYS);
-      return date.toISOString().slice(0, 10);
-    })(),
+    firstDate: addLocalDays(today, 1),
+    lastDate: addLocalDays(today, BOOKING_WINDOW_DAYS),
     services,
+    nikRequired: await isFeatureEnabled(access.businessId, "NIK"),
     theme: await getTheme(access.businessId),
   };
 }
@@ -206,6 +215,7 @@ export async function createPublicBooking(
     customerName: string;
     customerPhone: string;
     customerEmail?: string;
+    customerNik?: string;
   },
 ) {
   const access = await resolveBookingAccess(token);
@@ -228,6 +238,15 @@ export async function createPublicBooking(
   );
   if (hours.closed) {
     throw new AppError("Cabang tutup pada tanggal tersebut.", 409, "BRANCH_CLOSED");
+  }
+
+  // NIK opsional per bisnis (instansi tertentu mensyaratkannya untuk validasi).
+  const nik = input.customerNik?.trim() ?? "";
+  if (nik && !isValidNik(nik)) {
+    throw new AppError("NIK harus 16 digit angka.", 400, "NIK_INVALID");
+  }
+  if (!nik && (await isFeatureEnabled(access.businessId, "NIK"))) {
+    throw new AppError("NIK wajib diisi 16 digit angka.", 400, "NIK_REQUIRED");
   }
 
   const slotStart = localDateTimeToUtc(input.date, input.time, timezone);
@@ -267,15 +286,69 @@ export async function createPublicBooking(
           throw new AppError("Slot baru saja dipesan orang lain.", 409, "BOOKING_SLOT_TAKEN");
         }
 
-        const customer = await tx.customer.create({
-          data: {
-            businessId: access.businessId,
-            name: input.customerName,
-            phone: input.customerPhone.replace(/[^\d+]/g, ""),
-            email: input.customerEmail,
-          },
+        // Satu pelanggan = satu baris per bisnis: nomor telepon yang sama dipakai
+        // ulang supaya riwayat kunjungan tidak pecah jadi banyak duplikat.
+        const phone = input.customerPhone.replace(/[^\d+]/g, "");
+        const existingCustomer = await tx.customer.findFirst({
+          where: { businessId: access.businessId, phone },
           select: { id: true },
         });
+        const customer = existingCustomer
+          ? await tx.customer.update({
+              where: { id: existingCustomer.id },
+              data: {
+                name: input.customerName,
+                active: true,
+                ...(input.customerEmail ? { email: input.customerEmail } : {}),
+                ...(nik ? { nik } : {}),
+              },
+              select: { id: true },
+            })
+          : await tx.customer.create({
+              data: {
+                businessId: access.businessId,
+                name: input.customerName,
+                phone,
+                email: input.customerEmail,
+                nik: nik || null,
+              },
+              select: { id: true },
+            });
+        // Anti-fake: satu nomor tidak boleh menyapu slot. Dihitung di dalam
+        // transaksi setelah slot terkunci supaya dua request paralel tetap kena.
+        const dayStart = localDateTimeToUtc(input.date, "00:00", timezone);
+        const dayEnd = localDateTimeToUtc(input.date, "23:59", timezone);
+        const [sameServiceSameDay, activeSameDay, recentNoShows] = await Promise.all([
+          tx.booking.count({
+            where: {
+              businessId: access.businessId,
+              customerId: customer.id,
+              serviceId: service.id,
+              status: { in: [...ACTIVE_BOOKING_STATUSES] },
+              scheduledAt: { gte: dayStart, lte: dayEnd },
+            },
+          }),
+          tx.booking.count({
+            where: {
+              businessId: access.businessId,
+              customerId: customer.id,
+              status: { in: [...ACTIVE_BOOKING_STATUSES] },
+              scheduledAt: { gte: dayStart, lte: dayEnd },
+            },
+          }),
+          tx.booking.count({
+            where: {
+              businessId: access.businessId,
+              customerId: customer.id,
+              status: BookingStatus.NO_SHOW,
+              scheduledAt: {
+                gte: new Date(Date.now() - NO_SHOW_WINDOW_DAYS * 24 * 60 * 60 * 1000),
+              },
+            },
+          }),
+        ]);
+        const limit = bookingLimitViolation({ sameServiceSameDay, activeSameDay, recentNoShows });
+        if (limit) throw new AppError(limit.message, 409, limit.code);
         const booking = await tx.booking.create({
           data: {
             businessId: access.businessId,
@@ -283,13 +356,28 @@ export async function createPublicBooking(
             serviceId: service.id,
             customerId: customer.id,
             scheduledAt: slotStart,
-            status: BookingStatus.PENDING,
+            // Identitas pelanggan sudah dikunci (NIK wajib/opsional per bisnis)
+            // dan slotnya dipesan khusus, jadi booking tidak lagi menunggu
+            // moderasi petugas: langsung terkonfirmasi.
+            status: BookingStatus.CONFIRMED,
           },
           select: { id: true, scheduledAt: true, status: true },
         });
         await tx.bookingSlot.update({
           where: { id: slot.id },
           data: { bookingId: booking.id },
+        });
+        // Nomor antrean terbit saat booking dibuat supaya pelanggan langsung tahu
+        // nomornya, tanpa menunggu petugas menekan check-in di hari-H.
+        const ticket = await issueTicket(tx, {
+          businessId: access.businessId,
+          branchId: access.branch!.id,
+          service,
+          customerId: customer.id,
+          serviceDate: new Date(`${input.date}T00:00:00.000Z`),
+          action: "BOOKING_CREATE",
+          bookingId: booking.id,
+          source: "BOOKING",
         });
         await tx.accessToken.create({
           data: {
@@ -333,6 +421,7 @@ export async function createPublicBooking(
           branch: access.branch!.name,
           timezone,
           statusToken: bookingToken,
+          queueTicket: ticket.ticketNumber,
         };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
@@ -448,16 +537,25 @@ export async function transitionBooking(
         },
         include: {
           branch: { select: { active: true, timezone: true, business: { select: { timezone: true } } } },
-          service: { select: { code: true, name: true } },
+          service: { select: { id: true, code: true, name: true, autoAssignCounter: true } },
+          queue: { select: { id: true, ticketNumber: true, status: true } },
         },
       });
       if (!booking || !booking.branch.active) {
         throw new AppError("Booking tidak ditemukan.", 404, "BOOKING_NOT_FOUND");
       }
-      const nextStatus = bookingStatusAfterAction(booking.status, action);
+      const alreadyCheckedIn =
+        action === "check-in" && booking.status === BookingStatus.CHECKED_IN;
+      // Check-in yang diulang (dobel klik/refresh) bukan error: status dan nomor
+      // tetap sama, jadi tidak ada nomor kedua dan tidak ada 409.
+      const nextStatus = alreadyCheckedIn
+        ? booking.status
+        : bookingStatusAfterAction(booking.status, action);
 
-      let queueTicket: string | null = null;
-      if (action === "check-in") {
+      // Nomor antrean sudah terbit saat booking dibuat; check-in hanya mengubah
+      // status booking. Booking lama (tanpa nomor) tetap menerbitkan di sini.
+      let queueTicket: string | null = booking.queue?.ticketNumber ?? null;
+      if (action === "check-in" && !alreadyCheckedIn) {
         const timezone =
           booking.branch.timezone ?? booking.branch.business.timezone;
         const localDate = localDateInTimezone(
@@ -467,71 +565,41 @@ export async function transitionBooking(
         if (localDateInTimezone(new Date(), timezone) !== localDate) {
           throw new AppError("Booking hanya dapat check-in pada tanggal janji.", 409, "BOOKING_NOT_TODAY");
         }
-        const serviceDate = new Date(`${localDate}T00:00:00.000Z`);
-        const sequenceKey = {
-          branchId_serviceId_serviceDate: {
-            branchId: booking.branchId,
-            serviceId: booking.serviceId,
-            serviceDate,
-          },
-        };
-        await tx.queueSequence.upsert({
-          where: sequenceKey,
-          create: {
-            branchId: booking.branchId,
-            serviceId: booking.serviceId,
-            serviceDate,
-            lastNumber: 0,
-          },
-          update: {},
-        });
-        const sequence = await tx.queueSequence.update({
-          where: sequenceKey,
-          data: { lastNumber: { increment: 1 } },
-          select: { lastNumber: true },
-        });
-        queueTicket = `${booking.service.code}-${String(sequence.lastNumber).padStart(3, "0")}`;
-        const queue = await tx.queue.create({
-          data: {
+        // Nomor sudah terbit saat booking dibuat; booking lama (tanpa nomor)
+        // menerbitkan di sini supaya tidak ada pelanggan tanpa antrean.
+        if (!booking.queue) {
+          const ticket = await issueTicket(tx, {
             businessId: context.businessId,
             branchId: booking.branchId,
-            serviceId: booking.serviceId,
+            service: booking.service,
             customerId: booking.customerId,
-            bookingId: booking.id,
-            serviceDate,
-            sequenceNumber: sequence.lastNumber,
-            ticketNumber: queueTicket,
-          },
-        });
-        await tx.queueHistory.create({
-          data: {
-            queueId: queue.id,
-            actorUserId: context.userId,
-            fromStatus: null,
-            toStatus: "WAITING",
+            serviceDate: new Date(`${localDate}T00:00:00.000Z`),
             action: "BOOKING_CHECK_IN",
-          },
-        });
-        await tx.outboxEvent.create({
-          data: {
-            businessId: context.businessId,
-            branchId: booking.branchId,
-            eventType: "queue.issued",
-            aggregateId: queue.id,
-            payload: { queueId: queue.id, ticketNumber: queue.ticketNumber, source: "BOOKING" },
-          },
-        });
+            bookingId: booking.id,
+            actorUserId: context.userId,
+            source: "BOOKING",
+          });
+          queueTicket = ticket.ticketNumber;
+        }
       }
 
       await tx.booking.update({
         where: { id: booking.id },
         data: { status: nextStatus },
       });
-      if (action === "cancel") {
+      if (action === "cancel" || nextStatus === BookingStatus.NO_SHOW) {
         await tx.bookingSlot.updateMany({
           where: { bookingId: booking.id },
           data: { bookingId: null },
         });
+        // Nomor yang sudah terbit jangan menggantung di daftar tunggu petugas.
+        if (booking.queue) {
+          await releaseTicket(tx, {
+            queueId: booking.queue.id,
+            status: action === "cancel" ? QueueStatus.CANCELLED : QueueStatus.NO_SHOW,
+            actorUserId: context.userId,
+          });
+        }
       }
       await tx.auditLog.create({
         data: {

@@ -1,13 +1,89 @@
 import { timezoneOr } from "@/modules/shared/timezone";
 import { createHash, randomBytes } from "node:crypto";
-import { AccessTokenType } from "@prisma/client";
+import { AccessTokenType, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
 import { getTheme } from "@/modules/tenancy/theme-service";
 import { clientAddress, enforceRateLimit } from "@/modules/shared/rate-limit";
+import { estimateWaitMinutes } from "@/modules/queue/domain/estimate";
+import { dateForTimezone } from "@/modules/queue/domain/service-date";
+import { intakeState, type IntakeMode, type IntakeState } from "@/modules/queue/domain/intake";
+import { formatLocalDateTime } from "@/modules/booking/domain/time";
+import { issueTicket } from "@/modules/queue/application/issue-ticket";
+import { isFeatureEnabled } from "@/modules/feature/feature-gate";
+import { isValidNik } from "@/modules/shared/nik";
+
+/**
+ * Satu kesimpulan buka/tutup untuk halaman QR dan API ambil nomor: tombol petugas
+ * (manual) mengalahkan jam operasional, sisanya dihitung dari jam cabang hari itu.
+ */
+async function branchIntakeState(
+  branchId: string,
+  mode: IntakeMode,
+  timezone: string,
+  now: Date = new Date(),
+): Promise<IntakeState> {
+  const hours = await prisma.operatingHours.findMany({
+    where: { branchId },
+    select: { weekday: true, opensAt: true, closesAt: true, closed: true },
+  });
+  return intakeState({ mode, localDateTime: formatLocalDateTime(now, timezone), hours });
+}
 
 export function hashAccessToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+type LiveEstimateParams = {
+  branchId: string;
+  serviceId: string;
+  serviceDate: Date;
+  /** Hanya hitung antrean dengan nomor di bawah ini (nomor pelanggan sendiri). */
+  beforeSequence?: number;
+  /** Estimasi default per antrean, dipakai berurutan. */
+  minutesPerQueue: number;
+};
+
+/**
+ * Satu sumber estimasi untuk QR, struk, dan halaman status: urutan antrean saat
+ * ini (siapa di depan) x estimasi default layanan, plus buffer cabang.
+ */
+async function liveEstimate(db: Prisma.TransactionClient, params: LiveEstimateParams) {
+  const [waitingAhead, inService, config] = await Promise.all([
+    db.queue.count({
+      where: {
+        branchId: params.branchId,
+        serviceId: params.serviceId,
+        serviceDate: params.serviceDate,
+        status: "WAITING",
+        ...(params.beforeSequence === undefined
+          ? {}
+          : { sequenceNumber: { lt: params.beforeSequence } }),
+      },
+    }),
+    db.queue.count({
+      where: {
+        branchId: params.branchId,
+        serviceId: params.serviceId,
+        serviceDate: params.serviceDate,
+        status: { in: ["CALLED", "SERVING"] },
+      },
+    }),
+    db.queueConfiguration.findUnique({
+      where: { branchId: params.branchId },
+      select: { estimateBuffer: true },
+    }),
+  ]);
+
+  return {
+    waitingAhead,
+    inService,
+    estimateMinutes: estimateWaitMinutes({
+      ahead: waitingAhead + inService,
+      minutesPerQueue: params.minutesPerQueue,
+      bufferMinutes: config?.estimateBuffer ?? 0,
+    }),
+  };
 }
 
 export async function getQrConfiguration(token: string, request: Request) {
@@ -15,7 +91,7 @@ export async function getQrConfiguration(token: string, request: Request) {
     where: { tokenHash: hashAccessToken(token) },
     include: {
       business: { select: { id: true, name: true, timezone: true, active: true } },
-      branch: { select: { id: true, name: true, active: true } },
+      branch: { select: { id: true, name: true, active: true, timezone: true, intakeMode: true } },
       service: { select: { id: true, name: true, code: true, active: true } },
     },
   });
@@ -45,10 +121,36 @@ export async function getQrConfiguration(token: string, request: Request) {
     select: { id: true, name: true, code: true, averageMinutes: true },
     orderBy: { name: "asc" },
   });
+  // Estimasi dihitung per layanan supaya pelanggan melihat perkiraan tunggu
+  // saat ini, bukan durasi layanan yang selalu sama sepanjang hari.
+  const serviceDate = dateForTimezone(
+    timezoneOr(access.branch.timezone ?? access.business.timezone),
+  );
+  const branchId = access.branch.id;
+  const intake = await branchIntakeState(
+    branchId,
+    access.branch.intakeMode,
+    timezoneOr(access.branch.timezone ?? access.business.timezone),
+  );
+  const withEstimates = await Promise.all(
+    services.map(async (service) => ({
+      ...service,
+      estimateMinutes: (
+        await liveEstimate(prisma, {
+          branchId,
+          serviceId: service.id,
+          serviceDate,
+          minutesPerQueue: service.averageMinutes,
+        })
+      ).estimateMinutes,
+    })),
+  );
   return {
     business: access.business.name,
     branch: { id: access.branch.id, name: access.branch.name },
-    services,
+    services: withEstimates,
+    intake: { open: intake.open, reason: intake.reason, mode: access.branch.intakeMode },
+    nikRequired: await isFeatureEnabled(access.businessId, "NIK"),
     theme: await getTheme(access.businessId),
   };
 }
@@ -57,6 +159,7 @@ type IssueQueueInput = {
   serviceId: string;
   customerName: string;
   customerPhone?: string;
+  customerNik?: string;
 };
 
 export async function issuePublicQueue(
@@ -68,7 +171,7 @@ export async function issuePublicQueue(
     where: { tokenHash: hashAccessToken(token) },
     include: {
       business: { select: { active: true, timezone: true } },
-      branch: { select: { id: true, active: true, timezone: true } },
+      branch: { select: { id: true, active: true, timezone: true, intakeMode: true } },
     },
   });
   if (
@@ -92,6 +195,14 @@ export async function issuePublicQueue(
   }
 
   const branchId = access.branch.id;
+  const intake = await branchIntakeState(
+    branchId,
+    access.branch.intakeMode,
+    timezoneOr(access.branch.timezone ?? access.business.timezone),
+  );
+  if (!intake.open) {
+    throw new AppError(intake.reason, 409, "INTAKE_CLOSED");
+  }
   const service = await prisma.service.findFirst({
     where: {
       id: input.serviceId,
@@ -102,16 +213,20 @@ export async function issuePublicQueue(
   });
   if (!service) throw new AppError("Layanan tidak ditemukan.", 404, "SERVICE_NOT_FOUND");
 
-  const timezone = timezoneOr(access.branch.timezone ?? access.business.timezone);
+  // NIK opsional per bisnis (instansi tertentu mensyaratkannya untuk validasi).
+  const nik = input.customerNik?.trim() ?? "";
+  if (nik && !isValidNik(nik)) {
+    throw new AppError("NIK harus 16 digit angka.", 400, "NIK_INVALID");
+  }
+  if (!nik && (await isFeatureEnabled(access.businessId, "NIK"))) {
+    throw new AppError("NIK wajib diisi 16 digit angka.", 400, "NIK_REQUIRED");
+  }
+
   const now = new Date();
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  const serviceDate = new Date(`${values.year}-${values.month}-${values.day}T00:00:00.000Z`);
+  const serviceDate = dateForTimezone(
+    timezoneOr(access.branch.timezone ?? access.business.timezone),
+    now,
+  );
   const receiptToken = randomBytes(32).toString("base64url");
 
   return prisma.$transaction(
@@ -128,52 +243,31 @@ export async function issuePublicQueue(
       const customer = existingCustomer
         ? await tx.customer.update({
             where: { id: existingCustomer.id },
-            data: { name: input.customerName },
+            // Pelanggan lama yang pernah dinonaktifkan aktif lagi saat ambil nomor.
+            data: { name: input.customerName, active: true, ...(nik ? { nik } : {}) },
           })
         : await tx.customer.create({
             data: {
               businessId: access.businessId,
               name: input.customerName,
               phone: input.customerPhone,
+              nik: nik || null,
             },
           });
 
-      const sequenceKey = {
-        branchId_serviceId_serviceDate: {
-          branchId,
-          serviceId: service.id,
-          serviceDate,
-        },
-      };
-      await tx.queueSequence.upsert({
-        where: sequenceKey,
-        create: { branchId, serviceId: service.id, serviceDate, lastNumber: 0 },
-        update: {},
+      const queue = await issueTicket(tx, {
+        businessId: access.businessId,
+        branchId,
+        service,
+        customerId: customer.id,
+        serviceDate,
+        action: "ISSUE",
+        issuedAt: now,
       });
-      const sequence = await tx.queueSequence.update({
-        where: sequenceKey,
-        data: { lastNumber: { increment: 1 } },
-        select: { lastNumber: true },
-      });
-      const queue = await tx.queue.create({
-        data: {
-          businessId: access.businessId,
-          branchId,
-          serviceId: service.id,
-          customerId: customer.id,
-          serviceDate,
-          sequenceNumber: sequence.lastNumber,
-          ticketNumber: `${service.code}-${String(sequence.lastNumber).padStart(3, "0")}`,
-          issuedAt: now,
-        },
-        select: {
-          id: true,
-          ticketNumber: true,
-          issuedAt: true,
-          sequenceNumber: true,
-          status: true,
-        },
-      });
+
+      // Tanpa baris ini tautan status yang dikembalikan ke pelanggan menunjuk
+      // token yang tidak ada di DB, jadi halaman /q/status/<token> selalu
+      // menjawab "tautan tidak valid" — padahal nomornya sudah terbit.
       await tx.accessToken.create({
         data: {
           businessId: access.businessId,
@@ -182,60 +276,17 @@ export async function issuePublicQueue(
           queueId: queue.id,
           tokenHash: hashAccessToken(receiptToken),
           type: AccessTokenType.QUEUE_STATUS,
-          expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-        },
-      });
-      await tx.queueHistory.create({
-        data: {
-          queueId: queue.id,
-          fromStatus: null,
-          toStatus: "WAITING",
-          action: "ISSUE",
-        },
-      });
-      await tx.outboxEvent.create({
-        data: {
-          businessId: access.businessId,
-          branchId,
-          eventType: "queue.issued",
-          aggregateId: queue.id,
-          payload: { queueId: queue.id, ticketNumber: queue.ticketNumber },
         },
       });
 
-      const [waitingAhead, inService, compatibleCounters] = await Promise.all([
-        tx.queue.count({
-          where: {
-            branchId,
-            serviceId: service.id,
-            serviceDate,
-            status: "WAITING",
-            sequenceNumber: { lt: queue.sequenceNumber },
-          },
-        }),
-        tx.queue.count({
-          where: {
-            branchId,
-            serviceId: service.id,
-            serviceDate,
-            status: { in: ["CALLED", "SERVING"] },
-          },
-        }),
-        tx.counterService.count({
-          where: {
-            serviceId: service.id,
-            counter: { branchId, active: true },
-          },
-        }),
-      ]);
-      const parallelCapacity = Math.max(compatibleCounters, 1);
-      return {
-        queue,
-        receiptToken,
-        estimateMinutes:
-          Math.ceil((waitingAhead + inService) / parallelCapacity) *
-          service.averageMinutes,
-      };
+      const live = await liveEstimate(tx, {
+        branchId,
+        serviceId: service.id,
+        serviceDate,
+        beforeSequence: queue.sequenceNumber,
+        minutesPerQueue: service.averageMinutes,
+      });
+      return { queue, receiptToken, estimateMinutes: live.estimateMinutes };
     },
     // Antrean QR di jam ramai bisa jatuh bersamaan; satu transaksi di sini
     // mengantre di baris queueSequence yang sama. Timeout bawaan Prisma 5 detik
@@ -254,6 +305,7 @@ export async function getPublicQueueStatus(token: string, request: Request) {
           service: { select: { name: true, averageMinutes: true } },
           branch: { select: { name: true, timezone: true } },
           business: { select: { name: true, timezone: true } },
+          counter: { select: { name: true } },
         },
       },
     },
@@ -273,46 +325,25 @@ export async function getPublicQueueStatus(token: string, request: Request) {
     60,
   );
   await ensureQrEnabled(access.businessId);
-  const [ahead, inService, compatibleCounters] = await Promise.all([
-    prisma.queue.count({
-      where: {
-        branchId: access.queue.branchId,
-        serviceId: access.queue.serviceId,
-        serviceDate: access.queue.serviceDate,
-        status: "WAITING",
-        sequenceNumber: { lt: access.queue.sequenceNumber },
-      },
-    }),
-    prisma.queue.count({
-      where: {
-        branchId: access.queue.branchId,
-        serviceId: access.queue.serviceId,
-        serviceDate: access.queue.serviceDate,
-        status: { in: ["CALLED", "SERVING"] },
-      },
-    }),
-    prisma.counterService.count({
-      where: {
-        serviceId: access.queue.serviceId,
-        counter: { branchId: access.queue.branchId, active: true },
-      },
-    }),
-  ]);
-  const parallelCapacity = Math.max(compatibleCounters, 1);
+  const live = await liveEstimate(prisma, {
+    branchId: access.queue.branchId,
+    serviceId: access.queue.serviceId,
+    serviceDate: access.queue.serviceDate,
+    beforeSequence: access.queue.sequenceNumber,
+    minutesPerQueue: access.queue.service.averageMinutes,
+  });
   return {
     ticketNumber: access.queue.ticketNumber,
     status: access.queue.status,
     service: access.queue.service.name,
+    // Loket sudah ditetapkan sejak ambil nomor untuk layanan auto-loket.
+    counter: access.queue.counter?.name ?? null,
     // Nama usaha & cabang dipakai struk cetak (printer termal 80mm), supaya
     // struk yang dibawa pelanggan masih jelas milik layar mana.
     business: access.queue.business.name,
     branch: access.queue.branch.name,
-    waitingAhead: access.queue.status === "WAITING" ? ahead : 0,
-    estimateMinutes:
-      access.queue.status === "WAITING"
-        ? Math.ceil((ahead + inService) / parallelCapacity) *
-          access.queue.service.averageMinutes
-        : 0,
+    waitingAhead: access.queue.status === "WAITING" ? live.waitingAhead : 0,
+    estimateMinutes: access.queue.status === "WAITING" ? live.estimateMinutes : 0,
     issuedAt: access.queue.issuedAt,
     timezone: timezoneOr(access.queue.branch.timezone ?? access.queue.business.timezone),
   };

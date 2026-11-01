@@ -3,6 +3,7 @@ import test from "node:test";
 import { prisma } from "../src/lib/prisma";
 import { resetSubscriptionTrial, assignSubscriptionPlan } from "../src/modules/platform/platform-service";
 import { readMidtransMode, saveMidtransMode } from "../src/modules/billing/midtrans-settings";
+import { cleanupTracked, trackBusiness, trackUser } from "./helpers/cleanup";
 
 // Cleanup helper
 async function cleanupTest(businessId: string) {
@@ -36,6 +37,7 @@ test("Trial reset: sets status to TRIAL and extends trialEndsAt by 30 days", asy
       platformRole: "MASTER_ADMIN",
     },
   });
+  trackUser(admin);
 
   // Create a business with subscription in ACTIVE state
   const business = await prisma.business.create({
@@ -44,6 +46,7 @@ test("Trial reset: sets status to TRIAL and extends trialEndsAt by 30 days", asy
       slug: `test-trial-${Date.now()}`,
     },
   });
+  trackBusiness(business);
 
   const subscription = await prisma.subscription.create({
     data: {
@@ -98,6 +101,7 @@ test("Plan reassignment: assign active plan to subscription", async () => {
       platformRole: "MASTER_ADMIN",
     },
   });
+  trackUser(admin);
 
   // Create business and plan
   const business = await prisma.business.create({
@@ -106,6 +110,7 @@ test("Plan reassignment: assign active plan to subscription", async () => {
       slug: `test-plan-${Date.now()}`,
     },
   });
+  trackBusiness(business);
 
   const plan = await prisma.plan.create({
     data: {
@@ -155,6 +160,7 @@ test("Plan reassignment: clear plan by setting to null", async () => {
       platformRole: "MASTER_ADMIN",
     },
   });
+  trackUser(admin);
 
   // Create business and plan
   const business = await prisma.business.create({
@@ -163,6 +169,7 @@ test("Plan reassignment: clear plan by setting to null", async () => {
       slug: `test-clear-${Date.now()}`,
     },
   });
+  trackBusiness(business);
 
   const plan = await prisma.plan.create({
     data: {
@@ -209,6 +216,7 @@ test("Plan reassignment: throws if business not found", async () => {
       platformRole: "MASTER_ADMIN",
     },
   });
+  trackUser(admin);
 
   const fakeId = "nonexistent-business-id";
   try {
@@ -231,6 +239,7 @@ test("Trial reset: throws if business not found", async () => {
       platformRole: "MASTER_ADMIN",
     },
   });
+  trackUser(admin);
 
   const fakeId = "nonexistent-trial-business-id";
   try {
@@ -243,3 +252,5 @@ test("Trial reset: throws if business not found", async () => {
 
   await prisma.user.delete({ where: { id: admin.id } });
 });
+
+test.after(cleanupTracked);

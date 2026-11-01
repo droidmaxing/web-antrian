@@ -20,7 +20,6 @@ import {
   LayoutDashboard,
   LogOut,
   MonitorCog,
-  Plus,
   Radio,
   RefreshCw,
   Search,
@@ -46,6 +45,7 @@ import { CountersManager } from "@/components/manage/counters-manager";
 import { TeamManager } from "@/components/manage/team-manager";
 import { ReportsManager } from "@/components/manage/reports-manager";
 import { BranchesManager } from "@/components/manage/branches-manager";
+import { IntakeControl } from "@/components/manage/intake-control";
 import { CustomersManager } from "@/components/manage/customers-manager";
 import { DisplaysManager } from "@/components/manage/displays-manager";
 import {
@@ -105,7 +105,11 @@ type DashboardProps = {
   /** Waktu server (ISO): salam dan tanggal datang dari server agar hidrasi sama. */
   serverNow: string;
   enabledFeatures: FeatureKey[];
+  /** Status buka/tutup pengambilan nomor di lokasi (QR). */
+  intake: { open: boolean; mode: "AUTO" | "OPEN" | "CLOSED"; reason: string };
   bookings: BookingRow[];
+  /** Tanggal lokal cabang (YYYY-MM-DD) yang jadi awal daftar booking. */
+  bookingDate: string;
   metrics: {
     total: number;
     waiting: number;
@@ -115,7 +119,47 @@ type DashboardProps = {
     averageServiceMinutes: number;
   };
   queues: QueueRow[];
+  /** Tab awal dari URL (?tab=); nilai asing diabaikan oleh komponen. */
+  initialView?: string;
 };
+
+/**
+ * Satu halaman besar berisi semua fitur membuat operator kehilangan fokus:
+ * pekerjaan harian dan pekerjaan pengaturan dipisah ke tab sendiri, dipilih
+ * dari sidebar. Tab tetap di satu rute sehingga berpindah tidak memuat ulang
+ * data antrean dan tetap jalan tanpa jaringan.
+ */
+export const DASHBOARD_VIEWS = [
+  "hari-ini",
+  "booking",
+  "layanan",
+  "loket",
+  "pelanggan",
+  "layar",
+  "cabang",
+  "tim",
+  "laporan",
+] as const;
+
+export type DashboardView = (typeof DASHBOARD_VIEWS)[number];
+
+const viewMeta: Record<DashboardView, { title: string; description: string }> = {
+  "hari-ini": { title: "Hari ini", description: "Antrean dan loket yang sedang berjalan." },
+  booking: { title: "Booking", description: "Janji temu pelanggan dan nomor antreannya." },
+  layanan: { title: "Layanan", description: "Jenis layanan yang bisa diambil pelanggan." },
+  loket: { title: "Loket", description: "Meja pelayanan dan layanan yang ditanganinya." },
+  pelanggan: { title: "Pelanggan", description: "Data pelanggan yang pernah mengambil nomor." },
+  layar: { title: "Layar TV", description: "Tautan layar panggilan untuk ruang tunggu." },
+  cabang: { title: "Cabang", description: "Lokasi operasional dan jam bukanya." },
+  tim: { title: "Tim & akses", description: "Anggota tim, peran, dan loket yang dijaga." },
+  laporan: { title: "Laporan", description: "Performa antrean dan rekap layanan." },
+};
+
+/** Baca tab dari URL; nilai asing diabaikan supaya `?tab=xx` tidak merusak halaman. */
+export function viewFromSearch(search: string): DashboardView | null {
+  const value = new URLSearchParams(search).get("tab");
+  return DASHBOARD_VIEWS.includes(value as DashboardView) ? (value as DashboardView) : null;
+}
 
 /**
  * The dashboard only ever loads today's queues, so this filter narrows the
@@ -169,9 +213,12 @@ export function Dashboard({
   userName,
   serverNow,
   enabledFeatures,
+  intake,
   bookings,
+  bookingDate,
   metrics,
   queues,
+  initialView,
 }: DashboardProps) {
   const router = useRouter();
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -189,6 +236,72 @@ export function Dashboard({
     enabledFeatures.includes("ANALYTICS") &&
     (isOwner || role === "SUPER_ADMIN");
   const voiceEnabled = enabledFeatures.includes("VOICE_CALL");
+  // Sidebar adalah satu-satunya navigasi: tiap area kerja punya tab sendiri,
+  // bukan tumpukan belasan bagian di satu halaman panjang.
+  const navGroups: {
+    label: string;
+    items: { view: DashboardView; label: string; icon: LucideIcon; badge?: number }[];
+  }[] = [
+    {
+      label: "Operasional",
+      items: [
+        { view: "hari-ini", label: "Hari ini", icon: LayoutDashboard, badge: metrics.waiting },
+        ...(enabledFeatures.includes("BOOKING")
+          ? [{ view: "booking" as const, label: "Booking", icon: CalendarDays }]
+          : []),
+      ],
+    },
+    {
+      label: "Pengelolaan",
+      items: [
+        { view: "layanan", label: "Layanan", icon: Layers },
+        { view: "loket", label: "Loket", icon: MonitorCog },
+        { view: "pelanggan", label: "Pelanggan", icon: Contact2 },
+        ...(canConfigure ? [{ view: "layar" as const, label: "Layar TV", icon: Tv }] : []),
+        { view: "cabang", label: "Cabang", icon: Building2 },
+        ...(canManageTeam ? [{ view: "tim" as const, label: "Tim & akses", icon: Users2 }] : []),
+      ],
+    },
+    ...(canViewReports
+      ? [
+          {
+            label: "Analitik",
+            items: [{ view: "laporan" as const, label: "Laporan", icon: BarChart3 }],
+          },
+        ]
+      : []),
+  ];
+  const accessibleViews = new Set<string>(
+    navGroups.flatMap((group) => group.items.map((item) => item.view)),
+  );
+  const [activeView, setActiveView] = useState<DashboardView>(
+    initialView && accessibleViews.has(initialView) ? (initialView as DashboardView) : "hari-ini",
+  );
+  // Tab tanpa izin (tautan lama atau diketik manual) jatuh ke pekerjaan harian.
+  const view: DashboardView = accessibleViews.has(activeView) ? activeView : "hari-ini";
+  const meta = viewMeta[view];
+
+  // Tab dipilih tanpa memuat ulang halaman: data antrean yang sudah ada tidak
+  // diambil ulang, jadi berpindah tab terasa seketika. URL tetap diperbarui
+  // supaya tautan bisa dibagikan dan tombol Back berfungsi.
+  const goTo = useCallback((next: DashboardView) => {
+    setActiveView(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === "hari-ini") params.delete("tab");
+    else params.set("tab", next);
+    const query = params.toString();
+    window.history.pushState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+    window.scrollTo({ top: 0 });
+  }, []);
+
+  useEffect(() => {
+    function onPopState() {
+      const next = viewFromSearch(window.location.search);
+      setActiveView(next ?? "hari-ini");
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   const [voiceMuted, setVoiceMuted] = useState(false);
   const [voiceReady, setVoiceReady] = useState(false);
   const [spoken, setSpoken] = useState("");
@@ -425,6 +538,13 @@ export function Dashboard({
     });
   }
 
+  // Antrean berjalan terus: data server disegarkan tiap 5 menit supaya layar
+  // operator tidak menampilkan nomor yang sudah basi.
+  useEffect(() => {
+    const timer = window.setInterval(() => router.refresh(), 300_000);
+    return () => window.clearInterval(timer);
+  }, [router]);
+
   // ⌘K / Ctrl+K focuses the header search; Esc clears it. Registered once so
   // the shortcut works from anywhere on the dashboard.
   useEffect(() => {
@@ -491,65 +611,65 @@ export function Dashboard({
               </a>
             ))}
             {canConfigure && (
-              <a
-                href="#branches"
-                className="mt-1 block rounded-lg border-t border-brand-100 px-2 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+              <button
+                type="button"
+                onClick={() => goTo("cabang")}
+                className="mt-1 block w-full rounded-lg border-t border-brand-100 px-2 py-1.5 text-left text-xs font-semibold text-brand-700 hover:bg-brand-50"
               >
                 Kelola cabang
-              </a>
+              </button>
             )}
           </div>
         </details>
 
-        <p className="mb-2 mt-8 px-3 text-[11px] font-semibold uppercase tracking-[.16em] text-[#5d6b67]">
-          Operasional
-        </p>
-        <nav className="space-y-1">
-          <NavLink href="#overview" label="Ringkasan" icon={LayoutDashboard} />
-          <NavLink href="#queue" label="Antrean" icon={Users2} badge={metrics.waiting} />
-          <NavLink href="#counters" label="Status loket" icon={Radio} />
-          {enabledFeatures.includes("BOOKING") && (
-            <NavLink href="#bookings" label="Booking" icon={CalendarDays} />
-          )}
-        </nav>
+        <div className="mt-8 space-y-6">
+          {navGroups.map((group) => (
+            <div key={group.label}>
+              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[.16em] text-[#5d6b67]">
+                {group.label}
+              </p>
+              <nav className="space-y-1">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.view}
+                    label={item.label}
+                    icon={item.icon}
+                    badge={item.badge}
+                    active={view === item.view}
+                    onSelect={() => goTo(item.view)}
+                  />
+                ))}
+              </nav>
+            </div>
+          ))}
 
-        <p className="mb-2 mt-8 px-3 text-[11px] font-semibold uppercase tracking-[.16em] text-[#5d6b67]">
-          Pengelolaan
-        </p>
-        <nav className="space-y-1">
-          <NavLink href="#services-manage" label="Layanan" icon={Layers} />
-          <NavLink href="#counters-manage" label="Loket" icon={MonitorCog} />
-          <NavLink href="#customers-manage" label="Pelanggan" icon={Contact2} />
-          {canConfigure && <NavLink href="#displays-manage" label="Layar TV" icon={Tv} />}
-          <NavLink href="#branches" label="Cabang" icon={Building2} />
-          {canManageTeam && <NavLink href="#team" label="Tim & akses" icon={Users2} />}
-          {canViewReports && <NavLink href="#reports" label="Laporan" icon={BarChart3} />}
-        </nav>
-
-        <p className="mb-2 mt-8 px-3 text-[11px] font-semibold uppercase tracking-[.16em] text-[#5d6b67]">
-          Bantuan & pengaturan
-        </p>
-        <nav className="space-y-1">
-          {isOwner && (
-            <NavLink
-              href={`/dashboard/${businessSlug}/langganan`}
-              label="Langganan"
-              icon={CreditCard}
-            />
-          )}
-          <NavLink
-            href={`/dashboard/${businessSlug}/panduan`}
-            label="Panduan"
-            icon={BookOpen}
-          />
-          {canConfigure && (
-            <NavLink
-              href={`/dashboard/${businessSlug}/pengaturan`}
-              label="Pengaturan"
-              icon={Settings2}
-            />
-          )}
-        </nav>
+          <div>
+            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[.16em] text-[#5d6b67]">
+              Bantuan & pengaturan
+            </p>
+            <nav className="space-y-1">
+              {isOwner && (
+                <NavLink
+                  href={`/dashboard/${businessSlug}/langganan`}
+                  label="Langganan"
+                  icon={CreditCard}
+                />
+              )}
+              <NavLink
+                href={`/dashboard/${businessSlug}/panduan`}
+                label="Panduan"
+                icon={BookOpen}
+              />
+              {canConfigure && (
+                <NavLink
+                  href={`/dashboard/${businessSlug}/pengaturan`}
+                  label="Pengaturan"
+                  icon={Settings2}
+                />
+              )}
+            </nav>
+          </div>
+        </div>
         </div>
 
         {/* Pinned footer: always visible, never inside the scroll container. */}
@@ -586,6 +706,15 @@ export function Dashboard({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <div className="hidden lg:block">
+                <IntakeControl
+                  businessSlug={businessSlug}
+                  branchId={branch.id}
+                  open={intake.open}
+                  mode={intake.mode}
+                  reason={intake.reason}
+                />
+              </div>
               <div className="hidden h-9 w-[210px] items-center gap-2 rounded-lg bg-brand-50 px-3 md:flex bubble-btn">
                 <Search className="size-4 text-[#5d6b67]" />
                 <input
@@ -709,18 +838,14 @@ export function Dashboard({
           aria-label="Navigasi dashboard"
           className="dashboard-mobile-nav sticky top-[120px] z-[9] flex gap-1 overflow-x-auto border-b border-transparent bg-white shadow-bubble-sm px-3 py-2 md:top-[72px] xl:hidden"
         >
-          <MobileNavLink href="#overview" label="Ringkasan" />
-          <MobileNavLink href="#queue" label="Antrean" />
-          <MobileNavLink href="#counters" label="Loket" />
-          {enabledFeatures.includes("BOOKING") && (
-            <MobileNavLink href="#bookings" label="Booking" />
-          )}
-          <MobileNavLink href="#services-manage" label="Layanan" />
-          <MobileNavLink href="#customers-manage" label="Pelanggan" />
-          {canConfigure && <MobileNavLink href="#displays-manage" label="Layar TV" />}
-          <MobileNavLink href="#branches" label="Cabang" />
-          {canManageTeam && <MobileNavLink href="#team" label="Tim" />}
-          {canViewReports && <MobileNavLink href="#reports" label="Laporan" />}
+          {navGroups.flatMap((group) => group.items).map((item) => (
+            <MobileNavLink
+              key={item.view}
+              label={item.label}
+              active={view === item.view}
+              onSelect={() => goTo(item.view)}
+            />
+          ))}
           {isOwner && (
             <MobileNavLink href={`/dashboard/${businessSlug}/langganan`} label="Langganan" />
           )}
@@ -768,43 +893,39 @@ export function Dashboard({
                 }).format(new Date(serverNow))}
               </div>
               <h1 className="text-[26px] font-semibold tracking-[-.04em] sm:text-[30px]">
-                {greetingFor(timezoneOr(branch.timezone), serverNow)}, {userName.split(" ")[0]}{" "}
-                <span aria-hidden="true">👋</span>
+                {view === "hari-ini" ? (
+                  <>
+                    {greetingFor(timezoneOr(branch.timezone), serverNow)}, {userName.split(" ")[0]}{" "}
+                    <span aria-hidden="true">👋</span>
+                  </>
+                ) : (
+                  meta.title
+                )}
               </h1>
-              <p className="mt-1.5 text-sm text-[#5c6a65]">
-                Pantau operasional dan antrean hari ini.
-              </p>
+              <p className="mt-1.5 text-sm text-[#5c6a65]">{meta.description}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <label className="relative flex items-center">
-                <span className="sr-only">Rentang waktu antrean</span>
-                <CalendarDays className="pointer-events-none absolute left-3 size-4 text-[#5c6a65]" />
-                <select
-                  value={timeWindow}
-                  onChange={(event) => {
-                    setTimeWindow(event.target.value as TimeWindow);
-                    setWindowAnchor(Date.now());
-                  }}
-                  className="h-10 cursor-pointer appearance-none rounded-lg bubble-field bg-white pl-9 pr-8 text-xs font-medium text-[#56635f] shadow-bubble-sm outline-none"
-                >
-                  <option value="today">Hari ini</option>
-                  <option value="1h">1 jam terakhir</option>
-                  <option value="3h">3 jam terakhir</option>
-                  <option value="8h">8 jam terakhir</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5 text-[#5d6b67]" />
-              </label>
-              {canOperate && (
-                <a
-                  href="#queue"
-                  className="flex h-10 items-center gap-2 rounded-full bg-brand-700 px-3.5 text-xs font-semibold text-white shadow-bubble-sm transition hover:bg-brand-800"
-                >
-                  <Plus className="size-4" />
-                  <span className="hidden sm:inline">Kelola antrean</span>
-                  <span className="sm:hidden">Antrean</span>
-                </a>
-              )}
-            </div>
+            {view === "hari-ini" && (
+              <div className="flex items-center gap-2">
+                <label className="relative flex items-center">
+                  <span className="sr-only">Rentang waktu antrean</span>
+                  <CalendarDays className="pointer-events-none absolute left-3 size-4 text-[#5c6a65]" />
+                  <select
+                    value={timeWindow}
+                    onChange={(event) => {
+                      setTimeWindow(event.target.value as TimeWindow);
+                      setWindowAnchor(Date.now());
+                    }}
+                    className="h-10 cursor-pointer appearance-none rounded-lg bubble-field bg-white pl-9 pr-8 text-xs font-medium text-[#56635f] shadow-bubble-sm outline-none"
+                  >
+                    <option value="today">Hari ini</option>
+                    <option value="1h">1 jam terakhir</option>
+                    <option value="3h">3 jam terakhir</option>
+                    <option value="8h">8 jam terakhir</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5 text-[#5d6b67]" />
+                </label>
+              </div>
+            )}
           </div>
 
           {notice && (
@@ -821,6 +942,8 @@ export function Dashboard({
             </div>
           )}
 
+          {view === "hari-ini" && (
+          <>
           <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
             <MetricCard
               title="Total antrean"
@@ -850,141 +973,6 @@ export function Dashboard({
               icon={CheckCheck}
               tone="accentSoft"
             />
-          </div>
-
-          <div className="mt-5 grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,.9fr)]">
-            <section
-              id="overview"
-              className="bubble-card p-5 shadow-bubble-sm md:p-6"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-[15px] font-semibold tracking-[-.02em]">
-                    Aktivitas antrean
-                  </h2>
-                  <p className="mt-1 text-xs text-[#66736e]">
-                    Distribusi tiket berdasarkan rentang waktu di atas
-                  </p>
-                </div>
-              </div>
-              {analyticsEnabled ? (
-                <>
-                  <QueueActivityChart
-                    queues={queuesInWindow}
-                    timezone={timezoneOr(branch.timezone)}
-                    nowIso={serverNow}
-                  />
-                  <div className="mt-5 grid grid-cols-2 gap-3 border-t border-brand-100 pt-4 sm:grid-cols-4">
-                    <TinyMetric label="Rata-rata waktu tunggu" value={`${metrics.averageWaitMinutes} mnt`} icon={Clock3} />
-                    <TinyMetric label="Rata-rata pelayanan" value={`${metrics.averageServiceMinutes} mnt`} icon={Activity} />
-                    <TinyMetric label="Layanan tersedia" value={branch.services.length.toString()} icon={Sparkles} />
-                    <TinyMetric label="Loket aktif" value={branch.counters.length.toString()} icon={Radio} />
-                  </div>
-                </>
-              ) : (
-                <div className="mt-6">
-                  <EmptyState
-                    title="Analytics dinonaktifkan"
-                    description="Hubungi Super Admin untuk mengaktifkan laporan performa."
-                  />
-                </div>
-              )}
-            </section>
-
-            <section id="counters" className="bubble-card p-5 shadow-bubble-sm md:p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-[15px] font-semibold tracking-[-.02em]">
-                    Status loket
-                  </h2>
-                  <p className="mt-1 text-xs text-[#66736e]">
-                    Kondisi pelayanan saat ini
-                  </p>
-                </div>
-              </div>
-              {voiceEnabled && canOperate && (
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 bubble-panel bg-brand-50 px-3 py-2.5">
-                  <p className="flex min-w-0 items-center gap-2 text-[11px] text-[#6c7a74]">
-                    <Volume2 className="size-3.5 shrink-0 text-brand-600" />
-                    <span className="truncate">
-                      {!voiceReady
-                        ? "Aktifkan suara sekali untuk mengizinkan pemanggilan otomatis."
-                        : voiceMuted
-                          ? "Suara pemanggilan sedang dimatikan di perangkat ini."
-                          : audioStatus === "playing"
-                            ? "Memutar audio pemanggilan…"
-                            : spoken || "Pemanggilan berikutnya akan diumumkan otomatis."}
-                    </span>
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => (voiceReady ? setVoiceMuted((current) => !current) : enableVoice())}
-                    className="shrink-0 rounded-lg bubble-card bg-white px-2.5 py-1 text-[11px] font-semibold text-brand-700 hover:bg-brand-50"
-                  >
-                    {!voiceReady ? "Aktifkan suara" : voiceMuted ? "Nyalakan suara" : "Matikan suara"}
-                  </button>
-                </div>
-              )}
-              <div className="mt-5 space-y-3">
-                {branch.counters.map((counter) => (
-                  <div
-                    key={counter.id}
-                    className="flex items-center gap-3 bubble-panel p-3"
-                  >
-                    <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${counter.currentTicket ? "bg-brand-100 text-brand-700" : "bg-[#f2f4f3] text-[#5f6965]"}`}>
-                      {counter.code}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold">{counter.name}</p>
-                        <span className={`size-1.5 rounded-full ${counter.currentTicket ? "bg-brand-500" : "bg-[#c9d0cd]"}`} />
-                      </div>
-                      <p className="mt-1 truncate text-xs text-[#66736e]">
-                        {counter.currentTicket
-                          ? `${counter.currentTicket} · ${counter.currentService}`
-                          : "Belum ada pelanggan"}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-[11px] font-medium ${counter.currentTicket ? "text-brand-700" : "text-[#5d6b67]"}`}>
-                        {counter.currentTicket
-                          ? counter.queueStatus === "SERVING"
-                            ? "Melayani"
-                            : "Dipanggil"
-                          : "Tersedia"}
-                      </p>
-                      {canOperate && !counter.currentTicket && (
-                        <button
-                          onClick={() => callNext(counter.id)}
-                          disabled={
-                            busyAction === `call-${counter.id}` ||
-                            counter.waitingForCounter === 0
-                          }
-                          title={
-                            counter.waitingForCounter === 0
-                              ? "Tidak ada antrean menunggu untuk layanan loket ini."
-                              : `Panggil antrean berikutnya (${counter.waitingForCounter} menunggu).`
-                          }
-                          className="mt-1 text-[11px] font-semibold text-brand-700 hover:underline disabled:opacity-40"
-                        >
-                          {busyAction === `call-${counter.id}`
-                            ? "Memanggil..."
-                            : counter.waitingForCounter === 0
-                              ? "Tidak ada antrean"
-                              : `Panggil berikutnya · ${counter.waitingForCounter}`}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {!branch.counters.length && (
-                  <EmptyState title="Belum ada loket" description="Tambahkan loket untuk mulai melayani antrean." />
-                )}
-              </div>
-              <a href="#counters-manage" className="mt-4 flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-semibold text-[#596661] hover:bg-brand-50 bubble-btn">
-                Kelola semua loket <ArrowUpRight className="size-3.5" />
-              </a>
-            </section>
           </div>
 
           <div className="mt-5 grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,.9fr)]">
@@ -1097,6 +1085,149 @@ export function Dashboard({
               </div>
             </section>
 
+            <section id="counters" className="bubble-card p-5 shadow-bubble-sm md:p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-[15px] font-semibold tracking-[-.02em]">
+                    Status loket
+                  </h2>
+                  <p className="mt-1 text-xs text-[#66736e]">
+                    Kondisi pelayanan saat ini
+                  </p>
+                </div>
+              </div>
+              {voiceEnabled && canOperate && (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 bubble-panel bg-brand-50 px-3 py-2.5">
+                  <p className="flex min-w-0 items-center gap-2 text-[11px] text-[#6c7a74]">
+                    <Volume2 className="size-3.5 shrink-0 text-brand-600" />
+                    <span className="truncate">
+                      {!voiceReady
+                        ? "Aktifkan suara sekali untuk mengizinkan pemanggilan otomatis."
+                        : voiceMuted
+                          ? "Suara pemanggilan sedang dimatikan di perangkat ini."
+                          : audioStatus === "playing"
+                            ? "Memutar audio pemanggilan…"
+                            : spoken || "Pemanggilan berikutnya akan diumumkan otomatis."}
+                    </span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => (voiceReady ? setVoiceMuted((current) => !current) : enableVoice())}
+                    className="shrink-0 rounded-lg bubble-card bg-white px-2.5 py-1 text-[11px] font-semibold text-brand-700 hover:bg-brand-50"
+                  >
+                    {!voiceReady ? "Aktifkan suara" : voiceMuted ? "Nyalakan suara" : "Matikan suara"}
+                  </button>
+                </div>
+              )}
+              <div className="mt-5 space-y-3">
+                {branch.counters.map((counter) => (
+                  <div
+                    key={counter.id}
+                    className="flex items-center gap-3 bubble-panel p-3"
+                  >
+                    <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${counter.currentTicket ? "bg-brand-100 text-brand-700" : "bg-[#f2f4f3] text-[#5f6965]"}`}>
+                      {counter.code}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold">{counter.name}</p>
+                        <span className={`size-1.5 rounded-full ${counter.currentTicket ? "bg-brand-500" : "bg-[#c9d0cd]"}`} />
+                      </div>
+                      <p className="mt-1 truncate text-xs text-[#66736e]">
+                        {counter.currentTicket
+                          ? `${counter.currentTicket} · ${counter.currentService}`
+                          : "Belum ada pelanggan"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-[11px] font-medium ${counter.currentTicket ? "text-brand-700" : "text-[#5d6b67]"}`}>
+                        {counter.currentTicket
+                          ? counter.queueStatus === "SERVING"
+                            ? "Melayani"
+                            : "Dipanggil"
+                          : "Tersedia"}
+                      </p>
+                      {canOperate && !counter.currentTicket && (
+                        <button
+                          onClick={() => callNext(counter.id)}
+                          disabled={
+                            busyAction === `call-${counter.id}` ||
+                            counter.waitingForCounter === 0
+                          }
+                          title={
+                            counter.waitingForCounter === 0
+                              ? "Tidak ada antrean menunggu untuk layanan loket ini."
+                              : `Panggil antrean berikutnya (${counter.waitingForCounter} menunggu).`
+                          }
+                          className="mt-1 text-[11px] font-semibold text-brand-700 hover:underline disabled:opacity-40"
+                        >
+                          {busyAction === `call-${counter.id}`
+                            ? "Memanggil..."
+                            : counter.waitingForCounter === 0
+                              ? "Tidak ada antrean"
+                              : `Panggil berikutnya · ${counter.waitingForCounter}`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {!branch.counters.length && (
+                  <EmptyState title="Belum ada loket" description="Tambahkan loket untuk mulai melayani antrean." />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => goTo("loket")}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-semibold text-[#596661] hover:bg-brand-50 bubble-btn"
+              >
+                Kelola semua loket <ArrowUpRight className="size-3.5" />
+              </button>
+            </section>
+          </div>
+          </>
+          )}
+
+          {view === "laporan" && (
+          <>
+          <div className="mt-5 grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,.9fr)]">
+            <section
+              id="overview"
+              className="bubble-card p-5 shadow-bubble-sm md:p-6"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-[15px] font-semibold tracking-[-.02em]">
+                    Aktivitas antrean
+                  </h2>
+                  <p className="mt-1 text-xs text-[#66736e]">
+                    Distribusi tiket berdasarkan rentang waktu di atas
+                  </p>
+                </div>
+              </div>
+              {analyticsEnabled ? (
+                <>
+                  <QueueActivityChart
+                    queues={queuesInWindow}
+                    timezone={timezoneOr(branch.timezone)}
+                    nowIso={serverNow}
+                  />
+                  <div className="mt-5 grid grid-cols-2 gap-3 border-t border-brand-100 pt-4 sm:grid-cols-4">
+                    <TinyMetric label="Rata-rata waktu tunggu" value={`${metrics.averageWaitMinutes} mnt`} icon={Clock3} />
+                    <TinyMetric label="Rata-rata pelayanan" value={`${metrics.averageServiceMinutes} mnt`} icon={Activity} />
+                    <TinyMetric label="Layanan tersedia" value={branch.services.length.toString()} icon={Sparkles} />
+                    <TinyMetric label="Loket aktif" value={branch.counters.length.toString()} icon={Radio} />
+                  </div>
+                </>
+              ) : (
+                <div className="mt-6">
+                  <EmptyState
+                    title="Analytics dinonaktifkan"
+                    description="Hubungi Super Admin untuk mengaktifkan laporan performa."
+                  />
+                </div>
+              )}
+            </section>
+
             <div className="space-y-5">
               {analyticsEnabled && (
               <section id="services" className="bubble-card p-5 shadow-bubble-sm md:p-6">
@@ -1184,47 +1315,10 @@ export function Dashboard({
               )}
             </div>
           </div>
-          <div className="mt-5 grid gap-5 2xl:grid-cols-2">
-            <ServicesManager businessSlug={businessSlug} canConfigure={canConfigure} />
-            <CountersManager
-              businessSlug={businessSlug}
-              branchId={branch.id}
-              branchName={branch.name}
-              canConfigure={canConfigure}
-              services={branch.services}
-            />
-          </div>
-          <div className="mt-5">
-            <CustomersManager businessSlug={businessSlug} canManage={canConfigure} />
-          </div>
-          {canConfigure && (
-            <div className="mt-5">
-              <DisplaysManager
-                businessSlug={businessSlug}
-                counters={counterOptions}
-                canManage={canConfigure}
-              />
-            </div>
+          </>
           )}
-          <div className="mt-5">
-            <BranchesManager
-              businessSlug={businessSlug}
-              canManage={canConfigure}
-              currentBranchId={branch.id}
-            />
-          </div>
-          {canManageTeam && (
-            <div className="mt-5">
-              <TeamManager
-                businessSlug={businessSlug}
-                branches={branches}
-                counters={counterOptions}
-                canManage={canManageTeam}
-                currentUserId={user.id}
-              />
-            </div>
-          )}
-          {canViewReports && (
+
+          {view === "laporan" && canViewReports && (
             <div className="mt-5">
               <ReportsManager
                 businessSlug={businessSlug}
@@ -1233,16 +1327,58 @@ export function Dashboard({
               />
             </div>
           )}
-          {enabledFeatures.includes("BOOKING") && (
-            <div className="mt-5">
+
+          {/* Satu tab = satu area kerja: hanya bagian yang dipilih yang dirender. */}
+          <div className="mt-5">
+            {view === "layanan" && (
+              <ServicesManager businessSlug={businessSlug} canConfigure={canConfigure} />
+            )}
+            {view === "loket" && (
+              <CountersManager
+                businessSlug={businessSlug}
+                branchId={branch.id}
+                branchName={branch.name}
+                canConfigure={canConfigure}
+                services={branch.services}
+              />
+            )}
+            {view === "pelanggan" && (
+              <CustomersManager businessSlug={businessSlug} canManage={canConfigure} />
+            )}
+            {view === "layar" && canConfigure && (
+              <DisplaysManager
+                businessSlug={businessSlug}
+                counters={counterOptions}
+                canManage={canConfigure}
+              />
+            )}
+            {view === "cabang" && (
+              <BranchesManager
+                businessSlug={businessSlug}
+                canManage={canConfigure}
+                currentBranchId={branch.id}
+              />
+            )}
+            {view === "tim" && canManageTeam && (
+              <TeamManager
+                businessSlug={businessSlug}
+                branches={branches}
+                counters={counterOptions}
+                canManage={canManageTeam}
+                currentUserId={user.id}
+              />
+            )}
+            {view === "booking" && enabledFeatures.includes("BOOKING") && (
               <BookingManagement
                 businessSlug={businessSlug}
+                branchId={branch.id}
+                today={bookingDate}
                 timezone={timezoneOr(branch.timezone)}
                 bookings={bookings}
                 readOnly={!canOperate}
               />
-            </div>
-          )}
+            )}
+          </div>
           {canConfigure && (
             <a
               href={`/dashboard/${businessSlug}/pengaturan`}
@@ -1266,14 +1402,28 @@ export function Dashboard({
   );
 }
 
-function MobileNavLink({ href, label }: { href: string; label: string }) {
-  return (
-    <a
-      href={href}
-      className="shrink-0 rounded-lg px-3 py-2 text-xs font-medium text-[#718079] transition hover:bg-brand-50 hover:text-brand-700"
-    >
+function MobileNavLink({
+  label,
+  href,
+  onSelect,
+  active = false,
+}: {
+  label: string;
+  href?: string;
+  onSelect?: () => void;
+  active?: boolean;
+}) {
+  const className = `shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition ${
+    active ? "bg-brand-50 font-semibold text-brand-700" : "text-[#718079] hover:bg-brand-50 hover:text-brand-700"
+  }`;
+  return href ? (
+    <a href={href} className={className}>
       {label}
     </a>
+  ) : (
+    <button type="button" onClick={onSelect} aria-current={active ? "page" : undefined} className={className}>
+      {label}
+    </button>
   );
 }
 
@@ -1282,17 +1432,23 @@ function NavLink({
   label,
   icon: Icon,
   badge,
+  active = false,
+  onSelect,
 }: {
-  href: string;
+  href?: string;
   label: string;
   icon: LucideIcon;
   badge?: number;
+  active?: boolean;
+  onSelect?: () => void;
 }) {
-  return (
-    <a
-      href={href}
-      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] text-[#53615b] transition hover:bg-brand-50 hover:text-[#344440]"
-    >
+  const className = `flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] transition ${
+    active
+      ? "bg-brand-50 font-semibold text-brand-700"
+      : "text-[#53615b] hover:bg-brand-50 hover:text-[#344440]"
+  }`;
+  const content = (
+    <>
       <Icon className="size-[17px]" />
       <span className="flex-1">{label}</span>
       {badge !== undefined && badge > 0 && (
@@ -1300,7 +1456,19 @@ function NavLink({
           {badge}
         </span>
       )}
-    </a>
+    </>
+  );
+  if (href) {
+    return (
+      <a href={href} className={className}>
+        {content}
+      </a>
+    );
+  }
+  return (
+    <button type="button" onClick={onSelect} aria-current={active ? "page" : undefined} className={className}>
+      {content}
+    </button>
   );
 }
 

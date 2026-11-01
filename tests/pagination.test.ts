@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PAGE_SIZES, paginate, resolvePage } from "../src/modules/shared/pagination";
+import { PAGE_SIZES, paginate, resolveLimit, resolvePage } from "../src/modules/shared/pagination";
 
 test("resolvePage menjepit halaman dan ukuran di luar daftar", () => {
   assert.deepEqual(resolvePage(12, 10, 2), {
@@ -20,6 +20,21 @@ test("resolvePage menjepit halaman dan ukuran di luar daftar", () => {
   // Ukuran tak dikenal kembali ke 10, halaman di luar rentang dijepit.
   assert.equal(resolvePage(100, 999, 1).pageSize, PAGE_SIZES[0]);
   assert.equal(resolvePage(100, 10, 99).page, 10);
+});
+
+test("resolveLimit tidak pernah menghasilkan NaN untuk take", () => {
+  // `?limit=abc` dulu jadi take: NaN -> Prisma ClientValidationError -> 500.
+  assert.equal(resolveLimit("abc"), 50);
+  assert.equal(resolveLimit(""), 50);
+  assert.equal(resolveLimit(null), 50);
+  assert.equal(resolveLimit(undefined), 50);
+  assert.equal(resolveLimit(NaN), 50);
+  assert.equal(resolveLimit(-5), 50);
+  assert.equal(resolveLimit("0"), 50);
+  assert.equal(resolveLimit("25"), 25);
+  assert.equal(resolveLimit("1e9"), 200);
+  assert.equal(resolveLimit(1e21), 200);
+  assert.equal(resolveLimit("20", 20, 100), 20);
 });
 
 test("paginate memotong daftar per halaman", () => {

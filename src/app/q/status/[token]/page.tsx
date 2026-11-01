@@ -6,10 +6,16 @@ import { absoluteUrl } from "@/lib/app-url";
 import { brandVars } from "@/modules/tenancy/brand";
 import { getThemeForToken } from "@/modules/tenancy/theme-service";
 
-type PageProps = { params: Promise<{ token: string }> };
+type PageProps = {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ kembali?: string }>;
+};
 
-export default async function QueueStatusPage({ params }: PageProps) {
+const qrTokenPattern = /^[A-Za-z0-9_-]{8,128}$/;
+
+export default async function QueueStatusPage({ params, searchParams }: PageProps) {
   const { token } = await params;
+  const { kembali } = await searchParams;
   const [requestHeaders, theme] = await Promise.all([
     headers(),
     getThemeForToken(token, AccessTokenType.QUEUE_STATUS),
@@ -26,6 +32,7 @@ export default async function QueueStatusPage({ params }: PageProps) {
         <PublicQueueStatus
           token={token}
           statusUrl={absoluteUrl(`/q/status/${token}`, requestHeaders)}
+          backHref={kembali && qrTokenPattern.test(kembali) ? `/q/${kembali}` : null}
         />
         <p className="mt-5 text-center text-[11px] text-muted-foreground">
           Halaman ini diperbarui otomatis setiap beberapa detik.

@@ -1,9 +1,8 @@
-import { randomBytes } from "node:crypto";
-import { hash } from "bcryptjs";
 import { MembershipRole, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
 import { auditData } from "@/modules/shared/audit";
+import { hashPassword, temporaryPassword } from "@/modules/shared/password";
 import { BusinessContext, requireRole } from "@/modules/tenancy/context";
 
 const MANAGE_ROLES: MembershipRole[] = ["OWNER", "SUPER_ADMIN"];
@@ -37,7 +36,7 @@ export async function listTeam(context: BusinessContext): Promise<TeamMemberRow[
     name: membership.user.name ?? membership.user.email ?? "Pengguna",
     email: membership.user.email ?? "",
     role: membership.role,
-    active: membership.user.active,
+    active: membership.active && membership.user.active,
     branchIds: membership.branchScopes.map((scope) => scope.branchId),
     counterIds: membership.counterScopes.map((scope) => scope.counterId),
     joinedAt: membership.createdAt.toISOString(),
@@ -100,9 +99,7 @@ export async function inviteMember(context: BusinessContext, input: InviteInput)
     select: { id: true, name: true, passwordHash: true },
   });
 
-  const temporaryPassword = existingUser?.passwordHash
-    ? null
-    : `Antrian-${randomBytes(6).toString("base64url")}`;
+  const password = existingUser?.passwordHash ? null : temporaryPassword();
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -115,20 +112,74 @@ export async function inviteMember(context: BusinessContext, input: InviteInput)
             data: {
               name: input.name,
               email,
-              passwordHash: await hash(temporaryPassword!, 12),
+              passwordHash: await hashPassword(password!),
             },
           });
 
       const alreadyMember = await tx.businessMembership.findUnique({
         where: { userId_businessId: { userId: user.id, businessId: context.businessId } },
-        select: { id: true },
+        select: { id: true, active: true },
       });
-      if (alreadyMember) {
+      if (alreadyMember?.active) {
         throw new AppError(
           "Email ini sudah menjadi anggota bisnis Anda.",
           409,
           "MEMBER_EXISTS",
         );
+      }
+      if (alreadyMember) {
+        // Anggota yang pernah dinonaktifkan diaktifkan lagi, bukan dibuat ulang,
+        // supaya riwayat audit dan relasinya tetap satu baris.
+        const restored = await tx.businessMembership.update({
+          where: { id: alreadyMember.id },
+          data: { active: true, role: input.role },
+          include: {
+            user: { select: { id: true, name: true, email: true, active: true } },
+            branchScopes: { select: { branchId: true } },
+            counterScopes: { select: { counterId: true } },
+          },
+        });
+        await tx.membershipBranchScope.deleteMany({ where: { membershipId: restored.id } });
+        if (branchIds.length) {
+          await tx.membershipBranchScope.createMany({
+            data: branchIds.map((branchId) => ({ membershipId: restored.id, branchId })),
+          });
+        }
+        // Loket hanya diganti kalau memang dikirim; kalau tidak, penugasan lama tetap utuh.
+        if (input.counterIds !== undefined) {
+          await tx.counterMember.deleteMany({ where: { membershipId: restored.id } });
+          if (counterIds.length) {
+            await tx.counterMember.createMany({
+              data: counterIds.map((counterId) => ({ membershipId: restored.id, counterId })),
+            });
+          }
+        }
+        const restoredCounterIds =
+          input.counterIds === undefined
+            ? restored.counterScopes.map((scope) => scope.counterId)
+            : counterIds;
+        await tx.auditLog.create({
+          data: auditData({
+            businessId: context.businessId,
+            actorUserId: context.userId,
+            action: "MEMBER_REACTIVATED",
+            targetType: "BusinessMembership",
+            targetId: restored.id,
+            metadata: { email, role: input.role },
+          }),
+        });
+        return {
+          membershipId: restored.id,
+          userId: restored.user.id,
+          name: restored.user.name ?? email,
+          email,
+          role: restored.role,
+          active: true,
+          branchIds,
+          counterIds: restoredCounterIds,
+          joinedAt: restored.createdAt.toISOString(),
+          temporaryPassword: null,
+        };
       }
 
       const membership = await tx.businessMembership.create({
@@ -169,7 +220,7 @@ export async function inviteMember(context: BusinessContext, input: InviteInput)
         branchIds: membership.branchScopes.map((scope) => scope.branchId),
         counterIds: membership.counterScopes.map((scope) => scope.counterId),
         joinedAt: membership.createdAt.toISOString(),
-        temporaryPassword,
+        temporaryPassword: password,
       };
     });
   } catch (error) {
@@ -267,6 +318,11 @@ export async function updateMember(
       }
     }
     if (input.active !== undefined) {
+      // Nonaktif = keanggotaan dan akunnya ikut nonaktif, tapi barisnya tetap ada.
+      await tx.businessMembership.update({
+        where: { id: membership.id },
+        data: { active: input.active },
+      });
       await tx.user.update({
         where: { id: membership.userId },
         data: { active: input.active },
@@ -315,13 +371,24 @@ export async function removeMember(context: BusinessContext, membershipId: strin
       throw new AppError("Bisnis harus memiliki minimal satu pemilik.", 409, "LAST_OWNER");
     }
   }
+  // Keluarkan = nonaktifkan keanggotaan, bukan hapus: antrean, audit, dan
+  // penugasan loket yang pernah dibuat anggota ini tetap menunjuk baris yang sama.
   await prisma.$transaction(async (tx) => {
-    await tx.businessMembership.delete({ where: { id: membership.id } });
+    await tx.businessMembership.update({
+      where: { id: membership.id },
+      data: { active: false },
+    });
+    const otherMemberships = await tx.businessMembership.count({
+      where: { userId: membership.userId, active: true, id: { not: membership.id } },
+    });
+    if (otherMemberships === 0) {
+      await tx.user.update({ where: { id: membership.userId }, data: { active: false } });
+    }
     await tx.auditLog.create({
       data: auditData({
         businessId: context.businessId,
         actorUserId: context.userId,
-        action: "MEMBER_REMOVED",
+        action: "MEMBER_DEACTIVATED",
         targetType: "BusinessMembership",
         targetId: membership.id,
         metadata: { userId: membership.userId, role: membership.role },
@@ -329,4 +396,53 @@ export async function removeMember(context: BusinessContext, membershipId: strin
     });
   });
   return { id: membership.id };
+}
+
+/**
+ * Reset kata sandi anggota turunan: sistem membuat sandi sementara yang hanya
+ * dikembalikan sekali (hanya hash yang disimpan) — sama seperti alur undang
+ * anggota, jadi tidak ada sandi yang bisa dibaca ulang dari database.
+ */
+export async function resetMemberPassword(context: BusinessContext, membershipId: string) {
+  requireRole(context, [...MANAGE_ROLES]);
+  const membership = await prisma.businessMembership.findFirst({
+    where: { id: membershipId, businessId: context.businessId },
+    include: { user: { select: { id: true, email: true } } },
+  });
+  if (!membership) {
+    throw new AppError("Anggota tim tidak ditemukan.", 404, "MEMBER_NOT_FOUND");
+  }
+  if (!membership.active) {
+    throw new AppError(
+      "Anggota ini sedang nonaktif. Aktifkan dulu sebelum mereset sandinya.",
+      409,
+      "MEMBER_INACTIVE",
+    );
+  }
+  if (membership.role === "OWNER" && context.role !== "OWNER") {
+    throw new AppError(
+      "Hanya pemilik bisnis yang dapat mereset sandi pemilik lain.",
+      403,
+      "FORBIDDEN",
+    );
+  }
+
+  const password = temporaryPassword();
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: membership.userId },
+      data: { passwordHash: await hashPassword(password), active: true },
+    });
+    await tx.auditLog.create({
+      data: auditData({
+        businessId: context.businessId,
+        actorUserId: context.userId,
+        action: "MEMBER_PASSWORD_RESET",
+        targetType: "User",
+        targetId: membership.userId,
+        metadata: { email: membership.user.email },
+      }),
+    });
+  });
+  return { temporaryPassword: password, email: membership.user.email ?? "" };
 }

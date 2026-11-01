@@ -50,6 +50,12 @@ enum QueueStatus {
   NO_SHOW
 }
 
+enum IntakeMode {
+  AUTO
+  OPEN
+  CLOSED
+}
+
 enum BookingStatus {
   PENDING
   CONFIRMED
@@ -69,6 +75,7 @@ enum FeatureKey {
   ANALYTICS
   ADVERTISEMENT
   MULTI_BRANCH
+  NIK
 }
 
 enum AccessTokenType {
@@ -176,6 +183,7 @@ model Branch {
   slug           String
   timezone       String?
   active         Boolean                 @default(true)
+  intakeMode     IntakeMode              @default(AUTO)
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
   business       Business                @relation(fields: [businessId], references: [id], onDelete: Restrict)
@@ -252,6 +260,7 @@ model BusinessMembership {
   userId        String
   businessId    String
   role          MembershipRole
+  active        Boolean                 @default(true)
   createdAt     DateTime                @default(now())
   user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   business      Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -280,6 +289,9 @@ model Service {
   description     String?          @db.VarChar(500)
   averageMinutes  Int              @default(10)
   active          Boolean          @default(true)
+  /// Tiket baru layanan ini langsung dipetakan ke satu loket (dipakai layanan
+  /// yang loketnya terpisah gedung/ruangan). Nonaktif = tiket menunggu dipanggil.
+  autoAssignCounter Boolean        @default(false)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   business        Business         @relation(fields: [businessId], references: [id], onDelete: Restrict)
@@ -356,8 +368,11 @@ model Customer {
   name          String
   phone         String?
   email         String?
+  /// Diisi hanya kalau fitur NIK aktif untuk bisnis ini (validasi 16 digit).
+  nik           String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  active        Boolean        @default(true)
   business      Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
   queues        Queue[]
   bookings      Booking[]
@@ -365,6 +380,7 @@ model Customer {
 
   @@index([businessId, phone])
   @@index([businessId, email])
+  @@index([businessId, active])
 }
 
 model Queue {

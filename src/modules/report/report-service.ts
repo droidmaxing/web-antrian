@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
+import { resolveLimit } from "@/modules/shared/pagination";
 import { BusinessContext, requireRole } from "@/modules/tenancy/context";
 
 export type ReportRange = { from: string; to: string; branchId: string };
@@ -251,7 +252,7 @@ export async function listAuditTrail(context: BusinessContext, limit = 50) {
     },
     include: { actor: { select: { name: true, email: true } } },
     orderBy: { createdAt: "desc" },
-    take: Math.min(Math.max(limit, 1), 200),
+    take: resolveLimit(limit, 50, 200),
   });
   return logs.map((log) => ({
     id: log.id,

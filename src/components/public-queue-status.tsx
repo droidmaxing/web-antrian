@@ -3,13 +3,15 @@
 import { viewerTimeZone } from "@/modules/shared/timezone";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Clock3, Printer, RefreshCw, TicketCheck } from "lucide-react";
+import { ArrowLeft, Clock3, Printer, RefreshCw, TicketCheck } from "lucide-react";
 import { InlineNotice } from "@/components/inline-notice";
 
 type QueueStatus = {
   ticketNumber: string;
   status: string;
   service: string;
+  /** Terisi kalau tiket langsung dipetakan ke loket (layanan auto-loket). */
+  counter: string | null;
   business: string;
   branch: string;
   waitingAhead: number;
@@ -28,7 +30,16 @@ const statusLabels: Record<string, string> = {
   NO_SHOW: "Tidak terdeteksi saat dipanggil",
 };
 
-export function PublicQueueStatus({ token, statusUrl }: { token: string; statusUrl: string }) {
+export function PublicQueueStatus({
+  token,
+  statusUrl,
+  backHref = null,
+}: {
+  token: string;
+  statusUrl: string;
+  /** Form ambil nomor asal, kalau halaman dibuka dari token QR. */
+  backHref?: string | null;
+}) {
   const [data, setData] = useState<QueueStatus | null>(null);
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -93,6 +104,12 @@ export function PublicQueueStatus({ token, statusUrl }: { token: string; statusU
           <span className="size-1.5 rounded-full bg-brand-300" />
           {data ? statusLabels[data.status] ?? data.status : "Memuat status..."}
         </p>
+        {data?.counter && (
+          <p className="mt-2 text-xs text-white/80">
+            Loket tujuan{" "}
+            <span className="font-semibold text-white">{data.counter}</span>
+          </p>
+        )}
       </div>
       <div className="space-y-4 p-6">
         {error && (
@@ -148,6 +165,12 @@ export function PublicQueueStatus({ token, statusUrl }: { token: string; statusU
                 <span>Layanan</span>
                 <span className="text-right font-semibold">{data?.service ?? "—"}</span>
               </div>
+              {data?.counter && (
+                <div className="flex justify-between gap-2">
+                  <span>Loket</span>
+                  <span className="text-right font-semibold">{data.counter}</span>
+                </div>
+              )}
               <div className="flex justify-between gap-2">
                 <span>Status</span>
                 <span className="text-right font-semibold">
@@ -192,6 +215,15 @@ export function PublicQueueStatus({ token, statusUrl }: { token: string; statusU
             <Printer className="size-4" />
             Cetak struk 80mm
           </button>
+          {backHref && (
+            <Link
+              href={backHref}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-full bubble-btn bg-brand-50 text-sm font-semibold text-brand-800 transition hover:bg-brand-100"
+            >
+              <ArrowLeft className="size-4" />
+              Kembali ambil nomor antrean
+            </Link>
+          )}
         </div>
         <p className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-[#5d6b67]">
           <RefreshCw className="size-3" />

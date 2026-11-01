@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { errorResponse, readJsonRequest } from "@/modules/shared/errors";
 import { validationAppError } from "@/modules/shared/validation-error";
+import { isValidTimezone } from "@/modules/shared/timezone";
 import { requireBusinessContext } from "@/modules/tenancy/context";
 import { createBranch, listBranches, updateBranch } from "@/modules/tenancy/branch-service";
 
@@ -15,9 +16,18 @@ const hoursSchema = z.array(
   }),
 );
 
+// Zona waktu bukan sekadar teks: nama yang tidak dikenal `Intl` (mis. "Mars/Olympus")
+// menyimpan cabang yang selalu 500 di alur antrean/booking pelanggan.
+const timezoneSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(64)
+  .refine(isValidTimezone, "Zona waktu tidak dikenal. Contoh yang benar: Asia/Jakarta.");
+
 const branchSchema = z.object({
   name: z.string().trim().min(2).max(80),
-  timezone: z.string().trim().min(3).max(64).optional(),
+  timezone: timezoneSchema.optional(),
   ticketPrefix: z.string().trim().min(1).max(4).optional(),
   resetDaily: z.boolean().optional(),
   estimateBuffer: z.coerce.number().int().min(0).max(120).optional(),

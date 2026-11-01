@@ -261,6 +261,50 @@ function validateHours(hours: NonNullable<BranchInput["operatingHours"]>) {
   }
 }
 
+const INTAKE_MODES = ["AUTO", "OPEN", "CLOSED"] as const;
+
+/**
+ * Tombol buka/tutup ambil nomor di lokasi. Semua peran boleh memakainya karena
+ * ini keputusan operasional di depan (petugas loket), bukan perubahan data cabang.
+ */
+export async function setBranchIntake(
+  context: BusinessContext,
+  branchId: string,
+  mode: unknown,
+) {
+  requireRole(context, ["OWNER", "SUPER_ADMIN", "ADMIN"]);
+  if (typeof mode !== "string" || !INTAKE_MODES.includes(mode as (typeof INTAKE_MODES)[number])) {
+    throw new AppError("Mode buka/tutup tidak valid.", 400, "INVALID_INTAKE_MODE");
+  }
+  const branch = await prisma.branch.findFirst({
+    where: {
+      id: branchId,
+      businessId: context.businessId,
+      ...(context.branchIds ? { id: { in: context.branchIds } } : {}),
+    },
+    select: { id: true, intakeMode: true },
+  });
+  if (!branch) throw new AppError("Cabang tidak ditemukan.", 404, "BRANCH_NOT_FOUND");
+
+  const updated = await prisma.branch.update({
+    where: { id: branch.id },
+    data: { intakeMode: mode as (typeof INTAKE_MODES)[number] },
+    select: { id: true, intakeMode: true },
+  });
+  await prisma.auditLog.create({
+    data: auditData({
+      businessId: context.businessId,
+      actorUserId: context.userId,
+      branchId: branch.id,
+      action: "BRANCH_INTAKE_CHANGED",
+      targetType: "Branch",
+      targetId: branch.id,
+      metadata: { from: branch.intakeMode, to: updated.intakeMode },
+    }),
+  });
+  return updated;
+}
+
 export function defaultHours() {
   return Array.from({ length: 7 }, (_, weekday) => ({
     weekday,

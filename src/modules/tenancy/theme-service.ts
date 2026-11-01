@@ -144,7 +144,7 @@ export async function getThemeForSession(): Promise<BrandTheme | null> {
     const session = await auth();
     if (!session?.user?.id) return null;
     const membership = await prisma.businessMembership.findFirst({
-      where: { userId: session.user.id, business: { active: true } },
+      where: { userId: session.user.id, active: true, business: { active: true } },
       orderBy: { createdAt: "asc" },
       select: { business: { select: { id: true } } },
     });

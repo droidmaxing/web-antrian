@@ -39,6 +39,7 @@ export async function requireBusinessContext(
   const membership = await prisma.businessMembership.findFirst({
     where: {
       userId: session.user.id,
+      active: true,
       business: { slug: businessSlug, active: true },
     },
     include: {

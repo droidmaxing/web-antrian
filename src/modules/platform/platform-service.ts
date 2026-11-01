@@ -2,6 +2,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
+import { hashPassword, temporaryPassword } from "@/modules/shared/password";
 
 export const planSchema = z.object({
   code: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9_-]{1,39}$/),
@@ -115,6 +116,21 @@ export async function listPlatformUsers(query: PlatformListQuery) {
     prisma.user.count(),
   ]);
   return { items, total, page: query.page, pageSize: query.pageSize };
+}
+
+/**
+ * Reset sandi oleh Master Admin. Sandi sementara dikembalikan sekali saja dan
+ * hanya hash-nya yang disimpan.
+ */
+export async function resetPlatformUserPassword(id: string) {
+  const user = await prisma.user.findUnique({ where: { id }, select: { id: true, email: true } });
+  if (!user) throw new AppError("Pengguna tidak ditemukan.", 404, "USER_NOT_FOUND");
+  const password = temporaryPassword();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: await hashPassword(password), active: true },
+  });
+  return { temporaryPassword: password, email: user.email ?? "" };
 }
 
 export async function setBusinessActive(id: string, active: boolean) {

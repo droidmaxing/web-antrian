@@ -390,6 +390,7 @@ async function main() {
     ANALYTICS: true,
     ADVERTISEMENT: false,
     MULTI_BRANCH: false,
+    NIK: false,
   };
   for (const [featureKey, enabled] of Object.entries(featureDefaults)) {
     await prisma.featureConfiguration.upsert({

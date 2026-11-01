@@ -23,7 +23,9 @@ export function resolvePage(total: number, pageSize: number, page: number): Page
     ? pageSize
     : PAGE_SIZES[0];
   const safeTotal = Number.isFinite(total) && total > 0 ? Math.trunc(total) : 0;
-  const pageCount = Math.max(1, Math.ceil(safeTotal / size));
+  // Total raksasa (mis. count yang salah) tidak boleh menghasilkan pageCount
+  // tak terhingga: klien memakainya untuk menggambar tombol halaman.
+  const pageCount = Math.max(1, Math.min(1000, Math.ceil(safeTotal / size)));
   const current = Math.min(Math.max(Math.trunc(page) || 1, 1), pageCount);
   return {
     page: current,
@@ -32,6 +34,17 @@ export function resolvePage(total: number, pageSize: number, page: number): Page
     skip: (current - 1) * size,
     take: size,
   };
+}
+
+/**
+ * Batas baris untuk daftar yang tidak dipaginasi (mis. jejak audit). Nilai dari
+ * query string apa pun ("" / "abc" / -5 / NaN) jatuh ke `fallback`, sehingga
+ * `take` tak pernah jadi NaN — Prisma menolak NaN dan request berakhir 500.
+ */
+export function resolveLimit(value: unknown, fallback = 50, max = 200): number {
+  const raw = typeof value === "number" ? value : Number(value ?? NaN);
+  if (!Number.isFinite(raw) || raw < 1) return fallback;
+  return Math.min(Math.trunc(raw), max);
 }
 
 /** Potong daftar yang sudah dimuat penuh ke satu halaman (paginasi sisi klien). */

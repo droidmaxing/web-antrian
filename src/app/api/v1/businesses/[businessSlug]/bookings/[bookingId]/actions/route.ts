@@ -8,7 +8,7 @@ import { requireBusinessContext } from "@/modules/tenancy/context";
 type RouteContext = {
   params: Promise<{ businessSlug: string; bookingId: string }>;
 };
-const schema = z.object({ action: z.enum(["confirm", "cancel", "check-in"]) });
+const schema = z.object({ action: z.enum(["confirm", "cancel", "check-in", "no-show"]) });
 
 export async function POST(request: Request, { params }: RouteContext) {
   try {

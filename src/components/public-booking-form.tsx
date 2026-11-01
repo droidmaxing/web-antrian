@@ -15,7 +15,10 @@ import {
 type BookingConfiguration = {
   services: { id: string; name: string; code: string }[];
   today: string;
+  firstDate: string;
   lastDate: string;
+  /** NIK wajib diisi kalau bisnis mengaktifkan fitur validasi NIK. */
+  nikRequired: boolean;
 };
 
 type SlotOption = { time: string; available: boolean };
@@ -29,7 +32,7 @@ export function PublicBookingForm({
 }) {
   const router = useRouter();
   const [serviceId, setServiceId] = useState(configuration.services[0]?.id ?? "");
-  const [date, setDate] = useState(configuration.today);
+  const [date, setDate] = useState(configuration.firstDate);
   const [availability, setAvailability] = useState<{
     key: string;
     slots: SlotOption[];
@@ -40,7 +43,7 @@ export function PublicBookingForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [form, setForm] = useState({ name: "", phone: "", email: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", nik: "" });
   const availabilityKey = `${serviceId}:${date}`;
   const currentAvailability =
     availability?.key === availabilityKey ? availability : null;
@@ -108,6 +111,7 @@ export function PublicBookingForm({
           customerName: form.name,
           customerPhone: form.phone,
           ...(form.email ? { customerEmail: form.email } : {}),
+          ...(form.nik ? { customerNik: form.nik } : {}),
         }),
       });
       const result = await response.json();
@@ -175,7 +179,7 @@ export function PublicBookingForm({
           <input
             type="date"
             required
-            min={configuration.today}
+            min={configuration.firstDate}
             max={configuration.lastDate}
             value={date}
             onChange={(event) => {
@@ -307,6 +311,30 @@ export function PublicBookingForm({
             />
             <FieldError id="booking-email-error" message={fieldErrors.customerEmail} />
           </div>
+          {configuration.nikRequired && (
+            <div>
+              <input
+                value={form.nik}
+                onChange={(event) => {
+                  setForm((current) => ({
+                    ...current,
+                    nik: event.target.value.replace(/\D/g, ""),
+                  }));
+                  clearFieldError("customerNik");
+                }}
+                required
+                inputMode="numeric"
+                pattern="\d{16}"
+                maxLength={16}
+                aria-invalid={Boolean(fieldErrors.customerNik)}
+                aria-describedby={fieldErrors.customerNik ? "booking-nik-error" : undefined}
+                placeholder="NIK (16 digit)"
+                aria-label="NIK"
+                className={`h-12 w-full rounded-xl border bg-white px-3.5 font-mono text-sm tracking-[.06em] outline-none placeholder:font-sans placeholder:tracking-normal placeholder:text-[#636a67] focus:border-brand-400 focus:ring-4 focus:ring-brand-700/[.08] ${fieldErrors.customerNik ? "border-[#d98a80]" : "border-brand-200"}`}
+              />
+              <FieldError id="booking-nik-error" message={fieldErrors.customerNik} />
+            </div>
+          )}
         </div>
       </div>
 

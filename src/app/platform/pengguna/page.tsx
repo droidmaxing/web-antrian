@@ -28,6 +28,7 @@ export default async function PlatformUsersPage() {
         { text: user.active ? "Aktif" : "Nonaktif", tone: user.active ? "ok" : "off" },
         { text: dateLabel(user.createdAt) },
       ],
+      reset: { userId: user.id },
     };
   });
 

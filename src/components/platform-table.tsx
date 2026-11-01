@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Pager, usePaged } from "@/components/pagination";
 import { PlatformBusinessStatus } from "@/components/platform-business-status";
+import { PlatformUserReset } from "@/components/platform-user-reset";
 import { Pill, TD, TH, type Tone } from "@/components/platform-ui";
 
 export type PlatformCell = {
@@ -20,6 +21,8 @@ export type PlatformRow = {
   cells: PlatformCell[];
   /** Diisi hanya untuk baris yang statusnya bisa diubah (suspend/aktifkan). */
   action?: { businessId: string; active: boolean };
+  /** Diisi hanya untuk baris akun yang sandinya bisa direset. */
+  reset?: { userId: string };
 };
 
 /** Daftar pendek tidak perlu kotak cari; paginasi tetap aktif. */
@@ -52,7 +55,7 @@ export function PlatformTable({
     );
   }, [rows, query]);
   const paged = usePaged(filtered);
-  const hasAction = rows.some((row) => row.action);
+  const hasAction = rows.some((row) => row.action || row.reset);
   const columnCount = columns.length + (hasAction ? 1 : 0);
 
   return (
@@ -109,7 +112,10 @@ export function PlatformTable({
                 ))}
                 {hasAction && (
                   <td className={TD}>
-                    {row.action && <PlatformBusinessStatus businessId={row.action.businessId} active={row.action.active} />}
+                    <div className="flex flex-col items-start gap-2">
+                      {row.action && <PlatformBusinessStatus businessId={row.action.businessId} active={row.action.active} />}
+                      {row.reset && <PlatformUserReset userId={row.reset.userId} />}
+                    </div>
                   </td>
                 )}
               </tr>
