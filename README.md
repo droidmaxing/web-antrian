@@ -100,9 +100,8 @@ account configures Google login and the Midtrans keys there.
   accessible field-level validation messages for public queue and booking forms.
 - Searchable service pickers appear automatically when a business has more than
   five active services; shorter lists keep the compact native select control.
-- Account menu in the navbar: an initials avatar opens a modal with the account
-  identity and a sign-out action. Anyone who needs a new password gets it reset by
-  an admin (team page for tenants, platform console for operators), and the
+- Self-service account management: any signed-in user can change their own
+  password from the dashboard (`POST /api/v1/auth/password`), and the
   registration and password fields have a show/hide toggle.
 - Platform console for the SaaS operator (`/platform`): businesses, users, plans,
   subscription assignment, trial reset, manual renewal, payment history, and the

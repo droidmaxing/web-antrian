@@ -49,6 +49,11 @@ const SECTIONS: GuideSection[] = [
         hrefLabel: "Buka antrean",
       },
       {
+        title: "Ganti kata sandi sendiri",
+        detail:
+          "Klik avatar di kanan atas navbar (di sidebar juga ada, di bawah): terbuka menu akun dengan pilihan Ubah kata sandi. Isi kata sandi lama dan kata sandi baru minimal 8 karakter. Sesi login di perangkat lain tidak otomatis berakhir, jadi keluar manual bila perangkat itu bukan milik Anda.",
+      },
+      {
         title: "Cari antrean dan pelanggan",
         detail:
           "Di bagian Antrean, kotak pencarian bersama filter status dan loket menyaring nomor antrean hari ini. Membaca kolomnya saja: nama, kode layanan, atau nama loket. Untuk daftar kontak, buka Pelanggan dan pakai kotak pencarian di sana.",

@@ -424,7 +424,9 @@ export async function createPublicBooking(
           queueTicket: ticket.ticketNumber,
         };
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+      // Bawaan Prisma 5 detik terlalu ketat saat mesin sibuk (P2028 → 500);
+      // samakan ruang tunggu dengan jalur ambil nomor publik.
+      { maxWait: 10_000, timeout: 20_000, isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
   } catch (error) {
     if (error instanceof AppError) throw error;
@@ -628,6 +630,7 @@ export async function transitionBooking(
       });
       return { id: booking.id, status: nextStatus, queueTicket };
     },
-    { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    // Bawaan 5 detik bisa jebol saat mesin sibuk (P2028 → 500).
+    { maxWait: 10_000, timeout: 20_000, isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
   );
 }

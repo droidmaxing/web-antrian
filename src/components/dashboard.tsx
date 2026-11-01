@@ -28,7 +28,7 @@ import {
   Tv,
   type LucideIcon,
 } from "lucide-react";
-import { AccountMenu } from "@/components/account-menu";
+import { AccountMenuButton } from "@/components/account-menu";
 import { initials } from "@/lib/initials";
 import { InlineNotice } from "@/components/inline-notice";
 import { Pager, usePaged } from "@/components/pagination";
@@ -637,7 +637,7 @@ export function Dashboard({
 
         {/* Pinned footer: always visible, never inside the scroll container. */}
         <div className="shrink-0 border-t border-[#eef1f0] p-3">
-          <AccountMenu
+          <AccountMenuButton
             variant="card"
             userName={userName}
             roleLabel={roleLabel(role)}
@@ -716,7 +716,7 @@ export function Dashboard({
               )}
             </div>
             <span className="mx-1 hidden h-9 w-px bg-brand-200 sm:block" />
-            <AccountMenu
+            <AccountMenuButton
               userName={userName}
               roleLabel={roleLabel(role)}
               businessName={businessName}

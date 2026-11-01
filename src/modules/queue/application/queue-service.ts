@@ -275,7 +275,13 @@ export async function callNext(
         eventId: outbox.id,
       };
     },
-    { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    {
+      // Jalur panggil/ketuk loket: kunci baris + tulis nomor bisa lewat 5 detik
+      // saat mesin sibuk (P2028 → 500), jadi beri ruang lebih.
+      maxWait: 10_000,
+      timeout: 20_000,
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+    },
   );
 }
 

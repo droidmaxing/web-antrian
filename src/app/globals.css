@@ -373,6 +373,18 @@ html {
     bubble-float 9s ease-in-out infinite;
 }
 
+/* Muncul mengambang saat dibuka (popover/modal ringan). */
+@utility bubble-pop {
+  animation: bubble-pop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes bubble-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+
 @utility bubble-chip {
   border-radius: 9999px;
   background-color: color-mix(in oklab, var(--accent-200) 80%, white);
@@ -408,7 +420,8 @@ html {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-bubble-float,
-  .bubble-blob {
+  .bubble-blob,
+  .bubble-pop {
     animation: none;
   }
 
