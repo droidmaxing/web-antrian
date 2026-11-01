@@ -51,6 +51,11 @@ test("only settled or accepted captured transactions are paid", () => {
   assert.equal(paymentStatusFromNotification("capture", "accept"), "PAID");
   assert.equal(paymentStatusFromNotification("capture", "challenge"), "PENDING");
   assert.equal(paymentStatusFromNotification("expire", undefined), "EXPIRED");
+  // Refund: dananya sudah masuk, jadi status tidak turun ke "menunggu".
+  assert.equal(paymentStatusFromNotification("refund", "accept"), "PAID");
+  assert.equal(paymentStatusFromNotification("partial_refund", "accept"), "PAID");
+  assert.equal(paymentStatusFromNotification("cancel", undefined), "FAILED");
+  assert.equal(paymentStatusFromNotification("deny", undefined), "FAILED");
 });
 
 test("order ids are bounded and unique per call", () => {

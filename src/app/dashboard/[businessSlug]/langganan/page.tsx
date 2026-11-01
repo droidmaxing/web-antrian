@@ -96,6 +96,7 @@ export default async function SubscriptionPage({ params }: PageProps) {
             cycle: payment.cycle,
             createdAt: payment.createdAt.toISOString(),
             paidAt: payment.paidAt?.toISOString() ?? null,
+            refundedAt: payment.refundedAt?.toISOString() ?? null,
             planName: payment.plan?.name ?? null,
           }))}
         />

@@ -165,6 +165,8 @@ model Payment {
   provider       String        @default("midtrans")
   providerRef    String?
   paidAt         DateTime?
+  /** Waktu dana dikembalikan Midtrans; status tetap PAID karena dananya memang masuk. */
+  refundedAt     DateTime?
   payload        Json?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt

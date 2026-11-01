@@ -1,4 +1,4 @@
-import { BillingCycle, PaymentStatus, SubscriptionStatus } from "@prisma/client";
+import { BillingCycle, SubscriptionStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/modules/shared/errors";
 import { auditData } from "@/modules/shared/audit";
@@ -138,6 +138,7 @@ export type MidtransNotification = {
   transaction_id?: string;
 };
 
+
 /**
  * Applies a signature-verified notification. `orderId` is the idempotency key:
  * the paid transition is claimed with a conditional update, so a replayed or
@@ -156,11 +157,28 @@ export async function applyMidtransNotification(notification: MidtransNotificati
     notification.fraud_status,
   );
   const payload = { ...notification, receivedAt: new Date().toISOString() };
+  const refunded =
+    notification.transaction_status === "refund" || notification.transaction_status === "partial_refund";
+
+  if (refunded) {
+    // Dana sudah masuk sebelum dikembalikan: status pembayaran tidak diturunkan,
+    // waktunya saja yang dicatat. Penurunan akses tetap keputusan manual.
+    // Midtrans mengulang notifikasi, jadi waktu pertama yang dipertahankan.
+    await prisma.payment.updateMany({
+      where: { id: payment.id },
+      data: {
+        refundedAt: payment.refundedAt ?? new Date(),
+        providerRef: notification.transaction_id ?? payment.providerRef,
+        payload,
+      },
+    });
+    return { applied: true, reason: "REFUNDED" };
+  }
 
   if (status !== "PAID") {
     await prisma.payment.updateMany({
       where: { id: payment.id, status: { not: "PAID" } },
-      data: { status: status as PaymentStatus, providerRef: notification.transaction_id ?? null, payload },
+      data: { status, providerRef: notification.transaction_id ?? null, payload },
     });
     return { applied: true, reason: status };
   }

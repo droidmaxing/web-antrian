@@ -86,6 +86,10 @@ export function paymentStatusFromNotification(
   if (transactionStatus === "settlement") return "PAID";
   if (transactionStatus === "pending") return "PENDING";
   if (transactionStatus === "expire") return "EXPIRED";
+  // Dana sudah masuk dan baru dikembalikan: langganan yang sudah dibayar TIDAK
+  // boleh turun jadi "menunggu". Pengembalian uangnya dicatat terpisah
+  // (`refundedAt`), karena penurunan akses bukan urusan webhook.
+  if (transactionStatus === "refund" || transactionStatus === "partial_refund") return "PAID";
   if (transactionStatus === "cancel" || transactionStatus === "deny" || transactionStatus === "failure") {
     return "FAILED";
   }

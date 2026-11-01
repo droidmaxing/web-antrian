@@ -23,6 +23,8 @@ type PaymentRow = {
   cycle: string;
   createdAt: string;
   paidAt: string | null;
+  /** Dana dikembalikan Midtrans; statusnya tetap "Dibayar". */
+  refundedAt: string | null;
   planName: string | null;
 };
 
@@ -265,7 +267,9 @@ export function SubscriptionBilling({
                       {rupiah.format(payment.amount)}
                     </td>
                     <td className="px-3 py-2.5 text-[11px] text-brand-800">
-                      {PAYMENT_LABEL[payment.status] ?? payment.status}
+                      {payment.refundedAt
+                        ? "Dana dikembalikan"
+                        : (PAYMENT_LABEL[payment.status] ?? payment.status)}
                     </td>
                     <td className="px-3 py-2.5 text-[11px] text-brand-800">
                       {asDate(payment.createdAt)}
