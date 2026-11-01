@@ -1,4 +1,4 @@
-import { PrismaClient, AccessTokenType } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { randomBytes, createHash } from "node:crypto";
 
 const prisma = new PrismaClient();
@@ -15,7 +15,7 @@ async function main(){
     process.exit(1);
   }
   const token = randomBytes(32).toString('base64url');
-  const display = await prisma.display.create({
+  await prisma.display.create({
     data:{
       businessId: business.id,
       branchId: branch.id,

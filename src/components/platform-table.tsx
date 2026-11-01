@@ -101,7 +101,7 @@ export function PlatformTable({
             {paged.rows?.map((row) => (
               <tr key={row.id} className="border-b border-[#f4f6f5] last:border-0">
                 {row.cells.map((cell, index) => (
-                  <td key={columns[index] ?? index} className={cell.mono ? `${TD} font-mono text-[11px] text-[#687570]` : TD}>
+                  <td key={columns[index] ?? index} className={cell.mono ? `${TD} font-mono text-[11px] text-[#65716d]` : TD}>
                     {cell.tone ? (
                       <Pill label={cell.text} tone={cell.tone} />
                     ) : (

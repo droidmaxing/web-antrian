@@ -313,7 +313,7 @@ export function CountersManager({
                     className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition ${
                       selected
                         ? "border-brand-700 bg-brand-100 text-brand-700"
-                        : "border-brand-200 bg-white text-[#687570]"
+                        : "border-brand-200 bg-white text-[#65716d]"
                     }`}
                   >
                     {service.name}
@@ -334,7 +334,7 @@ export function CountersManager({
             <button
               type="button"
               onClick={() => setDraft(null)}
-              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#687570]"
+              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#65716d]"
             >
               Batal
             </button>
@@ -384,7 +384,7 @@ export function CountersManager({
                       serviceIds: counter.serviceIds,
                     })
                   }
-                  className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#687570] hover:bg-brand-50"
+                  className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[#65716d] hover:bg-brand-50"
                 >
                   Ubah
                 </button>
@@ -405,7 +405,7 @@ export function CountersManager({
                       ? "Loket masih melayani antrean"
                       : "Hapus atau nonaktifkan loket"
                   }
-                  className="rounded-lg p-2 text-[#b0a29c] hover:bg-[#fdf2f0] hover:text-[#b4543c] disabled:opacity-30"
+                  className="rounded-lg p-2 text-[#766d69] hover:bg-[#fdf2f0] hover:text-[#b0523b] disabled:opacity-30"
                 >
                   <Trash2 className="size-3.5" />
                 </button>

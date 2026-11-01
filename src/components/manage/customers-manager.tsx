@@ -260,7 +260,7 @@ export function CustomersManager({
               }`}
             />
             {fieldErrors.name && (
-              <span className="mt-1 block text-[11px] font-normal text-[#b4553f]">
+              <span className="mt-1 block text-[11px] font-normal text-[#b0533e]">
                 {fieldErrors.name}
               </span>
             )}
@@ -279,7 +279,7 @@ export function CustomersManager({
               }`}
             />
             {fieldErrors.phone && (
-              <span className="mt-1 block text-[11px] font-normal text-[#b4553f]">
+              <span className="mt-1 block text-[11px] font-normal text-[#b0533e]">
                 {fieldErrors.phone}
               </span>
             )}
@@ -298,7 +298,7 @@ export function CustomersManager({
               }`}
             />
             {fieldErrors.email && (
-              <span className="mt-1 block text-[11px] font-normal text-[#b4553f]">
+              <span className="mt-1 block text-[11px] font-normal text-[#b0533e]">
                 {fieldErrors.email}
               </span>
             )}
@@ -315,7 +315,7 @@ export function CustomersManager({
             <button
               type="button"
               onClick={() => setDraft(null)}
-              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#687570]"
+              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#65716d]"
             >
               Batal
             </button>
@@ -367,7 +367,7 @@ export function CustomersManager({
                   onClick={() => void remove(customer)}
                   disabled={busy}
                   aria-label={`Hapus ${customer.name}`}
-                  className="rounded-lg p-2 text-[#a8736b] hover:bg-[#fbf2f0] disabled:opacity-40"
+                  className="rounded-lg p-2 text-[#90635c] hover:bg-[#fbf2f0] disabled:opacity-40"
                 >
                   <Trash2 className="size-3.5" />
                 </button>

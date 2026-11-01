@@ -141,7 +141,7 @@ export function BookingManagement({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1.5 text-[11px] text-[#7b8983]">
+          <label className="flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1.5 text-[11px] text-[#65706b]">
             <CalendarClock className="size-3.5" />
             <input
               type="date"
@@ -179,7 +179,7 @@ export function BookingManagement({
               className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center md:px-6"
             >
               <div className="flex min-w-0 gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#fff5e7] text-[#b17c34]">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#fff5e7] text-[#91662b]">
                   <Clock3 className="size-[18px]" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -193,7 +193,7 @@ export function BookingManagement({
                     </p>
                     <StatusBadge status={booking.status} />
                   </div>
-                  <p className="mt-1 truncate text-xs text-[#687570]">
+                  <p className="mt-1 truncate text-xs text-[#65716d]">
                     {booking.service.name}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#66736e]">
@@ -289,12 +289,12 @@ export function BookingManagement({
 
 function StatusBadge({ status }: { status: BookingRow["status"] }) {
   const styles: Record<BookingRow["status"], string> = {
-    PENDING: "bg-[#fff6e8] text-[#ae7723]",
-    CONFIRMED: "bg-[#edf2fc] text-[#5b78b0]",
+    PENDING: "bg-[#fff6e8] text-[#94651e]",
+    CONFIRMED: "bg-[#edf2fc] text-[#4a679e]",
     CHECKED_IN: "bg-brand-100 text-brand-700",
-    COMPLETED: "bg-brand-50 text-[#74817c]",
-    CANCELLED: "bg-[#fbefef] text-[#bd6e6e]",
-    NO_SHOW: "bg-[#f4effb] text-[#856ca9]",
+    COMPLETED: "bg-brand-50 text-[#637069]",
+    CANCELLED: "bg-[#fbefef] text-[#a5463d]",
+    NO_SHOW: "bg-[#f4effb] text-[#6d5695]",
   };
   return (
     <span className={`rounded-full px-2 py-1 text-[9px] font-medium ${styles[status]}`}>
@@ -321,7 +321,7 @@ function ActionButton({
       className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold transition disabled:opacity-50 ${
         primary
           ? "bg-brand-700 text-white hover:bg-brand-800"
-          : "bubble-btn text-[#687570] hover:bg-brand-50"
+          : "bubble-btn text-[#65716d] hover:bg-brand-50"
       }`}
     >
       {loading ? (

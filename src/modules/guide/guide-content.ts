@@ -51,7 +51,7 @@ const SECTIONS: GuideSection[] = [
       {
         title: "Ganti kata sandi sendiri",
         detail:
-          "Tombol bergambar kunci di kanan atas (juga di bawah sidebar) membuka panel Ubah kata sandi. Isi kata sandi lama dan kata sandi baru minimal 8 karakter. Sesi login di perangkat lain tidak otomatis berakhir, jadi keluar manual bila perangkat itu bukan milik Anda.",
+          "Klik avatar di kanan atas navbar (di sidebar juga ada, di bawah): terbuka menu akun dengan pilihan Ubah kata sandi. Isi kata sandi lama dan kata sandi baru minimal 8 karakter. Sesi login di perangkat lain tidak otomatis berakhir, jadi keluar manual bila perangkat itu bukan milik Anda.",
       },
       {
         title: "Cari antrean dan pelanggan",

@@ -52,7 +52,7 @@ export function PlatformBusinessStatus({
         aria-busy={pending}
         className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition disabled:cursor-progress disabled:opacity-50 ${
           active
-            ? "border-[#e0a99f] text-[#b4553f] hover:bg-[#fdf4f2]"
+            ? "border-[#e0a99f] text-[#b0533e] hover:bg-[#fdf4f2]"
             : "border-brand-200 text-brand-600 hover:bg-brand-50"
         }`}
       >

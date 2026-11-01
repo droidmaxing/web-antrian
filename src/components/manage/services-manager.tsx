@@ -305,7 +305,7 @@ export function ServicesManager({
             <button
               type="button"
               onClick={() => setDraft(null)}
-              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#687570]"
+              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#65716d]"
             >
               Batal
             </button>
@@ -374,7 +374,7 @@ export function ServicesManager({
                   }
                   title="Nomor antrean langsung dipetakan ke satu loket"
                   className={`rounded-lg p-2 hover:bg-brand-50 disabled:opacity-40 ${
-                    service.autoAssignCounter ? "text-brand-700" : "text-[#9aa5a0]"
+                    service.autoAssignCounter ? "text-brand-700" : "text-[#69706d]"
                   }`}
                 >
                   <Building2 className="size-3.5" />
@@ -391,7 +391,7 @@ export function ServicesManager({
                   onClick={() => void archive(service)}
                   disabled={busy}
                   aria-label={`Hapus ${service.name}`}
-                  className="rounded-lg p-2 text-[#b4756d] hover:bg-[#fdf3f2] disabled:opacity-40"
+                  className="rounded-lg p-2 text-[#95615a] hover:bg-[#fdf3f2] disabled:opacity-40"
                 >
                   <Trash2 className="size-3.5" />
                 </button>

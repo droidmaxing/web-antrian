@@ -438,7 +438,7 @@ export function TeamManager({
                       className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                         selected
                           ? "border-brand-700 bg-brand-100 text-brand-700"
-                          : "border-brand-200 bg-white text-[#687570]"
+                          : "border-brand-200 bg-white text-[#65716d]"
                       }`}
                     >
                       {branch.name}
@@ -481,7 +481,7 @@ export function TeamManager({
                         className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium disabled:opacity-50 ${
                           selected
                             ? "border-brand-700 bg-brand-100 text-brand-700"
-                            : "border-brand-200 bg-white text-[#687570]"
+                            : "border-brand-200 bg-white text-[#65716d]"
                         }`}
                       >
                         {counter.code} · {counter.name}
@@ -506,7 +506,7 @@ export function TeamManager({
             <button
               type="button"
               onClick={() => setDraft(null)}
-              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#687570]"
+              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#65716d]"
             >
               Batal
             </button>
@@ -540,7 +540,7 @@ export function TeamManager({
                     </span>
                   )}
                   {!member.active && (
-                    <span className="rounded-full bg-[#fbefef] px-2 py-0.5 text-[9px] font-medium text-[#bd6e6e]">
+                    <span className="rounded-full bg-[#fbefef] px-2 py-0.5 text-[9px] font-medium text-[#a5463d]">
                       Nonaktif
                     </span>
                   )}
@@ -566,7 +566,7 @@ export function TeamManager({
                     disabled={busy}
                     onChange={(event) => void changeRole(member, event.target.value as Role)}
                     aria-label={`Peran ${member.name}`}
-                    className="h-8 rounded-lg bubble-btn bg-white px-2 text-[11px] text-[#687570] disabled:opacity-50"
+                    className="h-8 rounded-lg bubble-btn bg-white px-2 text-[11px] text-[#65716d] disabled:opacity-50"
                   >
                     <option value="ADMIN">Admin</option>
                     <option value="SUPER_ADMIN">Super Admin</option>
@@ -580,7 +580,7 @@ export function TeamManager({
                         void setScopes(member, event.target.value ? [event.target.value] : [])
                       }
                       aria-label={`Cabang ${member.name}`}
-                      className="h-8 max-w-28 rounded-lg bubble-btn bg-white px-2 text-[11px] text-[#687570] disabled:opacity-50"
+                      className="h-8 max-w-28 rounded-lg bubble-btn bg-white px-2 text-[11px] text-[#65716d] disabled:opacity-50"
                     >
                       <option value="">Semua cabang</option>
                       {branches.map((branch) => (
@@ -607,7 +607,7 @@ export function TeamManager({
                       className={`h-8 rounded-lg border px-2 text-[11px] font-medium disabled:opacity-50 ${
                         member.counterIds.length
                           ? "border-brand-300 bg-brand-100 text-brand-700"
-                          : "border-brand-200 bg-white text-[#687570]"
+                          : "border-brand-200 bg-white text-[#65716d]"
                       }`}
                     >
                       {member.counterIds.length
@@ -621,7 +621,7 @@ export function TeamManager({
                     disabled={busy}
                     aria-label={`Reset sandi ${member.name}`}
                     title="Reset sandi"
-                    className="rounded-lg p-2 text-[#7d8a85] hover:bg-brand-50 disabled:opacity-40"
+                    className="rounded-lg p-2 text-[#65716d] hover:bg-brand-50 disabled:opacity-40"
                   >
                     <KeyRound className="size-3.5" />
                   </button>
@@ -637,7 +637,7 @@ export function TeamManager({
                     title={member.active ? "Nonaktifkan" : "Aktifkan"}
                     className={
                       member.active
-                        ? "rounded-lg p-2 text-[#b4756d] hover:bg-[#fdf3f2] disabled:opacity-40"
+                        ? "rounded-lg p-2 text-[#95615a] hover:bg-[#fdf3f2] disabled:opacity-40"
                         : "rounded-lg p-2 text-brand-600 hover:bg-brand-50 disabled:opacity-40"
                     }
                   >
@@ -660,7 +660,7 @@ export function TeamManager({
                     <button
                       type="button"
                       onClick={() => setCounterEdit(null)}
-                      className="text-[11px] font-medium text-[#7d8a85] hover:text-[#344440]"
+                      className="text-[11px] font-medium text-[#65716d] hover:text-[#344440]"
                     >
                       Tutup
                     </button>
@@ -685,7 +685,7 @@ export function TeamManager({
                             className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                               selected
                                 ? "border-brand-700 bg-brand-100 text-brand-700"
-                                : "border-brand-200 bg-white text-[#687570]"
+                                : "border-brand-200 bg-white text-[#65716d]"
                             }`}
                           >
                             {counter.code} · {counter.name}
@@ -716,7 +716,7 @@ export function TeamManager({
                         type="button"
                         disabled={busy}
                         onClick={() => void setCounterScopes(member, [])}
-                        className="h-8 rounded-lg bubble-btn px-3 text-[11px] font-medium text-[#687570] disabled:opacity-50"
+                        className="h-8 rounded-lg bubble-btn px-3 text-[11px] font-medium text-[#65716d] disabled:opacity-50"
                       >
                         Beri semua loket
                       </button>

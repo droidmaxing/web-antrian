@@ -54,7 +54,7 @@ export function Pager({
         Menampilkan {firstRow}–{lastRow} dari {total} {unit}
       </p>
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-1.5 text-[11px] text-[#7d8a85]">
+        <label className="flex items-center gap-1.5 text-[11px] text-[#65716d]">
           Tampil
           <select
             value={pageSize}

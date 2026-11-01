@@ -207,13 +207,13 @@ export function SubscriptionBilling({
             {selected && price > 0 ? ` · ${rupiah.format(price)}` : ""}
           </button>
           {!billingEnabled && (
-            <span className="text-[11px] text-[#8d713f]">
+            <span className="text-[11px] text-[#7d6234]">
               Pembayaran online sedang dinonaktifkan. Hubungi administrator platform untuk
               mengaktifkannya kembali; paket yang sudah lunas tetap berlaku.
             </span>
           )}
           {billingEnabled && selected && price <= 0 && (
-            <span className="text-[11px] text-[#8d713f]">
+            <span className="text-[11px] text-[#7d6234]">
               Harga paket ini masih 0. Hubungi administrator platform.
             </span>
           )}
@@ -254,7 +254,7 @@ export function SubscriptionBilling({
               <tbody>
                 {payments.map((payment) => (
                   <tr key={payment.id} className="border-b border-[#f4f6f5] last:border-0">
-                    <td className="px-3 py-2.5 font-mono text-[11px] text-[#687570]">
+                    <td className="px-3 py-2.5 font-mono text-[11px] text-[#65716d]">
                       {payment.orderId}
                     </td>
                     <td className="px-3 py-2.5 text-[11px] text-brand-800">

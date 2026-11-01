@@ -48,7 +48,7 @@ test("Trial reset: sets status to TRIAL and extends trialEndsAt by 30 days", asy
   });
   trackBusiness(business);
 
-  const subscription = await prisma.subscription.create({
+  await prisma.subscription.create({
     data: {
       businessId: business.id,
       status: "ACTIVE",
@@ -120,7 +120,7 @@ test("Plan reassignment: assign active plan to subscription", async () => {
     },
   });
 
-  const subscription = await prisma.subscription.create({
+  await prisma.subscription.create({
     data: {
       businessId: business.id,
       status: "TRIAL",
@@ -179,7 +179,7 @@ test("Plan reassignment: clear plan by setting to null", async () => {
     },
   });
 
-  const subscription = await prisma.subscription.create({
+  await prisma.subscription.create({
     data: {
       businessId: business.id,
       status: "TRIAL",

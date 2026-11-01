@@ -201,6 +201,16 @@ html {
     transition: background-color 0.2s ease;
   }
 
+  /* Satu cincin fokus untuk seluruh aplikasi: sebelumnya hanya sebagian tombol
+     yang punya gaya fokus sendiri, sehingga navigasi keyboard tidak terlihat di
+     tautan sidebar/header. `:where()` menjaga specificity tetap nol, jadi kelas
+     seperti bubble-field dan bubble-btn tetap boleh menimpanya. */
+  :where(a, button, summary, [role="button"], [tabindex]):focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--brand-500) 40%, transparent);
+  }
+
   :where(table tbody tr):hover {
     background-color: color-mix(in oklab, var(--brand-50) 65%, transparent);
   }

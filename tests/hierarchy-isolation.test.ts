@@ -52,7 +52,6 @@ test("Hierarchy: Create 2 new owner accounts", async () => {
 });
 
 test("Hierarchy: Each owner creates own business", async () => {
-  const { hash } = await import("bcryptjs");
   
   // Get or create owner accounts
   const owner1 = await prisma.user.findFirst({

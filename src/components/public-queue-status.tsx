@@ -231,7 +231,7 @@ export function PublicQueueStatus({
             ? `Diperbarui ${updatedAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} · diperbarui otomatis`
             : "Memuat antrean"}
         </p>
-        <div className="flex gap-2 rounded-xl bg-brand-50 p-3 text-[11px] leading-5 text-[#658172]">
+        <div className="flex gap-2 rounded-xl bg-brand-50 p-3 text-[11px] leading-5 text-[#5b7467]">
           <Clock3 className="mt-0.5 size-4 shrink-0" />
           Estimasi waktu dapat berubah mengikuti kondisi pelayanan.
         </div>

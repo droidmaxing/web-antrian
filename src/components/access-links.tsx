@@ -146,7 +146,7 @@ export function AccessLinks({
           disabled={!displayEnabled || busy !== null}
           className="flex items-center gap-3 bubble-panel p-4 text-left transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-45"
         >
-          <span className="flex size-10 items-center justify-center rounded-xl bg-[#f1eff9] text-[#8071a8]">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-[#f1eff9] text-[#6d5f92]">
             {busy === "display" ? <LoaderCircle className="size-5 animate-spin" /> : <Tv2 className="size-5" />}
           </span>
           <span>

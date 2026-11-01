@@ -94,7 +94,7 @@ export function PublicBookingStatus({ token }: { token: string }) {
 
   if (!booking) {
     return (
-      <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-[#83918b]">
+      <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-[#66716d]">
         <LoaderCircle className="size-4 animate-spin" />
         Memuat konfirmasi...
       </div>
@@ -136,7 +136,7 @@ export function PublicBookingStatus({ token }: { token: string }) {
             <p className="mt-1 text-2xl font-semibold tracking-tight text-brand-700">
               {booking.queue.ticketNumber}
             </p>
-            <p className="mt-1 text-xs text-[#7b9285]">
+            <p className="mt-1 text-xs text-[#617369]">
               {queueStatusLabels[booking.queue.status] ?? booking.queue.status}
             </p>
           </div>

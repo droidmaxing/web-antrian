@@ -1,13 +1,22 @@
-import { AccountPasswordButton } from "@/components/account-password-button";
+import { AccountMenuButton } from "@/components/account-menu";
 import { BrandLogo } from "@/components/brand-logo";
-import { SignOutButton } from "@/components/sign-out-button";
 import { capabilitiesFor, roleLabel } from "@/modules/tenancy/access";
 import { brandTitle, brandVars, type BrandTheme } from "@/modules/tenancy/brand";
 import type { MembershipRole } from "@prisma/client";
 
+const SECTION_LABEL = {
+  pengaturan: "Pengaturan",
+  panduan: "Panduan",
+  langganan: "Langganan",
+} as const;
+
 /**
- * Header for the workspace sub-pages (settings, tutorial). Plain anchors keep
- * these pages usable even before the client bundle loads.
+ * Header for the workspace sub-pages (settings, tutorial, subscription). Plain
+ * anchors keep these pages usable even before the client bundle loads.
+ *
+ * Only the current section is named here (with the brand as the way back to the
+ * dashboard); repeating the dashboard's navigation made the header two rows
+ * tall on laptops and left two anchors with the same accessible name.
  */
 export function AppHeader({
   businessName,
@@ -25,27 +34,15 @@ export function AppHeader({
   active: "pengaturan" | "panduan" | "langganan";
 }) {
   const capabilities = capabilitiesFor(role);
-  const links = [
-    { href: `/dashboard/${businessSlug}`, label: "Dashboard", id: "dashboard", show: true },
+  const dashboardHref = `/dashboard/${businessSlug}`;
+  const backTo = [
     {
       href: `/dashboard/${businessSlug}/langganan`,
       label: "Langganan",
-      id: "langganan",
       show: capabilities.manageBilling,
     },
-    {
-      href: `/dashboard/${businessSlug}/panduan`,
-      label: "Panduan",
-      id: "panduan",
-      show: true,
-    },
-    {
-      href: `/dashboard/${businessSlug}/pengaturan`,
-      label: "Pengaturan",
-      id: "pengaturan",
-      show: capabilities.configureBusiness,
-    },
-  ].filter((link) => link.show);
+    { href: `/dashboard/${businessSlug}/pengaturan`, label: "Pengaturan", show: capabilities.configureBusiness },
+  ].filter((link) => link.show && link.label !== SECTION_LABEL[active]);
 
   return (
     <header
@@ -53,7 +50,7 @@ export function AppHeader({
       className="sticky top-0 z-20 border-b border-transparent bg-white/90 shadow-bubble-sm backdrop-blur"
     >
       <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-x-4 gap-y-3 px-5 py-3 md:px-8">
-        <a href={`/dashboard/${businessSlug}`} className="flex min-w-0 items-center gap-2.5">
+        <a href={dashboardHref} className="flex min-w-0 items-center gap-2.5">
           <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-[11px] bg-brand-700 text-white">
             <BrandLogo theme={theme} className="text-base font-black" />
           </span>
@@ -61,21 +58,22 @@ export function AppHeader({
             <span className="block truncate text-sm font-semibold text-[#182321]">
               {brandTitle(theme, businessName)}
             </span>
-            <span className="block text-[11px] text-[#5c6a65]">Kembali ke dashboard</span>
+            <span className="block text-[11px] text-[#5c6a65]">Dashboard</span>
           </span>
         </a>
 
         <nav aria-label="Navigasi workspace" className="flex items-center gap-1 text-xs font-medium">
-          {links.map((link) => (
+          <span
+            aria-current="page"
+            className="rounded-lg bg-brand-50 px-3 py-1.5 font-semibold text-brand-700"
+          >
+            {SECTION_LABEL[active]}
+          </span>
+          {backTo.map((link) => (
             <a
-              key={link.id}
+              key={link.href}
               href={link.href}
-              aria-current={link.id === active ? "page" : undefined}
-              className={`rounded-lg px-3 py-1.5 transition ${
-                link.id === active
-                  ? "bg-brand-50 font-semibold text-brand-700"
-                  : "text-[#5c6a65] hover:bg-brand-50"
-              }`}
+              className="rounded-lg px-3 py-1.5 text-[#5c6a65] transition hover:bg-brand-50"
             >
               {link.label}
             </a>
@@ -87,11 +85,7 @@ export function AppHeader({
             <span className="block text-xs font-semibold text-[#182321]">{userName}</span>
             <span className="block text-[11px] text-[#66736e]">{roleLabel(role)}</span>
           </span>
-          <AccountPasswordButton
-            label=""
-            className="flex size-9 items-center justify-center rounded-lg text-[#53615b] transition hover:bg-brand-50"
-          />
-          <SignOutButton />
+          <AccountMenuButton userName={userName} roleLabel={roleLabel(role)} businessName={businessName} />
         </div>
       </div>
     </header>

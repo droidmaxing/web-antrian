@@ -57,10 +57,10 @@ export function IntakeControl({
           className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
             open
               ? "bg-brand-50 text-brand-700"
-              : "bg-[#fdf1ee] text-[#b4553f]"
+              : "bg-[#fdf1ee] text-[#b0533e]"
           }`}
         >
-          <span className={`size-1.5 rounded-full ${open ? "bg-brand-600" : "bg-[#e47b69]"}`} />
+          <span className={`size-1.5 rounded-full ${open ? "bg-brand-600" : "bg-[#d65f4a]"}`} />
           Ambil nomor: {open ? "buka" : "tutup"}
         </span>
         {open ? (
@@ -96,7 +96,7 @@ export function IntakeControl({
           </button>
         )}
       </div>
-      <p className="max-w-[280px] truncate text-[10px] text-[#7d8985]" title={reason}>
+      <p className="max-w-[280px] truncate text-[10px] text-[#67706d]" title={reason}>
         {error || reason}
       </p>
     </div>

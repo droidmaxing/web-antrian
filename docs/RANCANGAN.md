@@ -591,10 +591,11 @@ sudah tidak berlaku tidak dipakai lagi.
 
 ### 7.2 Fitur baru yang tidak ada di rancangan awal
 
-- **Ubah kata sandi sendiri** — `POST /api/v1/auth/password`, panel di sidebar dashboard
-  dan tombol ikon di `AppHeader`. Wajib sandi lama, rate limit 5×/15 menit per akun,
-  sandi baru 8–128 karakter dan harus berbeda dari yang lama. Sesi JWT di perangkat lain
-  sengaja **tidak** dicabut (lihat komentar `ponytail:` di route-nya).
+- **Ubah kata sandi sendiri** — `POST /api/v1/auth/password`, dibuka dari modal menu akun
+  (`src/components/account-menu.tsx`): avatar di navbar dashboard, konsol platform, dan
+  footer sidebar. Wajib sandi lama, rate limit 5×/15 menit per akun, sandi baru 8–128
+  karakter dan harus berbeda dari yang lama. Sesi JWT di perangkat lain sengaja **tidak**
+  dicabut (lihat komentar `ponytail:` di route-nya).
 - **Midtrans** — mode sandbox/production dengan satu slot kunci per mode, verifikasi
   tanda tangan SHA-512 atas semua kunci yang tersimpan, tombol checkout Snap, dan
   tombol "Perbarui status" yang menanyakan keadaan transaksi langsung ke Midtrans.

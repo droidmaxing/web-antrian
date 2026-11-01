@@ -133,7 +133,7 @@ export function PublicBookingForm({
   if (!configuration.services.length) {
     return (
       <div className="rounded-2xl bg-brand-50 p-6 text-center bubble-panel">
-        <CalendarDays className="mx-auto size-8 text-[#91a29b]" />
+        <CalendarDays className="mx-auto size-8 text-[#65716d]" />
         <p className="mt-3 text-sm font-semibold text-[#344440]">
           Belum ada layanan booking
         </p>
@@ -146,7 +146,7 @@ export function PublicBookingForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <label className="block">
+      <div className="block">
         <span className="mb-2 block text-xs font-semibold text-[#45544f]">
           Layanan
         </span>
@@ -168,14 +168,14 @@ export function PublicBookingForm({
           className="h-12 w-full rounded-xl bubble-field bg-white px-3.5 text-sm text-[#344440] outline-none transition"
         />
         <FieldError id="booking-service-error" message={fieldErrors.serviceId} />
-      </label>
+      </div>
 
       <label className="block">
         <span className="mb-2 block text-xs font-semibold text-[#45544f]">
           Tanggal kunjungan
         </span>
         <span className="relative block">
-          <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#87958f]" />
+          <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#67716d]" />
           <input
             type="date"
             required
@@ -200,12 +200,12 @@ export function PublicBookingForm({
           <legend className="text-xs font-semibold text-[#45544f]">
             Pilih waktu
           </legend>
-          <span className="flex items-center gap-1 text-[11px] text-[#91a09a]">
+          <span className="flex items-center gap-1 text-[11px] text-[#65716d]">
             <Clock3 className="size-3" /> Durasi slot 30 menit
           </span>
         </div>
         {loadingSlots ? (
-          <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl bg-brand-50 text-xs text-[#83918b]">
+          <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl bg-brand-50 text-xs text-[#66716d]">
             <LoaderCircle className="size-4 animate-spin" />
             Memeriksa ketersediaan...
           </div>
@@ -236,7 +236,7 @@ export function PublicBookingForm({
           </div>
         ) : (
           <div className="rounded-xl bg-brand-50 px-4 py-7 text-center bubble-panel">
-            <Clock3 className="mx-auto size-5 text-[#9ba8a2]" />
+            <Clock3 className="mx-auto size-5 text-[#68716d]" />
             <p className="mt-2 text-xs font-semibold text-[#596761]">
               Tidak ada waktu tersedia
             </p>

@@ -18,7 +18,6 @@ import {
   CreditCard,
   Layers,
   LayoutDashboard,
-  LogOut,
   MonitorCog,
   Radio,
   RefreshCw,
@@ -29,10 +28,10 @@ import {
   Tv,
   type LucideIcon,
 } from "lucide-react";
-import { AccountPasswordButton } from "@/components/account-password-button";
+import { AccountMenuButton } from "@/components/account-menu";
+import { initials } from "@/lib/initials";
 import { InlineNotice } from "@/components/inline-notice";
 import { Pager, usePaged } from "@/components/pagination";
-import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FeatureKey, MembershipRole, QueueStatus } from "@prisma/client";
@@ -192,15 +191,6 @@ function formatTime(value: string) {
   }).format(new Date(value));
 }
 
-function shortName(name: string) {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-}
-
 export function Dashboard({
   businessName,
   businessSlug,
@@ -228,6 +218,9 @@ export function Dashboard({
   // from what the API's requireRole checks allow.
   const capabilities = capabilitiesFor(role);
   const canOperate = capabilities.operateQueue;
+  // Halaman Langganan digerbang oleh API-nya sebagai OWNER; kapabilitas ini
+  // memakai daftar yang sama supaya tautannya tidak muncul untuk peran lain.
+  const canManageBilling = capabilities.manageBilling;
   const canConfigure = capabilities.configureBusiness;
   const canManageTeam = capabilities.manageTeam;
   const canViewReports = capabilities.viewReports;
@@ -302,6 +295,7 @@ export function Dashboard({
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
+
   const [voiceMuted, setVoiceMuted] = useState(false);
   const [voiceReady, setVoiceReady] = useState(false);
   const [spoken, setSpoken] = useState("");
@@ -313,24 +307,21 @@ export function Dashboard({
   // Date.now() during render) while still filtering relative to "now".
   const [windowAnchor, setWindowAnchor] = useState<number | null>(null);
   const [noticeOpen, setNoticeOpen] = useState(false);
+  const noticeButtonRef = useRef<HTMLButtonElement>(null);
   const ledger = useRef(new AnnouncementLedger());
   const playerRef = useRef<AnnouncementAudioPlayer | null>(null);
 
-  // Signing out with a callbackUrl makes Auth.js build an absolute URL on the
-  // server, which can resolve to a different origin than the one the operator
-  // is actually browsing (e.g. localhost vs the real domain). Ending the
-  // session first and then navigating relative keeps the operator on the
-  // origin they are already on.
-  const handleSignOut = useCallback(async () => {
-    try {
-      await signOut({ redirect: false });
-    } finally {
-      // Relative navigation keeps the operator on the origin they are on; a
-      // refresh drops the cached authenticated shell.
-      router.replace("/login");
-      router.refresh();
+  // Escape menutup popover notifikasi dan mengembalikan fokus ke peluncurnya.
+  useEffect(() => {
+    if (!noticeOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setNoticeOpen(false);
+      noticeButtonRef.current?.focus();
     }
-  }, [router]);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [noticeOpen]);
 
 
   useEffect(() => {
@@ -557,13 +548,13 @@ export function Dashboard({
         <details className="group">
           <summary className="flex w-full cursor-pointer list-none items-center gap-3 bubble-panel p-3 text-left transition [&::-webkit-details-marker]:hidden">
             <div className="flex size-9 items-center justify-center rounded-[10px] bg-brand-50 text-brand-700">
-              <span className="text-xs font-bold">{shortName(businessName)}</span>
+              <span className="text-xs font-bold">{initials(businessName)}</span>
             </div>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold">{businessName}</span>
               <span className="mt-0.5 block text-xs text-[#5c6a65]">{branch.name}</span>
             </span>
-            <ChevronDown className="size-4 text-[#626966]" />
+            <ChevronDown className="size-4 text-[#626966]" aria-hidden />
           </summary>
           <div className="mt-1.5 bubble-card bg-white p-1.5">
             <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[.1em] text-[#5d6b67]">
@@ -620,7 +611,7 @@ export function Dashboard({
               Bantuan & pengaturan
             </p>
             <nav className="space-y-1">
-              {isOwner && (
+              {canManageBilling && (
                 <NavLink
                   href={`/dashboard/${businessSlug}/langganan`}
                   label="Langganan"
@@ -645,26 +636,13 @@ export function Dashboard({
         </div>
 
         {/* Pinned footer: always visible, never inside the scroll container. */}
-        <div className="shrink-0 border-t border-[#eef1f0] bg-white p-3">
-          <div className="flex items-center gap-2.5 px-2 pb-2.5">
-            <div className="flex size-8 items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-700">
-              {shortName(userName)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold">{userName}</p>
-              <p className="truncate text-[11px] text-[#66736e]">{roleLabel(role)}</p>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <AccountPasswordButton />
-            <button
-              type="button"
-              onClick={() => void handleSignOut()}
-              className="flex w-full items-center gap-3 bubble-panel px-3 py-2.5 text-left text-sm font-medium text-[#4d5a56] transition hover:bg-[#fdf4f2] hover:text-[#b4553f]"
-            >
-              <LogOut className="size-4" /> Keluar
-            </button>
-          </div>
+        <div className="shrink-0 border-t border-[#eef1f0] p-3">
+          <AccountMenuButton
+            variant="card"
+            userName={userName}
+            roleLabel={roleLabel(role)}
+            businessName={businessName}
+          />
         </div>
       </aside>
 
@@ -693,18 +671,27 @@ export function Dashboard({
             <div className="relative">
               <button
                 type="button"
+                ref={noticeButtonRef}
                 onClick={() => setNoticeOpen((current) => !current)}
                 aria-expanded={noticeOpen}
-                aria-label="Notifikasi operasional"
-                className="relative flex size-9 items-center justify-center rounded-lg text-[#53615b] hover:bg-brand-50"
+                aria-controls={noticeOpen ? "panel-notifikasi" : undefined}
+                aria-label={
+                  alerts.length
+                    ? `Notifikasi operasional, ${alerts.length} perlu ditangani`
+                    : "Notifikasi operasional, tidak ada yang perlu ditangani"
+                }
+                className="relative flex size-9 items-center justify-center rounded-lg text-[#53615b] transition hover:bg-brand-50"
               >
-                <Bell className="size-[18px]" />
+                <Bell className="size-[18px]" aria-hidden />
                 {alerts.length > 0 && (
-                  <span className="absolute right-2 top-2 size-1.5 rounded-full bg-[#e47b69]" />
+                  <span className="absolute right-2 top-2 size-1.5 rounded-full bg-[#d65f4a]" />
                 )}
               </button>
               {noticeOpen && (
-                <div className="absolute right-0 top-11 z-40 w-[290px] bubble-card bg-white p-3">
+                <div
+                  id="panel-notifikasi"
+                  className="absolute right-0 top-11 z-40 w-[290px] bubble-card bg-white p-3 shadow-bubble-lift"
+                >
                   <p className="px-1 text-[11px] font-semibold uppercase tracking-[.1em] text-[#5d6b67]">
                     Notifikasi
                   </p>
@@ -729,39 +716,11 @@ export function Dashboard({
               )}
             </div>
             <span className="mx-1 hidden h-9 w-px bg-brand-200 sm:block" />
-            <details className="relative">
-              <summary
-                aria-label={`Menu akun ${userName}`}
-                className="flex cursor-pointer list-none items-center gap-2.5 rounded-xl px-1 py-1 transition hover:bg-brand-50 [&::-webkit-details-marker]:hidden"
-              >
-                <div className="hidden text-right sm:block">
-                  <p className="text-xs font-semibold">{userName}</p>
-                  <p className="mt-0.5 text-[11px] text-[#66736e]">
-                    {roleLabel(role)}
-                  </p>
-                </div>
-                <div className="flex size-9 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
-                  {shortName(userName)}
-                </div>
-                <ChevronDown className="size-4 text-[#626966]" />
-              </summary>
-              <div className="absolute right-0 top-12 z-40 w-[230px] bubble-card bg-white p-1.5">
-                <div className="px-2.5 py-2">
-                  <p className="truncate text-sm font-semibold">{userName}</p>
-                  <p className="mt-0.5 truncate text-[11px] text-[#66736e]">
-                    {roleLabel(role)} · {businessName}
-                  </p>
-                </div>
-                <div className="my-1 h-px bg-[#eef1f0]" />
-                <button
-                  type="button"
-                  onClick={() => void handleSignOut()}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[#b4553f] hover:bg-[#fdf4f2]"
-                >
-                  <LogOut className="size-4" /> Keluar
-                </button>
-              </div>
-            </details>
+            <AccountMenuButton
+              userName={userName}
+              roleLabel={roleLabel(role)}
+              businessName={businessName}
+            />
             </div>
           </div>
         </header>
@@ -778,7 +737,7 @@ export function Dashboard({
               onSelect={() => goTo(item.view)}
             />
           ))}
-          {isOwner && (
+          {canManageBilling && (
             <MobileNavLink href={`/dashboard/${businessSlug}/langganan`} label="Langganan" />
           )}
           <MobileNavLink href={`/dashboard/${businessSlug}/panduan`} label="Panduan" />
@@ -810,7 +769,7 @@ export function Dashboard({
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="pointer-events-none absolute right-0 size-3.5" />
+                    <ChevronDown className="pointer-events-none absolute right-0 size-3.5" aria-hidden />
                   </label>
                 ) : (
                   <span>{branch.name}</span>
@@ -854,7 +813,7 @@ export function Dashboard({
                     <option value="3h">3 jam terakhir</option>
                     <option value="8h">8 jam terakhir</option>
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5 text-[#5d6b67]" />
+                  <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5 text-[#5d6b67]" aria-hidden />
                 </label>
               </div>
             )}
@@ -927,7 +886,7 @@ export function Dashboard({
                   >
                     <RefreshCw className="size-4" />
                   </button>
-                  <label className="relative flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium text-[#687570] bubble-btn">
+                  <label className="relative flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium text-[#65716d] bubble-btn">
                     <span className="sr-only">Filter loket</span>
                     <select
                       value={counterFilter}
@@ -942,9 +901,9 @@ export function Dashboard({
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" />
+                    <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" aria-hidden />
                   </label>
-                  <label className="relative flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium text-[#687570] bubble-btn">
+                  <label className="relative flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium text-[#65716d] bubble-btn">
                     <span className="sr-only">Filter status antrean</span>
                     <select
                       value={statusFilter}
@@ -960,7 +919,7 @@ export function Dashboard({
                       <option value="SKIPPED">Lewat</option>
                       <option value="CANCELLED">Dibatalkan</option>
                     </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" />
+                    <ChevronDown className="pointer-events-none absolute right-2.5 size-3.5" aria-hidden />
                   </label>
                   </div>
               </div>
@@ -1030,7 +989,7 @@ export function Dashboard({
               </div>
               {voiceEnabled && canOperate && (
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2 bubble-panel bg-brand-50 px-3 py-2.5">
-                  <p className="flex min-w-0 items-center gap-2 text-[11px] text-[#6c7a74]">
+                  <p className="flex min-w-0 items-center gap-2 text-[11px] text-[#64716c]">
                     <Volume2 className="size-3.5 shrink-0 text-brand-600" />
                     <span className="truncate">
                       {!voiceReady
@@ -1346,7 +1305,7 @@ function MobileNavLink({
   active?: boolean;
 }) {
   const className = `shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition ${
-    active ? "bg-brand-50 font-semibold text-brand-700" : "text-[#718079] hover:bg-brand-50 hover:text-brand-700"
+    active ? "bg-brand-50 font-semibold text-brand-700" : "text-[#65726c] hover:bg-brand-50 hover:text-brand-700"
   }`;
   return href ? (
     <a href={href} className={className}>
@@ -1384,7 +1343,7 @@ function NavLink({
       <Icon className="size-[17px]" />
       <span className="flex-1">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="rounded-md bg-white px-1.5 py-0.5 text-[11px] font-semibold text-[#687570] shadow-bubble-sm">
+        <span className="rounded-md bg-white px-1.5 py-0.5 text-[11px] font-semibold text-[#65716d] shadow-bubble-sm">
           {badge}
         </span>
       )}
@@ -1450,7 +1409,7 @@ function TinyMetric({
 }) {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-[#6f8c80]">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-[#5c746a]">
         <Icon className="size-4" />
       </div>
       <div>
@@ -1504,7 +1463,7 @@ function QueueActivityChart({
             return (
               <div key={hours[index]} className="flex h-full flex-1 flex-col items-center justify-end">
                 {count > 0 && (
-                  <span className="mb-1.5 text-[9px] font-medium text-[#78857f]">{count}</span>
+                  <span className="mb-1.5 text-[9px] font-medium text-[#66716c]">{count}</span>
                 )}
                 <div
                   className={`w-full max-w-[34px] rounded-t-[5px] transition-all ${hours[index] === currentHour ? "bg-brand-700" : count ? "bg-brand-400" : "bg-brand-100"}`}
@@ -1548,12 +1507,12 @@ function QueueItem({
   };
   const statusStyles: Record<QueueStatus, string> = {
     WAITING: "bg-accent-100 text-accent-900",
-    CALLED: "bg-[#edf2fc] text-[#5b78b0]",
+    CALLED: "bg-[#edf2fc] text-[#4a679e]",
     SERVING: "bg-brand-100 text-brand-700",
-    COMPLETED: "bg-brand-50 text-[#74817c]",
-    SKIPPED: "bg-[#f7f0e9] text-[#9a7150]",
-    CANCELLED: "bg-[#fbefef] text-[#bd6e6e]",
-    NO_SHOW: "bg-[#f4effb] text-[#856ca9]",
+    COMPLETED: "bg-brand-50 text-[#637069]",
+    SKIPPED: "bg-[#f7f0e9] text-[#8a5f38]",
+    CANCELLED: "bg-[#fbefef] text-[#a5463d]",
+    NO_SHOW: "bg-[#f4effb] text-[#6d5695]",
   };
   const availableActions: Record<QueueStatus, string[]> = {
     WAITING: ["skip", "cancel"],
@@ -1570,7 +1529,7 @@ function QueueItem({
       <div className="flex items-center justify-between md:justify-start md:gap-2.5">
         <div className="flex items-center gap-2.5">
           <div className="flex size-9 items-center justify-center rounded-[10px] bg-brand-50 text-[11px] font-bold text-brand-700">
-            {shortName(queue.customerName)}
+            {initials(queue.customerName)}
           </div>
           <div>
             <p className="text-xs font-semibold text-[#344440]">{queue.ticketNumber}</p>
@@ -1581,9 +1540,9 @@ function QueueItem({
           {statusLabel[queue.status]}
         </span>
       </div>
-      <div className="pl-[46px] text-xs text-[#687570] md:pl-0">{queue.customerName}</div>
+      <div className="pl-[46px] text-xs text-[#65716d] md:pl-0">{queue.customerName}</div>
       <div className="flex items-center justify-between pl-[46px] md:pl-0">
-        <span className="text-xs text-[#687570]">{queue.serviceName}</span>
+        <span className="text-xs text-[#65716d]">{queue.serviceName}</span>
         <span className={`hidden w-fit rounded-full px-2 py-1 text-[11px] font-medium md:inline-flex ${statusStyles[queue.status]}`}>
           {statusLabel[queue.status]}
         </span>
@@ -1598,7 +1557,7 @@ function QueueItem({
               key={action}
               onClick={() => onAction(queue.id, action)}
               disabled={busyAction === `${action}-${queue.id}`}
-              className={`rounded-lg px-2 py-1.5 text-[11px] font-semibold transition disabled:opacity-50 ${action === "complete" || action === "start" ? "bg-brand-700 text-white hover:bg-brand-800" : "bg-brand-50 text-[#687570] hover:bg-brand-100"}`}
+              className={`rounded-lg px-2 py-1.5 text-[11px] font-semibold transition disabled:opacity-50 ${action === "complete" || action === "start" ? "bg-brand-700 text-white hover:bg-brand-800" : "bg-brand-50 text-[#65716d] hover:bg-brand-100"}`}
             >
               {busyAction === `${action}-${queue.id}`
                 ? "..."
@@ -1619,7 +1578,7 @@ function QueueItem({
                 event.target.value = "";
               }
             }}
-            className="max-w-24 rounded-lg bg-white px-2 py-1.5 text-[11px] text-[#687570] bubble-btn"
+            className="max-w-24 rounded-lg bg-white px-2 py-1.5 text-[11px] text-[#65716d] bubble-btn"
           >
             <option value="">Lainnya</option>
             {availableActions[queue.status].slice(2).map((action) => (

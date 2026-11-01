@@ -71,13 +71,14 @@ export function SearchableSelect({
   return (
     <div className="relative">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#91a09a]" />
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#65716d]" />
         <input
           role="combobox"
           aria-label={ariaLabel}
           aria-invalid={invalid}
           aria-describedby={describedBy}
           aria-autocomplete="list"
+          aria-haspopup="listbox"
           aria-expanded={open}
           aria-controls={listboxId}
           aria-activedescendant={
@@ -125,7 +126,7 @@ export function SearchableSelect({
         />
         <ChevronDown
           aria-hidden="true"
-          className={`pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-[#91a09a] transition-transform ${open ? "rotate-180" : ""}`}
+          className={`pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-[#65716d] transition-transform ${open ? "rotate-180" : ""}`}
         />
       </div>
       {open && (

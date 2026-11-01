@@ -112,7 +112,7 @@ export function PublicQueueForm({
   if (!services.length) {
     return (
       <div className="rounded-2xl bg-white p-6 text-center shadow-bubble-sm">
-        <TicketCheck className="mx-auto size-8 text-[#91a29b]" />
+        <TicketCheck className="mx-auto size-8 text-[#65716d]" />
         <p className="mt-3 text-sm font-semibold text-[#344440]">
           Belum ada layanan tersedia
         </p>
@@ -126,7 +126,7 @@ export function PublicQueueForm({
   if (!gate.open) {
     return (
       <div className="rounded-2xl bg-white p-6 text-center shadow-bubble-sm">
-        <TicketCheck className="mx-auto size-8 text-[#91a29b]" />
+        <TicketCheck className="mx-auto size-8 text-[#65716d]" />
         <p className="mt-3 text-sm font-semibold text-[#344440]">
           Ambil nomor sedang ditutup
         </p>
@@ -140,7 +140,7 @@ export function PublicQueueForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <label className="block">
+      <div className="block">
         <span className="mb-2 block text-xs font-semibold text-[#45544f]">
           Pilih layanan
         </span>
@@ -161,7 +161,7 @@ export function PublicQueueForm({
           className="h-12 w-full rounded-xl bubble-field bg-white px-3.5 text-sm text-[#344440] outline-none"
         />
         <FieldError id="queue-service-error" message={fieldErrors.serviceId} />
-      </label>
+      </div>
       <label className="block">
         <span className="mb-2 block text-xs font-semibold text-[#45544f]">
           Nama Anda

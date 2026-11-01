@@ -299,7 +299,7 @@ test("E2E: Public QR page can retrieve active queue", async () => {
   assert.ok(token.expiresAt! > new Date(), "Token is not expired");
 
   // Create a new active queue to verify QR page can see it
-  const activeQueue = await prisma.queue.create({
+  await prisma.queue.create({
     data: {
       businessId: testData.businessId!,
       branchId: testData.branchId!,

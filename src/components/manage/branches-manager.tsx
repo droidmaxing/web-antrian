@@ -378,7 +378,7 @@ export function BranchesManager({
             <button
               type="button"
               onClick={() => setDraft(null)}
-              className="h-9 rounded-lg bubble-panel px-3 text-xs font-medium text-[#687570]"
+              className="h-9 rounded-lg bubble-panel px-3 text-xs font-medium text-[#65716d]"
             >
               Batal
             </button>
@@ -387,7 +387,7 @@ export function BranchesManager({
       )}
 
       {branches === null ? (
-        <div className="flex items-center gap-2 py-6 text-xs text-[#83918b]">
+        <div className="flex items-center gap-2 py-6 text-xs text-[#66716d]">
           <LoaderCircle className="size-4 animate-spin" /> Memuat cabang...
         </div>
       ) : branches.length ? (
@@ -410,14 +410,14 @@ export function BranchesManager({
                   {timezoneOr(branch.timezone)} · {branch.counterCount} loket · {branch.queueCount} antrean
                   {branch.resetDaily ? " · reset harian" : ""}
                 </p>
-                <p className="mt-0.5 text-[11px] text-[#7d8a85]">
+                <p className="mt-0.5 text-[11px] text-[#65716d]">
                   <Clock className="mr-1 inline size-3 align-[-2px]" />
                   {hoursLabel(branch.operatingHours)}
                 </p>
               </div>
               <span
                 className={`rounded-full px-2 py-1 text-[11px] font-medium ${
-                  branch.active ? "bg-brand-100 text-brand-700" : "bg-brand-50 text-[#74817c]"
+                  branch.active ? "bg-brand-100 text-brand-700" : "bg-brand-50 text-[#637069]"
                 }`}
               >
                 {branch.active ? "Aktif" : "Nonaktif"}
@@ -441,7 +441,7 @@ export function BranchesManager({
                     disabled={busy}
                     aria-label={`Atur jam operasional ${branch.name}`}
                     aria-expanded={hoursEdit?.branchId === branch.id}
-                    className="flex size-8 items-center justify-center rounded-lg bubble-panel text-[#687570] hover:bg-brand-50 disabled:opacity-40"
+                    className="flex size-8 items-center justify-center rounded-lg bubble-panel text-[#65716d] hover:bg-brand-50 disabled:opacity-40"
                   >
                     <Clock className="size-3.5" />
                   </button>
@@ -450,7 +450,7 @@ export function BranchesManager({
                     onClick={() => edit(branch)}
                     disabled={busy}
                     aria-label={`Ubah ${branch.name}`}
-                    className="flex size-8 items-center justify-center rounded-lg bubble-panel text-[#687570] hover:bg-brand-50 disabled:opacity-40"
+                    className="flex size-8 items-center justify-center rounded-lg bubble-panel text-[#65716d] hover:bg-brand-50 disabled:opacity-40"
                   >
                     <Pencil className="size-3.5" />
                   </button>
@@ -459,7 +459,7 @@ export function BranchesManager({
                     onClick={() => void toggleActive(branch)}
                     disabled={busy}
                     aria-label={branch.active ? `Nonaktifkan ${branch.name}` : `Aktifkan ${branch.name}`}
-                    className="flex size-8 items-center justify-center rounded-lg bubble-panel text-[#687570] hover:bg-brand-50 disabled:opacity-40"
+                    className="flex size-8 items-center justify-center rounded-lg bubble-panel text-[#65716d] hover:bg-brand-50 disabled:opacity-40"
                   >
                     <Power className="size-3.5" />
                   </button>
@@ -504,7 +504,7 @@ export function BranchesManager({
                   aria-label={`Jam buka ${DAYS[row.weekday]}`}
                   className="h-8 rounded-lg bubble-panel px-2 text-xs text-[#344440] disabled:opacity-40"
                 />
-                <span className="text-[11px] text-[#83918b]">–</span>
+                <span className="text-[11px] text-[#66716d]">–</span>
                 <input
                   type="time"
                   value={row.closesAt}
@@ -539,7 +539,7 @@ export function BranchesManager({
             <button
               type="button"
               onClick={() => setHoursEdit(null)}
-              className="h-9 rounded-lg bubble-panel px-3 text-xs font-medium text-[#687570]"
+              className="h-9 rounded-lg bubble-panel px-3 text-xs font-medium text-[#65716d]"
             >
               Batal
             </button>

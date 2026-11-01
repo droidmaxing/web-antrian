@@ -24,7 +24,7 @@ test("extend subscription adds months to currentPeriodEnd and sets status to ACT
   trackBusiness(business);
 
   const baseDate = new Date("2026-02-15T10:30:00.000Z");
-  const subscription = await prisma.subscription.create({
+  await prisma.subscription.create({
     data: {
       businessId: business.id,
       status: "ACTIVE",
@@ -87,7 +87,7 @@ test("extend subscription handles edge case: February to May crossing month boun
   trackBusiness(business);
 
   const baseDate = new Date("2026-01-31T00:00:00.000Z");
-  const subscription = await prisma.subscription.create({
+  await prisma.subscription.create({
     data: {
       businessId: business.id,
       status: "TRIAL",

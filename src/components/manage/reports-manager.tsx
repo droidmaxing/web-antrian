@@ -169,7 +169,7 @@ export function ReportsManager({
           <button
             onClick={exportCsv}
             disabled={!report}
-            className="flex h-9 items-center gap-2 rounded-lg bubble-btn px-3 text-xs font-medium text-[#687570] disabled:opacity-40"
+            className="flex h-9 items-center gap-2 rounded-lg bubble-btn px-3 text-xs font-medium text-[#65716d] disabled:opacity-40"
           >
             <Download className="size-3.5" /> CSV
           </button>
@@ -263,7 +263,7 @@ export function ReportsManager({
                     <span className="text-[11px] text-[#66736e]">
                       {service.issued} / {service.completed}
                     </span>
-                    <span className="w-14 text-right text-[11px] text-[#687570]">
+                    <span className="w-14 text-right text-[11px] text-[#65716d]">
                       {service.averageWaitMinutes} mnt
                     </span>
                   </div>
@@ -290,7 +290,7 @@ export function ReportsManager({
                       {counter.counterName}
                     </span>
                     <span className="text-[11px] text-[#66736e]">{counter.served} dilayani</span>
-                    <span className="w-14 text-right text-[11px] text-[#687570]">
+                    <span className="w-14 text-right text-[11px] text-[#65716d]">
                       {counter.averageServiceMinutes} mnt
                     </span>
                   </div>

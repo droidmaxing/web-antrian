@@ -329,7 +329,7 @@ export function DisplaysManager({
           <p className="flex items-center gap-2 text-xs font-semibold text-brand-800">
             <Tv className="size-4" /> Tautan untuk {freshToken.name}
           </p>
-          <p className="mt-1 text-[11px] text-[#5d7a70]">
+          <p className="mt-1 text-[11px] text-[#58746a]">
             Buka tautan ini di perangkat layar. Simpan sekarang — tautan tidak ditampilkan lagi.
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -344,7 +344,7 @@ export function DisplaysManager({
             </button>
             <button
               onClick={() => setFreshToken(null)}
-              className="h-8 rounded-lg bubble-panel px-3 text-[11px] font-medium text-[#5d7a70]"
+              className="h-8 rounded-lg bubble-panel px-3 text-[11px] font-medium text-[#58746a]"
             >
               Tutup
             </button>
@@ -401,7 +401,7 @@ export function DisplaysManager({
                 className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                   draft.counterIds.length === 0
                     ? "border-brand-700 bg-brand-100 text-brand-700"
-                    : "border-brand-200 bg-white text-[#687570]"
+                    : "border-brand-200 bg-white text-[#65716d]"
                 }`}
               >
                 Semua loket
@@ -426,7 +426,7 @@ export function DisplaysManager({
                       className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                         selected
                           ? "border-brand-700 bg-brand-100 text-brand-700"
-                          : "border-brand-200 bg-white text-[#687570]"
+                          : "border-brand-200 bg-white text-[#65716d]"
                       }`}
                     >
                       {counter.code} · {counter.name}
@@ -451,7 +451,7 @@ export function DisplaysManager({
             <button
               type="button"
               onClick={() => setDraft(null)}
-              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#687570]"
+              className="h-9 rounded-lg bubble-panel px-3.5 text-xs font-medium text-[#65716d]"
             >
               Batal
             </button>
@@ -477,7 +477,7 @@ export function DisplaysManager({
             <div className="flex flex-wrap items-center gap-3">
             <span
               className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
-                display.active ? "bg-brand-50 text-brand-700" : "bg-[#f4f2f1] text-[#a3928c]"
+                display.active ? "bg-brand-50 text-brand-700" : "bg-[#f4f2f1] text-[#796c68]"
               }`}
             >
               <Monitor className="size-4" />
@@ -512,7 +512,7 @@ export function DisplaysManager({
                   className={`h-8 rounded-lg border px-2 text-[11px] font-medium disabled:opacity-40 ${
                     display.counterIds.length
                       ? "border-brand-300 bg-brand-100 text-brand-700"
-                      : "border-brand-200 bg-white text-[#687570]"
+                      : "border-brand-200 bg-white text-[#65716d]"
                   }`}
                 >
                   {display.counterIds.length ? "Loket terpilih" : "Semua loket"}
@@ -522,7 +522,7 @@ export function DisplaysManager({
                   disabled={busy}
                   aria-label={`Ganti tautan ${display.name}`}
                   title="Terbitkan tautan baru untuk layar ini"
-                  className="flex h-8 items-center gap-1 rounded-lg bubble-btn bg-white px-2 text-[11px] font-medium text-[#687570] hover:bg-brand-50 disabled:opacity-40"
+                  className="flex h-8 items-center gap-1 rounded-lg bubble-btn bg-white px-2 text-[11px] font-medium text-[#65716d] hover:bg-brand-50 disabled:opacity-40"
                 >
                   <RefreshCw className="size-3.5" /> Tautan baru
                 </button>
@@ -530,7 +530,7 @@ export function DisplaysManager({
                   onClick={() => void toggleActive(display)}
                   disabled={busy}
                   aria-label={display.active ? `Nonaktifkan ${display.name}` : `Aktifkan ${display.name}`}
-                  className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#6f7d78] hover:bg-brand-50 disabled:opacity-40"
+                  className="rounded-lg px-2 py-1 text-[11px] font-semibold text-[#66736e] hover:bg-brand-50 disabled:opacity-40"
                 >
                   {display.active ? "Nonaktifkan" : "Aktifkan"}
                 </button>
@@ -552,7 +552,7 @@ export function DisplaysManager({
                   onClick={() => void remove(display)}
                   disabled={busy}
                   aria-label={`Hapus ${display.name}`}
-                  className="rounded-lg p-2 text-[#a8736b] hover:bg-[#fbf2f0] disabled:opacity-40"
+                  className="rounded-lg p-2 text-[#90635c] hover:bg-[#fbf2f0] disabled:opacity-40"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -572,7 +572,7 @@ export function DisplaysManager({
                     className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                       scopeEdit.counterIds.length === 0
                         ? "border-brand-700 bg-brand-100 text-brand-700"
-                        : "border-brand-200 bg-white text-[#687570]"
+                        : "border-brand-200 bg-white text-[#65716d]"
                     }`}
                   >
                     Semua loket
@@ -595,7 +595,7 @@ export function DisplaysManager({
                         className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium ${
                           selected
                             ? "border-brand-700 bg-brand-100 text-brand-700"
-                            : "border-brand-200 bg-white text-[#687570]"
+                            : "border-brand-200 bg-white text-[#65716d]"
                         }`}
                       >
                         {counter.code} · {counter.name}
@@ -619,7 +619,7 @@ export function DisplaysManager({
                   <button
                     type="button"
                     onClick={() => setScopeEdit(null)}
-                    className="h-8 rounded-lg bubble-panel px-3 text-[11px] font-medium text-[#687570]"
+                    className="h-8 rounded-lg bubble-panel px-3 text-[11px] font-medium text-[#65716d]"
                   >
                     Batal
                   </button>
