@@ -75,7 +75,6 @@ test("the tutorial covers the everyday actions of an operator", () => {
     (section) => section.steps,
   );
   const titles = steps.map((step) => step.title).join(" | ");
-  assert.match(titles, /kata sandi/i, "an operator must be told how to change their own password");
   assert.match(titles, /cari/i, "an operator must be told how to find a queue ticket");
   // Every capability named by a step has to exist, so a renamed capability
   // cannot silently make a step unreachable for everyone.

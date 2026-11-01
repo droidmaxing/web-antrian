@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { PlatformNav } from "@/components/platform-nav";
-import { AccountMenuButton } from "@/components/account-menu";
+import { AccountMenu } from "@/components/account-menu";
 import { requirePlatformAdmin } from "@/modules/platform/access";
 import { AppError } from "@/modules/shared/errors";
 
@@ -38,7 +38,7 @@ export default async function PlatformLayout({ children }: { children: ReactNode
             <p className="truncate text-[11px] text-[#5c6a65]">Antrian · seluruh perusahaan</p>
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <AccountMenuButton
+            <AccountMenu
               userName={admin.name ?? "Master Admin"}
               roleLabel="Master Admin"
               businessName={admin.email ?? "Konsol platform"}

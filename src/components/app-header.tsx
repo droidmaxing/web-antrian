@@ -1,4 +1,4 @@
-import { AccountMenuButton } from "@/components/account-menu";
+import { AccountMenu } from "@/components/account-menu";
 import { BrandLogo } from "@/components/brand-logo";
 import { capabilitiesFor, roleLabel } from "@/modules/tenancy/access";
 import { brandTitle, brandVars, type BrandTheme } from "@/modules/tenancy/brand";
@@ -85,7 +85,7 @@ export function AppHeader({
             <span className="block text-xs font-semibold text-[#182321]">{userName}</span>
             <span className="block text-[11px] text-[#66736e]">{roleLabel(role)}</span>
           </span>
-          <AccountMenuButton userName={userName} roleLabel={roleLabel(role)} businessName={businessName} />
+          <AccountMenu userName={userName} roleLabel={roleLabel(role)} businessName={businessName} />
         </div>
       </div>
     </header>
