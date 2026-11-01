@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight, Building2, CreditCard, KeyRound, Package, ReceiptText, Users2 } from "lucide-react";
 import { PlatformPageHeader, Pill, Section } from "@/components/platform-ui";
 import { readMidtransEnabled, readMidtransMode, midtransServerKeyStatus } from "@/modules/billing/midtrans-settings";
-import { googleApiKeyStatus } from "@/modules/billing/google-settings";
 import { googleLoginStatus } from "@/modules/platform/google-login";
 import {
   listPlatformBusinesses,
@@ -26,7 +25,7 @@ const PAGES = [
 ];
 
 export default async function PlatformOverviewPage() {
-  const [businesses, users, subscriptions, payments, midtrans, midtransEnabled, midtransMode, googleLogin, googleKey] = await Promise.all([
+  const [businesses, users, subscriptions, payments, midtrans, midtransEnabled, midtransMode, googleLogin] = await Promise.all([
     listPlatformBusinesses(),
     listPlatformUsers(COUNT_ONLY),
     listPlatformSubscriptions(COUNT_ONLY),
@@ -35,7 +34,6 @@ export default async function PlatformOverviewPage() {
     readMidtransEnabled(),
     readMidtransMode(),
     googleLoginStatus(),
-    googleApiKeyStatus(),
   ]);
 
   const suspended = businesses.filter((business) => !business.active).length;
@@ -53,13 +51,6 @@ export default async function PlatformOverviewPage() {
         ? `${googleLogin.source === "website" ? "Website" : "Environment"} · ${googleLogin.enabled ? "aktif" : "nonaktif"}`
         : "Belum dikonfigurasi",
       tone: googleLogin.configured && googleLogin.enabled ? ("ok" as const) : ("off" as const),
-    },
-    {
-      label: "Google API key",
-      detail: googleKey.configured
-        ? `${googleKey.source === "website" ? "Website" : "Environment"} · ${googleKey.enabled ? "aktif" : "nonaktif"}`
-        : "Belum dikonfigurasi",
-      tone: googleKey.configured && googleKey.enabled ? ("ok" as const) : ("off" as const),
     },
     {
       label: "Midtrans",

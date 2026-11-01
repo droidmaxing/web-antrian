@@ -22,7 +22,6 @@ import {
   MonitorCog,
   Radio,
   RefreshCw,
-  Search,
   Settings2,
   Sparkles,
   Users2,
@@ -30,6 +29,7 @@ import {
   Tv,
   type LucideIcon,
 } from "lucide-react";
+import { AccountPasswordButton } from "@/components/account-password-button";
 import { InlineNotice } from "@/components/inline-notice";
 import { Pager, usePaged } from "@/components/pagination";
 import { signOut } from "next-auth/react";
@@ -305,7 +305,6 @@ export function Dashboard({
   const [voiceMuted, setVoiceMuted] = useState(false);
   const [voiceReady, setVoiceReady] = useState(false);
   const [spoken, setSpoken] = useState("");
-  const [queueQuery, setQueueQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "LIVE" | QueueStatus>("LIVE");
   const [counterFilter, setCounterFilter] = useState<string>("ALL");
   const [audioStatus, setAudioStatus] = useState<AudioPlayerStatus>("idle");
@@ -316,7 +315,6 @@ export function Dashboard({
   const [noticeOpen, setNoticeOpen] = useState(false);
   const ledger = useRef(new AnnouncementLedger());
   const playerRef = useRef<AnnouncementAudioPlayer | null>(null);
-  const searchRef = useRef<HTMLInputElement | null>(null);
 
   // Signing out with a callbackUrl makes Auth.js build an absolute URL on the
   // server, which can resolve to a different origin than the one the operator
@@ -466,7 +464,6 @@ export function Dashboard({
     }
   }
 
-  const normalizedQuery = queueQuery.trim().toLowerCase();
   const windowHours = timeWindowHours[timeWindow];
   const windowStart =
     windowHours === null || windowAnchor === null
@@ -492,13 +489,7 @@ export function Dashboard({
         return false;
       }
     }
-    if (!normalizedQuery) return true;
-    return (
-      queue.ticketNumber.toLowerCase().includes(normalizedQuery) ||
-      queue.customerName.toLowerCase().includes(normalizedQuery) ||
-      queue.serviceName.toLowerCase().includes(normalizedQuery) ||
-      (queue.counterName ?? "").toLowerCase().includes(normalizedQuery)
-    );
+    return true;
   });
   const paged = usePaged(visibleQueues);
   const displayedQueues = paged.rows ?? [];
@@ -544,25 +535,6 @@ export function Dashboard({
     const timer = window.setInterval(() => router.refresh(), 300_000);
     return () => window.clearInterval(timer);
   }, [router]);
-
-  // ⌘K / Ctrl+K focuses the header search; Esc clears it. Registered once so
-  // the shortcut works from anywhere on the dashboard.
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        searchRef.current?.focus();
-        searchRef.current?.select();
-        return;
-      }
-      if (event.key === "Escape" && document.activeElement === searchRef.current) {
-        setQueueQuery("");
-        searchRef.current?.blur();
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   return (
     <main
@@ -683,13 +655,16 @@ export function Dashboard({
               <p className="truncate text-[11px] text-[#66736e]">{roleLabel(role)}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void handleSignOut()}
-            className="flex w-full items-center gap-3 bubble-panel px-3 py-2.5 text-left text-sm font-medium text-[#4d5a56] transition hover:bg-[#fdf4f2] hover:text-[#b4553f]"
-          >
-            <LogOut className="size-4" /> Keluar
-          </button>
+          <div className="space-y-1.5">
+            <AccountPasswordButton />
+            <button
+              type="button"
+              onClick={() => void handleSignOut()}
+              className="flex w-full items-center gap-3 bubble-panel px-3 py-2.5 text-left text-sm font-medium text-[#4d5a56] transition hover:bg-[#fdf4f2] hover:text-[#b4553f]"
+            >
+              <LogOut className="size-4" /> Keluar
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -714,27 +689,6 @@ export function Dashboard({
                   mode={intake.mode}
                   reason={intake.reason}
                 />
-              </div>
-              <div className="hidden h-9 w-[210px] items-center gap-2 rounded-lg bg-brand-50 px-3 md:flex bubble-btn">
-                <Search className="size-4 text-[#5d6b67]" />
-                <input
-                  ref={searchRef}
-                  value={queueQuery}
-                  onChange={(event) => setQueueQuery(event.target.value)}
-                  placeholder="Cari nomor, pelanggan, layanan..."
-                  aria-label="Cari antrean"
-                  className="min-w-0 flex-1 bg-transparent text-xs text-[#344440] outline-none placeholder:text-[#5d6b67]"
-                />
-                {queueQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setQueueQuery("")}
-                    aria-label="Hapus pencarian"
-                    className="text-[11px] text-[#5d6b67] hover:text-[#687570]"
-                  >
-                    Reset
-                  </button>
-                )}
               </div>
             <div className="relative">
               <button
@@ -809,28 +763,6 @@ export function Dashboard({
               </div>
             </details>
             </div>
-          </div>
-          {/* Pencarian selalu tersedia; di layar sempit ia turun ke baris kedua. */}
-          <div className="px-5 pb-3 md:hidden">
-            <label className="flex h-9 items-center gap-2 rounded-lg bg-brand-50 px-3 bubble-btn">
-              <span className="sr-only">Cari antrean</span>
-              <Search className="size-4 shrink-0 text-[#5d6b67]" />
-              <input
-                value={queueQuery}
-                onChange={(event) => setQueueQuery(event.target.value)}
-                placeholder="Cari nomor, pelanggan, layanan..."
-                className="min-w-0 flex-1 bg-transparent text-xs text-[#344440] outline-none placeholder:text-[#5d6b67]"
-              />
-              {queueQuery && (
-                <button
-                  type="button"
-                  onClick={() => setQueueQuery("")}
-                  className="shrink-0 text-[11px] text-[#5d6b67] hover:text-[#687570]"
-                >
-                  Reset
-                </button>
-              )}
-            </label>
           </div>
         </header>
 
@@ -1061,7 +993,7 @@ export function Dashboard({
                             ? `Tidak ada antrean pada rentang ${timeWindow === "1h" ? "1 jam" : timeWindow === "3h" ? "3 jam" : "8 jam"} terakhir. Pilih "Hari ini" untuk melihat semua antrean hari ini.`
                             : statusFilter === "LIVE"
                               ? "Tidak ada antrean aktif atau menunggu. Pilih \"Semua status\" untuk melihat antrean yang sudah selesai."
-                              : "Ubah kata kunci pencarian, filter loket, atau pilih status lain."
+                              : "Ubah filter loket atau pilih status lain."
                         }
                       />
                     </div>

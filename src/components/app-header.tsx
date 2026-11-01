@@ -1,3 +1,4 @@
+import { AccountPasswordButton } from "@/components/account-password-button";
 import { BrandLogo } from "@/components/brand-logo";
 import { SignOutButton } from "@/components/sign-out-button";
 import { capabilitiesFor, roleLabel } from "@/modules/tenancy/access";
@@ -86,6 +87,10 @@ export function AppHeader({
             <span className="block text-xs font-semibold text-[#182321]">{userName}</span>
             <span className="block text-[11px] text-[#66736e]">{roleLabel(role)}</span>
           </span>
+          <AccountPasswordButton
+            label=""
+            className="flex size-9 items-center justify-center rounded-lg text-[#53615b] transition hover:bg-brand-50"
+          />
           <SignOutButton />
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { sealApiKey, unsealApiKey } from "@/modules/billing/google-settings";
+import { sealSecret, unsealSecret } from "@/modules/shared/secret-box";
 
 /**
  * Kredensial "Masuk dengan Google" milik platform, bukan milik satu bisnis:
@@ -35,7 +35,7 @@ async function storedCredentials() {
   });
   const clientId = rows.find((row) => row.key === CLIENT_ID_KEY)?.value ?? null;
   const sealed = rows.find((row) => row.key === CLIENT_SECRET_KEY)?.value ?? null;
-  const clientSecret = sealed ? unsealApiKey(sealed) : null;
+  const clientSecret = sealed ? unsealSecret(sealed) : null;
   if (!clientSecret) {
     if (sealed) console.warn("Google Client Secret tidak dapat didekripsi; periksa AUTH_SECRET.");
     return null;
@@ -84,7 +84,7 @@ export async function saveGoogleLoginCredentials(clientId: string, clientSecret:
     create: { key: CLIENT_ID_KEY, value: clientId },
     update: { value: clientId },
   });
-  const sealed = sealApiKey(clientSecret);
+  const sealed = sealSecret(clientSecret);
   await prisma.platformSetting.upsert({
     where: { key: CLIENT_SECRET_KEY },
     create: { key: CLIENT_SECRET_KEY, value: sealed },

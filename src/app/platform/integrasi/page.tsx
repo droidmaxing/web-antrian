@@ -1,11 +1,9 @@
 import { headers } from "next/headers";
 import { KeyRound, Sparkles } from "lucide-react";
-import { PlatformGoogleApiKeyForm } from "@/components/platform-google-api-key-form";
 import { PlatformGoogleLoginForm } from "@/components/platform-google-login-form";
 import { PlatformMidtransForm } from "@/components/platform-midtrans-form";
 import { PlatformPageHeader, Section } from "@/components/platform-ui";
 import { absoluteUrl } from "@/lib/app-url";
-import { googleApiKeyStatus } from "@/modules/billing/google-settings";
 import { readMidtransEnabled, readMidtransMode, midtransServerKeyStatus } from "@/modules/billing/midtrans-settings";
 import { googleLoginStatus } from "@/modules/platform/google-login";
 
@@ -23,10 +21,9 @@ async function midtransKeyState() {
 }
 
 export default async function PlatformIntegrationsPage() {
-  const [midtrans, googleLogin, googleKey, requestHeaders] = await Promise.all([
+  const [midtrans, googleLogin, requestHeaders] = await Promise.all([
     midtransKeyState(),
     googleLoginStatus(),
-    googleApiKeyStatus(),
     headers(),
   ]);
 
@@ -50,13 +47,6 @@ export default async function PlatformIntegrationsPage() {
         description="Satu OAuth client berlaku untuk seluruh deployment, bukan per perusahaan. Tanpa kredensial, tombol Google disembunyikan."
       >
         <PlatformGoogleLoginForm initialStatus={googleLogin} redirectUri={redirectUri} />
-      </Section>
-      <Section
-        icon={KeyRound}
-        title="Google API key"
-        description="Kunci API untuk fitur yang memanggil layanan Google (bukan login OAuth)."
-      >
-        <PlatformGoogleApiKeyForm initialStatus={googleKey} />
       </Section>
       <Section
         icon={KeyRound}
