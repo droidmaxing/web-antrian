@@ -42,6 +42,12 @@ export type SnapInput = {
   itemName: string;
   customerName: string;
   customerEmail: string;
+  /**
+   * Halaman yang dibuka setelah pelanggan selesai/menutup pembayaran di Snap.
+   * Tanpa ini Snap memakai Finish Redirect URL dashboard (bawaan example.com),
+   * jadi klik silang meninggalkan pelanggan di halaman contoh Midtrans.
+   */
+  finishUrl?: string;
 };
 
 export type SnapResult = { token: string; redirectUrl: string };
@@ -73,6 +79,7 @@ export async function createSnapTransaction(input: SnapInput): Promise<SnapResul
       transaction_details: { order_id: input.orderId, gross_amount: input.amount },
       item_details: [{ id: input.orderId, name: input.itemName, price: input.amount, quantity: 1 }],
       customer_details: { first_name: input.customerName, email: input.customerEmail },
+      ...(input.finishUrl ? { callbacks: { finish: input.finishUrl } } : {}),
     }),
     signal: AbortSignal.timeout(15_000),
   });

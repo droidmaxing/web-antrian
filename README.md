@@ -28,8 +28,10 @@ application `3000:3000`, MySQL `3307:3306`. The compose credentials and secret
 are for local development only.
 
 `APP_URL` is the single source of truth for every absolute link the application
-generates — QR codes, customer status links, display/TV links, and auth
-callbacks. `NEXT_PUBLIC_APP_URL` carries the same value into client components.
+generates — QR codes, customer status links, display/TV links, auth
+callbacks, and the Midtrans finish URL (where the Snap popup lands after the
+customer pays or closes it). `NEXT_PUBLIC_APP_URL` carries the same value into
+client components.
 Both must point at the public origin of the deployment; localhost is only ever a
 local-development default. The Midtrans *Payment Notification URL* is built from
 the same value — `<APP_URL>/api/v1/billing/midtrans/webhook` is shown in the

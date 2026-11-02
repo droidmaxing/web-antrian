@@ -11,6 +11,7 @@ import {
   paymentStatusFromNotification,
 } from "@/modules/billing/billing-domain";
 import { createSnapTransaction } from "@/modules/billing/midtrans";
+import { absoluteUrl } from "@/lib/app-url";
 
 export const TRIAL_DAYS = 30;
 
@@ -114,6 +115,9 @@ export async function startCheckout(context: BusinessContext, planId: string, cy
     itemName: `${plan.name} (${cycle === "YEARLY" ? "tahunan" : "bulanan"})`,
     customerName: user?.name ?? business?.name ?? "Pelanggan",
     customerEmail: user?.email ?? "",
+    // Tombol silang di Snap tetap harus mendarat di halaman langganan kita,
+    // bukan Finish Redirect URL bawaan dashboard Midtrans.
+    finishUrl: absoluteUrl(`/dashboard/${context.businessSlug}/langganan`),
   });
   await prisma.payment.create({
     data: {
